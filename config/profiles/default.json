@@ -1,0 +1,77 @@
+{
+  "trading_pairs": ["BTC/USDT", "ETH/USDT", "SOL/USDT", "ADA/USDT"],
+  "watchlist": ["DOT/USDT", "MATIC/USDT", "AVAX/USDT", "LINK/USDT", "ATOM/USDT"],
+
+  "risk": {
+    "position_size": 0.05,
+    "max_open_positions": 5,
+    "stop_loss": 0.03,
+    "take_profit": 0.06,
+    "max_daily_loss": 0.05
+  },
+
+  "timeframes": {
+    "analysis": "1h",
+    "check_interval": 300,
+    "social_check_interval": 3600
+  },
+
+  "technical": {
+    "rsi": {
+      "period": 14,
+      "oversold": 30,
+      "overbought": 70
+    },
+    "macd": {
+      "fast": 12,
+      "slow": 26,
+      "signal": 9
+    },
+    "ma": {
+      "short": 20,
+      "long": 50
+    },
+    "bollinger": {
+      "period": 20,
+      "std_dev": 2
+    }
+  },
+
+  "social_media": {
+    "enabled": false,
+    "sources": {
+      "reddit": {
+        "enabled": false,
+        "subreddits": ["CryptoCurrency", "altcoin", "SatoshiStreetBets"],
+        "post_limit": 100
+      },
+      "twitter": {
+        "enabled": false,
+        "influencers": ["cryptobirb", "CryptoKaleo", "cz_binance"],
+        "search_terms": ["crypto", "altcoin", "cryptocurrency"]
+      }
+    },
+    "sentiment_weight": 0.3
+  },
+
+  "machine_learning": {
+    "enabled": false,
+    "confidence_threshold": 0.7,
+    "training_interval": 86400
+  },
+
+  "backtest": {
+    "start_date": "2023-01-01",
+    "end_date": "2023-12-31",
+    "initial_balance": 10000,
+    "commission": 0.001
+  },
+
+  "logging": {
+    "level": "INFO",
+    "file_enabled": true,
+    "file_path": "logs/trading_bot.log",
+    "notify_trades": true,
+    "notify_errors": true
+  }
+}
