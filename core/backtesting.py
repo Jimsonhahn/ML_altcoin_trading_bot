@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Tuple
 import matplotlib.pyplot as plt
 import os
+import traceback
 
 from config.settings import Settings
 from strategies.strategy_base import Strategy
@@ -203,7 +204,8 @@ class Backtester:
         all_dates = all_dates.sort_values()
 
         # Startdatum für die Strategie (um Lookback-Periode zu berücksichtigen)
-        strategy_start = all_dates[100]  # Mindestens 100 Datenpunkte für Indikatoren
+        strategy_start = all_dates[100] if len(all_dates) > 100 else all_dates[
+            0]  # Mindestens 100 Datenpunkte für Indikatoren
 
         # Trading-Simulation
         for current_date in all_dates:
@@ -523,12 +525,24 @@ class Backtester:
         Returns:
             Pfad zur erstellten Grafik oder None im Fehlerfall
         """
-        if not self.results or 'equity_curve' not in self.results or self.results['equity_curve'].empty:
-            self.logger.error("No results available for plotting")
+        # Detaillierte Logging-Ausgabe hinzufügen
+        self.logger.info("Starting to plot results...")
+
+        if not self.results:
+            self.logger.error("No results dictionary available for plotting")
+            return None
+
+        if 'equity_curve' not in self.results:
+            self.logger.error("No equity curve in results")
+            return None
+
+        if self.results['equity_curve'].empty:
+            self.logger.error("Equity curve is empty")
             return None
 
         try:
             # Verzeichnis erstellen, falls nicht vorhanden
+            self.logger.info(f"Creating output directory: {output_dir}")
             os.makedirs(output_dir, exist_ok=True)
 
             # Ergebnisdaten
@@ -536,32 +550,50 @@ class Backtester:
             trades = self.results['trades']
             stats = self.results['statistics']
 
+            # Debug: Equity Curve Inhalt ausgeben
+            self.logger.info(f"Equity curve shape: {equity_curve.shape}")
+            self.logger.info(f"Equity curve columns: {equity_curve.columns.tolist()}")
+
+            # Debug: Trades überprüfen
+            self.logger.info(f"Number of trades: {len(trades)}")
+
             # Mehrere Subplots erstellen
+            self.logger.info("Creating plot figure...")
             fig, axs = plt.subplots(3, 1, figsize=(12, 15), gridspec_kw={'height_ratios': [3, 1, 1]})
 
             # Plot 1: Equity-Kurve
-            equity_curve['portfolio_value'].plot(ax=axs[0], label='Portfolio Value')
+            self.logger.info("Plotting equity curve...")
+            if 'portfolio_value' in equity_curve.columns:
+                equity_curve['portfolio_value'].plot(ax=axs[0], label='Portfolio Value')
+            else:
+                self.logger.error("'portfolio_value' column not found in equity curve")
+                self.logger.info(f"Available columns: {equity_curve.columns.tolist()}")
+                return None
 
             # Buy/Sell-Punkte markieren
-            for trade in trades:
-                entry_time = trade.get('entry_time')
-                exit_time = trade.get('exit_time')
+            self.logger.info("Adding trade markers...")
+            for i, trade in enumerate(trades):
+                try:
+                    entry_time = trade.get('entry_time')
+                    exit_time = trade.get('exit_time')
 
-                if isinstance(entry_time, str):
-                    entry_time = datetime.fromisoformat(entry_time)
-                if isinstance(exit_time, str):
-                    exit_time = datetime.fromisoformat(exit_time)
+                    if isinstance(entry_time, str):
+                        entry_time = datetime.fromisoformat(entry_time)
+                    if isinstance(exit_time, str):
+                        exit_time = datetime.fromisoformat(exit_time)
 
-                # Wenn der Zeitpunkt im Index der Equity-Kurve ist
-                if entry_time in equity_curve.index:
-                    entry_value = equity_curve.loc[entry_time, 'portfolio_value']
-                    axs[0].scatter(entry_time, entry_value, color='green', marker='^', s=80)
+                    # Wenn der Zeitpunkt im Index der Equity-Kurve ist
+                    if entry_time in equity_curve.index:
+                        entry_value = equity_curve.loc[entry_time, 'portfolio_value']
+                        axs[0].scatter(entry_time, entry_value, color='green', marker='^', s=80)
 
-                if exit_time in equity_curve.index:
-                    exit_value = equity_curve.loc[exit_time, 'portfolio_value']
-                    profit_pct = trade.get('profit_loss_percent', 0)
-                    color = 'red' if profit_pct < 0 else 'blue'
-                    axs[0].scatter(exit_time, exit_value, color=color, marker='v', s=80)
+                    if exit_time in equity_curve.index:
+                        exit_value = equity_curve.loc[exit_time, 'portfolio_value']
+                        profit_pct = trade.get('profit_loss_percent', 0)
+                        color = 'red' if profit_pct < 0 else 'blue'
+                        axs[0].scatter(exit_time, exit_value, color=color, marker='v', s=80)
+                except Exception as e:
+                    self.logger.warning(f"Error adding trade marker {i}: {e}")
 
             axs[0].set_title('Portfolio Value Over Time')
             axs[0].set_ylabel('Value ($)')
@@ -569,6 +601,7 @@ class Backtester:
             axs[0].legend()
 
             # Plot 2: Drawdown
+            self.logger.info("Plotting drawdown...")
             if 'portfolio_value' in equity_curve.columns:
                 portfolio_value = equity_curve['portfolio_value']
                 rolling_max = portfolio_value.cummax()
@@ -580,6 +613,7 @@ class Backtester:
                 axs[1].legend()
 
             # Plot 3: Offene Positionen
+            self.logger.info("Plotting open positions...")
             if 'open_positions' in equity_curve.columns:
                 equity_curve['open_positions'].plot(ax=axs[2], label='Open Positions', color='purple')
                 axs[2].set_title('Number of Open Positions')
@@ -588,6 +622,7 @@ class Backtester:
                 axs[2].legend()
 
             # Statistiken als Text hinzufügen
+            self.logger.info("Adding statistics text...")
             textstr = '\n'.join((
                 f"Total Return: {self.results['total_return']:.2f}%",
                 f"Total Trades: {self.results['total_trades']}",
@@ -610,6 +645,7 @@ class Backtester:
             timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
             filename = f"backtest_results_{timestamp}.png"
             filepath = os.path.join(output_dir, filename)
+            self.logger.info(f"Saving plot to {filepath}...")
             plt.savefig(filepath)
             plt.close()
 
@@ -619,4 +655,5 @@ class Backtester:
 
         except Exception as e:
             self.logger.error(f"Error plotting results: {e}")
+            self.logger.error(traceback.format_exc())  # Detailed stack trace
             return None

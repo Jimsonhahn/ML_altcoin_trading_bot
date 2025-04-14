@@ -15,7 +15,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.settings import Settings
-from strategies.momentum import MomentumStrategy
+from strategies.mean_reversion import MeanReversionStrategy
 from core.backtesting import Backtester
 from utils.logger import setup_logger
 
@@ -37,7 +37,7 @@ def main():
     logger.info(f"Timeframe: {settings.get('timeframes.analysis')}")
 
     # Strategie initialisieren
-    strategy = MomentumStrategy(settings)
+    strategy = MeanReversionStrategy(settings)
 
     # Trading Paare
     trading_pairs = settings.get('trading_pairs', ["BTC/USDT", "ETH/USDT", "SOL/USDT", "ADA/USDT"])
