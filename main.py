@@ -19,7 +19,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from config.settings import Settings
-from core.trading import TradingBot
+from core.trading_bot import TradingBot
 from utils.logger import setup_logger
 
 

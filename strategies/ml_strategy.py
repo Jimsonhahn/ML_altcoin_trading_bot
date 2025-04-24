@@ -2,152 +2,102 @@
 # -*- coding: utf-8 -*-
 
 """
-Machine Learning basierte Trading-Strategie.
-Implementiert eine Strategie, die auf ML-Vorhersagen basiert.
+ML-basierte Handelsstrategie für den Trading Bot.
+Diese Strategie integriert Marktregime-Erkennung und Asset-Clustering
+für bessere Handelsentscheidungen.
 """
 
 import logging
-import os
 import pandas as pd
-import numpy as np
-import talib
-from typing import Dict, Any, Optional, Tuple, List
-from datetime import datetime
-import joblib
+from typing import Dict, Any, Tuple, Optional, List
 
-from config.settings import Settings
-from core.position import Position
 from strategies.strategy_base import Strategy
+from core.position import Position
 
-# Sklearn-Imports
+# Prüfen, ob ML-Komponenten verfügbar sind
 try:
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.preprocessing import StandardScaler
+    from ml_components.market_regime import MarketRegimeDetector
+    from ml_components.asset_clusters import AssetClusterAnalyzer
 
-    SKLEARN_AVAILABLE = True
+    ML_AVAILABLE = True
 except ImportError:
-    SKLEARN_AVAILABLE = False
+    ML_AVAILABLE = False
 
 
 class MLStrategy(Strategy):
-    """Machine Learning basierte Trading-Strategie"""
+    """
+    ML-basierte Handelsstrategie, die mehrere ML-Komponenten integriert.
+    Diese Strategie kombiniert:
+    1. Marktregime-Erkennung
+    2. Asset-Clustering
+    3. Technische Indikatoren
+    """
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings):
         """
         Initialisiert die ML-Strategie.
 
         Args:
-            settings: Bot-Konfiguration
+            settings: Einstellungen aus der Konfigurationsdatei
         """
         super().__init__(settings)
-        self.name = "ml"
+        self.logger = logging.getLogger(__name__)
 
-        # Prüfen, ob sklearn verfügbar ist
-        if not SKLEARN_AVAILABLE:
-            self.logger.warning("scikit-learn is not available. Using fallback strategy.")
+        # ML-Komponenten
+        self.ml_enabled = settings.get('ml.enabled', False) and ML_AVAILABLE
+        self.regime_detector = None
+        self.asset_analyzer = None
+        self.current_regime = None
+        self.clusters = None
 
-        # Strategie-Parameter aus Konfiguration laden
-        self.features = settings.get('machine_learning.features', [
-            'trend', 'rsi', 'ma_short', 'ma_long', 'macd', 'macd_signal',
-            'stochastic_k', 'stochastic_d', 'upper_band', 'lower_band',
-            'volume', 'price_change_24h'
-        ])
+        # Strategie-Parameter
+        self.rsi_overbought = settings.get('strategy.rsi_overbought', 70)
+        self.rsi_oversold = settings.get('strategy.rsi_oversold', 30)
+        self.ema_short = settings.get('strategy.ema_short', 20)
+        self.ema_long = settings.get('strategy.ema_long', 50)
+        self.atr_periods = settings.get('strategy.atr_periods', 14)
+        self.atr_multiplier = settings.get('strategy.atr_multiplier', 2.0)
 
-        self.confidence_threshold = settings.get('machine_learning.confidence_threshold', 0.7)
+        # Risikomanagement-Parameter
+        self.stop_loss_pct = settings.get('risk.stop_loss', 0.03)
+        self.take_profit_pct = settings.get('risk.take_profit', 0.06)
+        self.use_trailing_stop = settings.get('risk.use_trailing_stop', True)
+        self.trailing_stop_pct = settings.get('risk.trailing_stop', 0.02)
+        self.trailing_activation_pct = settings.get('risk.trailing_activation', 0.02)
 
-        # Technische Indikatoren-Parameter
-        self.rsi_period = settings.get('technical.rsi.period', 14)
-        self.ma_short = settings.get('technical.ma.short', 20)
-        self.ma_long = settings.get('technical.ma.long', 50)
-        self.macd_fast = settings.get('technical.macd.fast', 12)
-        self.macd_slow = settings.get('technical.macd.slow', 26)
-        self.macd_signal = settings.get('technical.macd.signal', 9)
+        # ML-Komponenten initialisieren
+        if self.ml_enabled:
+            self._initialize_ml_components()
 
-        # ML-Modell
-        self.model = None
-        self.scaler = None
-        self.is_trained = False
-
-        # Modellpfade
-        self.model_dir = 'models'
-
-        # Versuchen, ein vortrainiertes Modell zu laden
-        self._load_model()
-
-        # Training History
-        self.training_history = []
-
-    def _get_model_path(self, symbol: str) -> str:
-        """
-        Generiert den Pfad zum Modell für ein Symbol.
-
-        Args:
-            symbol: Handelssymbol
-
-        Returns:
-            Pfad zum Modell
-        """
-        # Bereinigen des Symbols für den Dateinamen
-        clean_symbol = symbol.replace('/', '_')
-        return os.path.join(self.model_dir, f"ml_model_{clean_symbol}.joblib")
-
-    def _load_model(self, symbol: str = 'general') -> bool:
-        """
-        Lädt ein vortrainiertes Modell.
-
-        Args:
-            symbol: Handelssymbol
-
-        Returns:
-            True, wenn das Modell erfolgreich geladen wurde, False sonst
-        """
-        if not SKLEARN_AVAILABLE:
-            return False
-
-        model_path = self._get_model_path(symbol)
-        scaler_path = os.path.join(self.model_dir, f"scaler_{symbol}.joblib")
-
+    def _initialize_ml_components(self):
+        """Initialisiert die ML-Komponenten"""
         try:
-            if os.path.exists(model_path) and os.path.exists(scaler_path):
-                self.model = joblib.load(model_path)
-                self.scaler = joblib.load(scaler_path)
-                self.is_trained = True
-                self.logger.info(f"Loaded ML model for {symbol}")
-                return True
-            else:
-                self.logger.info(f"No existing ML model found for {symbol}")
-                return False
+            # Verzeichnisse aus den Einstellungen
+            data_dir = self.settings.get('ml.data_dir', 'data/market_data')
+            models_dir = self.settings.get('ml.models_dir', 'data/ml_models')
+
+            # Marktregime-Detektor initialisieren
+            self.regime_detector = MarketRegimeDetector(data_dir=data_dir)
+
+            # Versuchen, ein vorhandenes Modell zu laden
+            regime_model_path = f"{models_dir}/regime_model.pkl"
+            try:
+                if self.regime_detector.load_model(regime_model_path):
+                    self.logger.info(f"Regime-Modell aus {regime_model_path} geladen")
+            except Exception as e:
+                self.logger.warning(f"Konnte Regime-Modell nicht laden: {e}")
+
+            # Asset-Cluster-Analyzer initialisieren
+            self.asset_analyzer = AssetClusterAnalyzer(data_dir=data_dir)
+
+            self.logger.info("ML-Komponenten initialisiert")
         except Exception as e:
-            self.logger.error(f"Error loading ML model: {e}")
-            return False
+            self.logger.error(f"Fehler bei der Initialisierung der ML-Komponenten: {e}")
+            self.ml_enabled = False
 
-    def _save_model(self, symbol: str = 'general') -> None:
+    def calculate_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Speichert das trainierte Modell.
-
-        Args:
-            symbol: Handelssymbol
-        """
-        if not SKLEARN_AVAILABLE or not self.is_trained:
-            return
-
-        # Verzeichnis erstellen, falls es nicht existiert
-        os.makedirs(self.model_dir, exist_ok=True)
-
-        model_path = self._get_model_path(symbol)
-        scaler_path = os.path.join(self.model_dir, f"scaler_{symbol}.joblib")
-
-        try:
-            joblib.dump(self.model, model_path)
-            joblib.dump(self.scaler, scaler_path)
-            self.logger.info(f"Saved ML model for {symbol}")
-        except Exception as e:
-            self.logger.error(f"Error saving ML model: {e}")
-
-    def prepare_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Bereitet Daten für die Analyse vor.
-        Berechnet alle benötigten Indikatoren.
+        Berechnet technische Indikatoren für den DataFrame.
 
         Args:
             df: DataFrame mit OHLCV-Daten
@@ -155,431 +105,433 @@ class MLStrategy(Strategy):
         Returns:
             DataFrame mit berechneten Indikatoren
         """
-        if len(df) < self.ma_long:
-            return df
+        # Kopie des DataFrames erstellen, um es nicht zu verändern
+        df_copy = df.copy()
 
-        # Indikatoren berechnen
-        df = self.calculate_indicators(df)
+        # 1. RSI (Relative Strength Index)
+        delta = df_copy['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
 
-        # Zusätzliche Features für ML
+        # Avoid division by zero
+        loss = loss.replace(0, 0.00001)
 
-        # Preisänderungen berechnen
-        for period in [1, 3, 5, 10]:
-            df[f'return_{period}d'] = df['close'].pct_change(period) * 100
+        rs = gain / loss
+        df_copy['rsi'] = 100 - (100 / (1 + rs))
 
-        # Volatilität
-        df['volatility'] = df['close'].rolling(window=20).std() / df['close'] * 100
+        # 2. EMAs (Exponential Moving Averages)
+        df_copy['ema_short'] = df_copy['close'].ewm(span=self.ema_short, adjust=False).mean()
+        df_copy['ema_long'] = df_copy['close'].ewm(span=self.ema_long, adjust=False).mean()
 
-        # Volumen-Features
-        df['volume_sma'] = df['volume'].rolling(window=20).mean()
-        df['volume_ratio'] = df['volume'] / df['volume_sma']
+        # 3. Bollinger Bands
+        df_copy['sma_20'] = df_copy['close'].rolling(window=20).mean()
+        df_copy['std_20'] = df_copy['close'].rolling(window=20).std()
+        df_copy['upper_band'] = df_copy['sma_20'] + (df_copy['std_20'] * 2)
+        df_copy['lower_band'] = df_copy['sma_20'] - (df_copy['std_20'] * 2)
 
-        # Trendrichtung
-        df['trend'] = np.where(
-            df['ma_short'] > df['ma_long'],
-            1,  # Aufwärtstrend
-            np.where(
-                df['ma_short'] < df['ma_long'],
-                -1,  # Abwärtstrend
-                0  # Seitwärtstrend
-            )
-        )
+        # 4. ATR (Average True Range)
+        df_copy['tr'] = pd.DataFrame({
+            'hl': df_copy['high'] - df_copy['low'],
+            'hc': abs(df_copy['high'] - df_copy['close'].shift(1)),
+            'lc': abs(df_copy['low'] - df_copy['close'].shift(1))
+        }).max(axis=1)
 
-        # Zukünftige Preisänderung für Training (nicht für Vorhersage)
-        df['future_return_1d'] = df['close'].pct_change(1).shift(-1) * 100
-        df['target'] = np.where(df['future_return_1d'] > 1.0, 1, 0)  # 1% als Schwellenwert
+        df_copy['atr'] = df_copy['tr'].rolling(window=self.atr_periods).mean()
 
-        return df
+        # 5. MACD (Moving Average Convergence Divergence)
+        df_copy['ema_12'] = df_copy['close'].ewm(span=12, adjust=False).mean()
+        df_copy['ema_26'] = df_copy['close'].ewm(span=26, adjust=False).mean()
+        df_copy['macd'] = df_copy['ema_12'] - df_copy['ema_26']
+        df_copy['macd_signal'] = df_copy['macd'].ewm(span=9, adjust=False).mean()
+        df_copy['macd_hist'] = df_copy['macd'] - df_copy['macd_signal']
 
-    def calculate_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Berechnet technische Indikatoren für die Analyse.
+        # 6. Volatilitätsmetrik
+        df_copy['return'] = df_copy['close'].pct_change()
+        df_copy['volatility'] = df_copy['return'].rolling(window=20).std()
 
-        Args:
-            df: DataFrame mit OHLCV-Daten
-
-        Returns:
-            DataFrame mit hinzugefügten Indikatoren
-        """
-        # Moving Averages
-        df['ma_short'] = talib.SMA(df['close'], timeperiod=self.ma_short)
-        df['ma_long'] = talib.SMA(df['close'], timeperiod=self.ma_long)
-
-        # Exponential Moving Averages
-        df['ema_short'] = talib.EMA(df['close'], timeperiod=self.ma_short)
-        df['ema_long'] = talib.EMA(df['close'], timeperiod=self.ma_long)
-
-        # RSI
-        df['rsi'] = talib.RSI(df['close'], timeperiod=self.rsi_period)
-
-        # MACD
-        df['macd'], df['macd_signal'], df['macd_hist'] = talib.MACD(
-            df['close'],
-            fastperiod=self.macd_fast,
-            slowperiod=self.macd_slow,
-            signalperiod=self.macd_signal
-        )
-
-        # Bollinger Bands
-        df['upper_band'], df['middle_band'], df['lower_band'] = talib.BBANDS(
-            df['close'],
-            timeperiod=20,
-            nbdevup=2,
-            nbdevdn=2,
-            matype=0
-        )
-
-        # Stochastic Oscillator
-        df['stochastic_k'], df['stochastic_d'] = talib.STOCH(
-            df['high'],
-            df['low'],
-            df['close'],
-            fastk_period=14,
-            slowk_period=3,
-            slowk_matype=0,
-            slowd_period=3,
-            slowd_matype=0
-        )
-
-        # Average True Range (Volatilität)
-        df['atr'] = talib.ATR(df['high'], df['low'], df['close'], timeperiod=14)
-
-        # On-Balance Volume
-        df['obv'] = talib.OBV(df['close'], df['volume'])
-
-        return df
-
-    def _prepare_features(self, df: pd.DataFrame) -> Tuple[np.ndarray, Optional[np.ndarray]]:
-        """
-        Bereitet Features für das ML-Modell vor.
-
-        Args:
-            df: DataFrame mit berechneten Indikatoren
-
-        Returns:
-            Tuple aus Feature-Matrix und optionalem Target-Vektor
-        """
-        # NaN-Werte entfernen oder ersetzen
-        df = df.copy().dropna()
-
-        if df.empty:
-            return np.array([]), None
-
-        # Features auswählen
-        X = df[self.features].values
-
-        # Target, falls verfügbar
-        y = None
-        if 'target' in df.columns:
-            y = df['target'].values
-
-        return X, y
-
-    def train(self, df: pd.DataFrame, symbol: str) -> Dict[str, Any]:
-        """
-        Trainiert das ML-Modell mit historischen Daten.
-
-        Args:
-            df: DataFrame mit OHLCV-Daten
-            symbol: Handelssymbol
-
-        Returns:
-            Dictionary mit Trainingsergebnissen
-        """
-        if not SKLEARN_AVAILABLE:
-            self.logger.warning("scikit-learn is not available. Cannot train ML model.")
-            return {'success': False, 'error': 'scikit-learn not available'}
-
-        try:
-            # Daten vorbereiten
-            df = self.prepare_data(df.copy())
-
-            # Features und Target extrahieren
-            X, y = self._prepare_features(df)
-
-            if len(X) < 100 or y is None:
-                self.logger.warning(f"Insufficient data for training: {len(X)} samples")
-                return {'success': False, 'error': 'insufficient_data'}
-
-            # Daten skalieren
-            self.scaler = StandardScaler()
-            X_scaled = self.scaler.fit_transform(X)
-
-            # Modell initialisieren
-            self.model = RandomForestClassifier(
-                n_estimators=100,
-                max_depth=10,
-                random_state=42
-            )
-
-            # Modell trainieren
-            self.model.fit(X_scaled, y)
-
-            # Modell speichern
-            self._save_model(symbol)
-
-            self.is_trained = True
-
-            # Feature-Importance
-            feature_importance = list(zip(self.features, self.model.feature_importances_))
-            feature_importance.sort(key=lambda x: x[1], reverse=True)
-
-            # Trainingsergebnisse
-            result = {
-                'success': True,
-                'samples': len(X),
-                'training_date': datetime.now().isoformat(),
-                'feature_importance': feature_importance,
-                'symbol': symbol
-            }
-
-            # Trainingsverlauf aktualisieren
-            self.training_history.append(result)
-
-            self.logger.info(f"Successfully trained ML model for {symbol} with {len(X)} samples")
-
-            return result
-
-        except Exception as e:
-            self.logger.error(f"Error training ML model: {e}")
-            return {'success': False, 'error': str(e)}
-
-    def predict(self, df: pd.DataFrame) -> Tuple[float, Dict[str, Any]]:
-        """
-        Generiert eine Vorhersage mit dem ML-Modell.
-
-        Args:
-            df: DataFrame mit berechneten Indikatoren
-
-        Returns:
-            Tuple aus Wahrscheinlichkeit und zusätzlichen Informationen
-        """
-        if not SKLEARN_AVAILABLE or not self.is_trained or self.model is None:
-            # Fallback: Neutrale Vorhersage
-            return 0.5, {'error': 'model_not_available'}
-
-        try:
-            # Features extrahieren
-            X, _ = self._prepare_features(df)
-
-            if len(X) == 0:
-                return 0.5, {'error': 'no_features'}
-
-            # Letzte Zeile verwenden (aktuelle Daten)
-            X_current = X[-1].reshape(1, -1)
-
-            # Daten skalieren
-            X_scaled = self.scaler.transform(X_current)
-
-            # Vorhersage generieren
-            probas = self.model.predict_proba(X_scaled)[0]
-
-            # Wahrscheinlichkeit für positives Ergebnis
-            buy_probability = probas[1]
-
-            # Featuregewichtungen für die Erklärbarkeit
-            prediction_info = {}
-
-            if hasattr(self.model, 'feature_importances_'):
-                feature_importance = list(zip(self.features, self.model.feature_importances_))
-                prediction_info['feature_importance'] = feature_importance
-
-            return buy_probability, prediction_info
-
-        except Exception as e:
-            self.logger.error(f"Error generating prediction: {e}")
-            return 0.5, {'error': str(e)}
+        return df_copy
 
     def generate_signal(self, df: pd.DataFrame, symbol: str,
                         current_position: Optional[Position] = None) -> Tuple[str, Dict[str, Any]]:
         """
-        Generiert ein Trading-Signal basierend auf ML-Vorhersagen und technischer Analyse.
+        Generiert ein Handelssignal für das angegebene Symbol.
 
         Args:
             df: DataFrame mit OHLCV-Daten
-            symbol: Handelssymbol
-            current_position: Aktuelle Position (oder None)
+            symbol: Handelssymbol (z.B. 'BTC/USDT')
+            current_position: Aktuelle Position (falls vorhanden)
 
         Returns:
-            Tuple aus Signal (BUY, SELL, HOLD) und zusätzlichen Signaldaten
+            Tuple aus Signal ('BUY', 'SELL', 'HOLD') und Signaldaten
         """
-        # Sicherstellen, dass wir genügend Daten haben
-        if len(df) < self.ma_long + 10:
-            return "HOLD", {"signal": "HOLD", "reason": "insufficient_data", "confidence": 0.0}
+        if df.empty or len(df) < 50:
+            return "HOLD", {"signal": "HOLD", "reason": "insufficient_data"}
 
-        # Daten vorbereiten
-        df = self.prepare_data(df.copy())
+        # Technische Indikatoren berechnen
+        df_with_indicators = self.calculate_indicators(df)
 
-        # Letzten Datenpunkt für die Analyse verwenden
-        current = df.iloc[-1]
+        # Basisstrategie-Signal basierend auf technischen Indikatoren
+        base_signal, base_data = self._generate_base_signal(df_with_indicators, symbol, current_position)
 
-        # 1. ML-Modell-Vorhersage
-        if SKLEARN_AVAILABLE and self.is_trained:
-            # Modell für das Symbol laden, falls nicht bereits geladen
-            if not self._load_model(symbol):
-                # Fallback: Generelles Modell laden
-                self._load_model('general')
+        # Wenn ML-Komponenten aktiviert sind, Signal anreichern
+        if self.ml_enabled and ML_AVAILABLE:
+            return self._enhance_signal_with_ml(df_with_indicators, symbol, base_signal, base_data, current_position)
 
-            # Vorhersage generieren
-            buy_probability, prediction_info = self.predict(df)
+        return base_signal, base_data
 
-            # ML-Confidence
-            ml_confidence = max(buy_probability, 1 - buy_probability)
-        else:
-            # Fallback: Technische Analyse, wenn ML nicht verfügbar
-            buy_probability = 0.5
-            ml_confidence = 0.0
-            prediction_info = {'error': 'model_not_available'}
-
-        # 2. Technische Analyse zur Bestätigung
-
-        # Trendbestimmung
-        trend = current['trend']
-
-        # RSI-Bedingungen
-        rsi_oversold = current['rsi'] < 30
-        rsi_overbought = current['rsi'] > 70
-
-        # MACD-Signale
-        macd_bullish = current['macd'] > current['macd_signal']
-
-        # Bollinger Bands
-        bb_lower_touch = current['close'] <= current['lower_band']
-        bb_upper_touch = current['close'] >= current['upper_band']
-
-        # Kombination von ML und technischer Analyse
-        signal = "HOLD"
-        reason = "neutral"
-        confidence = 0.0
-
-        # Verkaufssignal nur prüfen, wenn wir eine Position haben
-        if current_position is not None:
-            # Verkaufskriterien mit ML-Bestätigung
-            if buy_probability < 0.3 and (rsi_overbought or bb_upper_touch or trend == -1):
-                signal = "SELL"
-                reason = "ml_sell_confirmation"
-                confidence = (1 - buy_probability) * 0.7 + 0.3  # Gewichtete Konfidenz
-
-            # Starkes Verkaufssignal vom ML-Modell
-            elif buy_probability < 0.2:
-                signal = "SELL"
-                reason = "strong_ml_sell"
-                confidence = (1 - buy_probability)
-
-        # Kaufsignal nur prüfen, wenn wir keine Position haben
-        else:
-            # Kaufkriterien mit ML-Bestätigung
-            if buy_probability > 0.7 and (rsi_oversold or bb_lower_touch or trend == 1):
-                signal = "BUY"
-                reason = "ml_buy_confirmation"
-                confidence = buy_probability * 0.7 + 0.3  # Gewichtete Konfidenz
-
-            # Starkes Kaufsignal vom ML-Modell
-            elif buy_probability > 0.8:
-                signal = "BUY"
-                reason = "strong_ml_buy"
-                confidence = buy_probability
-
-        # Zusätzliche Signaldaten
-        signal_data = {
-            "signal": signal,
-            "confidence": confidence,
-            "reason": reason,
-            "ml_prediction": buy_probability,
-            "ml_confidence": ml_confidence,
-            "technical_indicators": {
-                "trend": trend,
-                "rsi": current['rsi'],
-                "macd_bullish": macd_bullish,
-                "bb_position": (current['close'] - current['lower_band']) / (
-                            current['upper_band'] - current['lower_band']),
-                "volume_ratio": current.get('volume_ratio', 1.0)
-            },
-            "prediction_info": prediction_info,
-            # Bei ML-Signalen enger Stop-Loss verwenden
-            "use_trailing_stop": True,
-            "trailing_stop_pct": 0.02,
-            "trailing_activation_pct": 0.03
-        }
-
-        return signal, signal_data
-
-    def optimize(self, df: pd.DataFrame, symbol: str,
-                 param_grid: Optional[Dict[str, List[Any]]] = None) -> Dict[str, Any]:
+    def _generate_base_signal(self, df: pd.DataFrame, symbol: str,
+                              current_position: Optional[Position] = None) -> Tuple[str, Dict[str, Any]]:
         """
-        Optimiert ML-Parameter und trainiert ein neues Modell.
+        Generiert das Basisstrategie-Signal basierend auf technischen Indikatoren.
 
         Args:
-            df: DataFrame mit OHLCV-Daten
+            df: DataFrame mit Indikatoren
             symbol: Handelssymbol
-            param_grid: Dictionary mit Parametern und möglichen Werten
+            current_position: Aktuelle Position (falls vorhanden)
 
         Returns:
-            Dictionary mit optimierten Parametern
+            Tuple aus Signal und Signaldaten
         """
-        if not SKLEARN_AVAILABLE:
-            self.logger.warning("scikit-learn is not available. Cannot optimize parameters.")
-            return {'success': False, 'error': 'scikit-learn not available'}
-
-        from sklearn.model_selection import GridSearchCV
-
         try:
-            # Daten vorbereiten
-            df = self.prepare_data(df.copy())
+            # Letzte Zeile mit aktuellen Daten
+            current = df.iloc[-1]
+            previous = df.iloc[-2]
 
-            # Features und Target extrahieren
-            X, y = self._prepare_features(df)
+            # Signal- und Konfidenzwerte initialisieren
+            signal = "HOLD"
+            confidence = 0.5
+            reason = ""
 
-            if len(X) < 100 or y is None:
-                self.logger.warning(f"Insufficient data for optimization: {len(X)} samples")
-                return {'success': False, 'error': 'insufficient_data'}
+            # 1. Positionsmanagement (wenn eine Position vorhanden ist)
+            if current_position:
+                # Aktueller Preis
+                current_price = current['close']
 
-            # Daten skalieren
-            self.scaler = StandardScaler()
-            X_scaled = self.scaler.fit_transform(X)
+                # Take-Profit und Stop-Loss überprüfen
+                entry_price = current_position.entry_price
+                profit_pct = (current_price / entry_price - 1) * 100 if current_position.side == 'buy' else (
+                                                                                                                        entry_price / current_price - 1) * 100
 
-            # Standardparameter, falls keine angegeben
-            if param_grid is None:
-                param_grid = {
-                    'n_estimators': [50, 100, 200],
-                    'max_depth': [None, 10, 20],
-                    'min_samples_split': [2, 5, 10]
+                # Verlust-Signal: Wenn der Preis unter den EMA200 fällt
+                if current_position.side == 'buy' and current_price < current['ema_long'] and previous['close'] > \
+                        previous['ema_long']:
+                    signal = "SELL"
+                    confidence = 0.7
+                    reason = "price_below_ema_long"
+
+                # Verkaufs-Signal: RSI überkauft und Preis in oberer Bollinger-Band
+                elif current_position.side == 'buy' and current['rsi'] > self.rsi_overbought and current_price > \
+                        current['upper_band']:
+                    signal = "SELL"
+                    confidence = 0.8
+                    reason = "overbought_condition"
+
+                # Bei Trendumkehr verkaufen
+                elif current_position.side == 'buy' and current['macd'] < current['macd_signal'] and previous['macd'] > \
+                        previous['macd_signal']:
+                    signal = "SELL"
+                    confidence = 0.6
+                    reason = "macd_crossover_down"
+
+            # 2. Neue Positionen eröffnen
+            else:
+                # Kaufsignal: RSI überkauft und Preis in unterer Bollinger-Band
+                if current['rsi'] < self.rsi_oversold and current['close'] < current['lower_band']:
+                    signal = "BUY"
+                    confidence = 0.7
+                    reason = "oversold_condition"
+
+                # Kaufsignal: EMA-Kreuzung und positiver MACD
+                elif (current['ema_short'] > current['ema_long'] and
+                      previous['ema_short'] <= previous['ema_long'] and
+                      current['macd'] > 0):
+                    signal = "BUY"
+                    confidence = 0.8
+                    reason = "ema_crossover_up_with_positive_macd"
+
+                # Kaufsignal: MACD-Kreuzung über Signallinie
+                elif current['macd'] > current['macd_signal'] and previous['macd'] <= previous['macd_signal']:
+                    signal = "BUY"
+                    confidence = 0.6
+                    reason = "macd_crossover_up"
+
+            # Risikomanagement-Parameter festlegen
+            stop_loss_pct = self.stop_loss_pct
+            take_profit_pct = self.take_profit_pct
+
+            # Bei hoher Volatilität engeren Stop-Loss setzen
+            current_volatility = current['volatility']
+            avg_volatility = df['volatility'].mean()
+
+            if current_volatility > avg_volatility * 1.5:
+                stop_loss_pct = self.stop_loss_pct * 0.7
+                take_profit_pct = self.take_profit_pct * 0.8
+
+            # Signaldaten zusammenstellen
+            signal_data = {
+                "signal": signal,
+                "confidence": confidence,
+                "reason": reason,
+                "stop_loss_pct": stop_loss_pct,
+                "take_profit_pct": take_profit_pct,
+                "use_trailing_stop": self.use_trailing_stop,
+                "trailing_stop_pct": self.trailing_stop_pct,
+                "trailing_activation_pct": self.trailing_activation_pct,
+                "indicators": {
+                    "rsi": current['rsi'],
+                    "ema_short": current['ema_short'],
+                    "ema_long": current['ema_long'],
+                    "macd": current['macd'],
+                    "macd_signal": current['macd_signal'],
+                    "volatility": current['volatility']
                 }
-
-            # Grid Search mit Cross-Validation
-            model = RandomForestClassifier(random_state=42)
-            grid_search = GridSearchCV(
-                model,
-                param_grid,
-                cv=5,
-                scoring='f1',
-                n_jobs=-1
-            )
-
-            grid_search.fit(X_scaled, y)
-
-            # Bestes Modell
-            self.model = grid_search.best_estimator_
-
-            # Modell speichern
-            self._save_model(symbol)
-
-            self.is_trained = True
-
-            # Optimierungsergebnisse
-            result = {
-                'success': True,
-                'best_params': grid_search.best_params_,
-                'best_score': grid_search.best_score_,
-                'samples': len(X),
-                'optimization_date': datetime.now().isoformat(),
-                'symbol': symbol
             }
 
-            self.logger.info(f"Successfully optimized ML model for {symbol} with score {grid_search.best_score_:.4f}")
-
-            return result
+            return signal, signal_data
 
         except Exception as e:
-            self.logger.error(f"Error optimizing ML parameters: {e}")
-            return {'success': False, 'error': str(e)}
+            self.logger.error(f"Fehler bei der Signalgenerierung für {symbol}: {e}")
+            return "HOLD", {"signal": "HOLD", "reason": "error", "error": str(e)}
+
+    def _enhance_signal_with_ml(self, df: pd.DataFrame, symbol: str,
+                                base_signal: str, base_data: Dict[str, Any],
+                                current_position: Optional[Position] = None) -> Tuple[str, Dict[str, Any]]:
+        """
+        Verbessert das Basisstrategie-Signal mit ML-Komponenten.
+
+        Args:
+            df: DataFrame mit Indikatoren
+            symbol: Handelssymbol
+            base_signal: Signal der Basisstrategie
+            base_data: Signaldaten der Basisstrategie
+            current_position: Aktuelle Position (falls vorhanden)
+
+        Returns:
+            Tuple aus ML-verbessertem Signal und Signaldaten
+        """
+        try:
+            # Kopie der Basis-Signaldaten erstellen
+            ml_data = base_data.copy()
+            ml_signal = base_signal
+
+            # 1. Aktuelles Marktregime bestimmen (falls verfügbar)
+            current_regime = self._detect_market_regime(df)
+
+            if current_regime is not None and self.regime_detector and self.regime_detector.model_trained:
+                # Aktuelles Regime speichern
+                self.current_regime = current_regime
+                regime_info = self.regime_detector.get_current_regime_info()
+
+                # Regime-Label und -Information hinzufügen
+                if regime_info:
+                    ml_data["regime"] = current_regime
+                    ml_data["regime_label"] = regime_info.get('label', f"Regime {current_regime}")
+                    ml_data["regime_strategy"] = regime_info.get('strategy', "Neutral")
+
+                    # Regime-basierte Anpassungen
+                    regime_label = ml_data["regime_label"].lower()
+
+                    # Bullisches Regime
+                    if 'bull' in regime_label or 'aufwärtstrend' in regime_label:
+                        if base_signal == "BUY":
+                            ml_data["confidence"] = min(1.0, base_data["confidence"] * 1.2)
+                        elif base_signal == "SELL":
+                            # In bullischen Regimes nur verkaufen, wenn hohe Konfidenz
+                            if base_data["confidence"] < 0.8:
+                                ml_signal = "HOLD"
+
+                    # Bearisches Regime
+                    elif 'bear' in regime_label or 'abwärtstrend' in regime_label:
+                        if base_signal == "BUY":
+                            # In bearischen Regimes nur kaufen, wenn sehr hohe Konfidenz
+                            if base_data["confidence"] < 0.8:
+                                ml_signal = "HOLD"
+                            else:
+                                # Engeren Stop-Loss setzen
+                                ml_data["stop_loss_pct"] = base_data["stop_loss_pct"] * 0.8
+                        elif base_signal == "SELL":
+                            ml_data["confidence"] = min(1.0, base_data["confidence"] * 1.2)
+
+                    # Volatiles Regime
+                    elif 'volatil' in regime_label or 'volatility' in regime_label:
+                        # Engere Stops in volatilen Phasen
+                        ml_data["stop_loss_pct"] = base_data["stop_loss_pct"] * 0.7
+                        ml_data["take_profit_pct"] = base_data["take_profit_pct"] * 0.8
+                        ml_data["use_trailing_stop"] = True
+                        ml_data["trailing_stop_pct"] = base_data["trailing_stop_pct"] * 0.7
+
+                        # Konservativere Signale
+                        if base_signal == "BUY" and base_data["confidence"] < 0.7:
+                            ml_signal = "HOLD"
+
+            # 2. Asset-Cluster-Information nutzen (falls verfügbar)
+            if self.asset_analyzer and hasattr(self.asset_analyzer,
+                                               'clusters') and self.asset_analyzer.clusters is not None:
+                # Kurznamen extrahieren (z.B. BTC aus BTC/USDT)
+                short_name = symbol.split('/')[0]
+
+                # Asset-Cluster abrufen
+                if short_name in self.asset_analyzer.clusters.index:
+                    cluster = self.asset_analyzer.clusters.loc[short_name, 'cluster']
+                    ml_data["cluster"] = int(cluster)
+
+                    # Cluster-Performance abrufen
+                    if hasattr(self.asset_analyzer, 'cluster_performances'):
+                        cluster_perf = self.asset_analyzer.cluster_performances.get(cluster, {})
+
+                        # Performance-Metriken hinzufügen
+                        ml_data["cluster_performance"] = {
+                            "mean_return": cluster_perf.get('mean_return', 0),
+                            "sharpe_ratio": cluster_perf.get('sharpe_ratio', 0),
+                            "win_rate": cluster_perf.get('win_rate', 0)
+                        }
+
+                        # Für schlecht performende Cluster: Vorsichtiger sein
+                        if cluster_perf.get('mean_return', 0) < 0:
+                            if base_signal == "BUY":
+                                # Nur kaufen bei sehr hoher Konfidenz
+                                if base_data["confidence"] < 0.8:
+                                    ml_signal = "HOLD"
+
+                        # Für gut performende Cluster: Aggressiver sein
+                        elif cluster_perf.get('sharpe_ratio', 0) > 1.0:
+                            if base_signal == "BUY":
+                                ml_data["confidence"] = min(1.0, base_data["confidence"] * 1.2)
+                                # Größere Position zulassen
+                                ml_data["position_size_factor"] = 1.2
+
+            # ML-basierte Features hinzufügen
+            ml_data["ml_enhanced"] = True
+            ml_data["signal"] = ml_signal
+
+            return ml_signal, ml_data
+
+        except Exception as e:
+            self.logger.error(f"Fehler bei der ML-Verbesserung für {symbol}: {e}")
+            return base_signal, base_data
+
+    def _detect_market_regime(self, df: pd.DataFrame) -> Optional[int]:
+        """
+        Erkennt das aktuelle Marktregime.
+
+        Args:
+            df: DataFrame mit historischen Daten
+
+        Returns:
+            Regime-ID oder None bei Fehler
+        """
+        if not self.ml_enabled or not self.regime_detector or not self.regime_detector.model_trained:
+            return None
+
+        try:
+            # Einfache Feature-Extraktion für die Regime-Erkennung
+            features = pd.DataFrame(index=[df.index[-1]])
+
+            # Return-basierte Features
+            returns = df['close'].pct_change()
+            features['mean_return'] = returns.iloc[-20:].mean()
+            features['volatility'] = returns.iloc[-20:].std()
+
+            # Trendstärke
+            features['ema_ratio'] = df['ema_short'].iloc[-1] / df['ema_long'].iloc[-1]
+
+            # RSI Feature
+            features['rsi'] = df['rsi'].iloc[-1] / 100  # Normalisieren
+
+            # MACD Feature
+            features['macd_signal_ratio'] = df['macd'].iloc[-1] / df['macd_signal'].iloc[-1] if df['macd_signal'].iloc[
+                                                                                                    -1] != 0 else 0
+
+            # Regime vorhersagen
+            regime = self.regime_detector.predict_regime(features)
+
+            return regime
+
+        except Exception as e:
+            self.logger.error(f"Fehler bei der Regime-Erkennung: {e}")
+            return None
+
+    def on_new_candle(self, df: pd.DataFrame, symbol: str):
+        """
+        Handler für neue Candle-Daten.
+        Wird aufgerufen, wenn neue Marktdaten verfügbar sind.
+
+        Args:
+            df: OHLCV-DataFrame mit dem neuesten Candle
+            symbol: Handelssymbol
+        """
+        # Hier können Sie Code hinzufügen, der bei jedem neuen Candle ausgeführt wird
+        pass
+
+    def train_ml_components(self, symbols: List[str], data_manager=None):
+        """
+        Trainiert die ML-Komponenten mit historischen Daten.
+
+        Args:
+            symbols: Liste von Handelssymbolen für das Training
+            data_manager: DataManager-Instanz für Datenzugriff
+
+        Returns:
+            True bei Erfolg, False bei Fehler
+        """
+        if not self.ml_enabled:
+            self.logger.warning("ML ist nicht aktiviert")
+            return False
+
+        success = False
+
+        # Marktregime-Erkennung trainieren
+        if self.regime_detector:
+            try:
+                self.logger.info("Trainiere Marktregime-Detektor...")
+                # Daten laden
+                if data_manager and self.regime_detector.load_market_data(
+                        symbols=symbols,
+                        data_manager=data_manager,
+                        timeframe=self.settings.get('timeframes.analysis', '1d')
+                ):
+                    # Features extrahieren
+                    features_df = self.regime_detector.extract_market_features()
+
+                    if not features_df.empty:
+                        # Modell trainieren
+                        if self.regime_detector.train_regime_model(features_df):
+                            self.logger.info("Marktregime-Detektor erfolgreich trainiert")
+
+                            # Modell speichern
+                            models_dir = self.settings.get('ml.models_dir', 'data/ml_models')
+                            model_path = f"{models_dir}/regime_model.pkl"
+
+                            if self.regime_detector.save_model(model_path):
+                                self.logger.info(f"Marktregime-Modell gespeichert: {model_path}")
+                                success = True
+            except Exception as e:
+                self.logger.error(f"Fehler beim Training des Marktregime-Detektors: {e}")
+
+        # Asset-Clustering trainieren
+        if self.asset_analyzer:
+            try:
+                self.logger.info("Trainiere Asset-Cluster-Analyzer...")
+                # Daten laden
+                if data_manager and self.asset_analyzer.load_market_data(
+                        symbols=symbols,
+                        data_manager=data_manager,
+                        timeframe=self.settings.get('timeframes.analysis', '1d')
+                ):
+                    # Korrelationsmatrix berechnen
+                    self.asset_analyzer.calculate_correlation_matrix()
+
+                    # Features extrahieren
+                    self.asset_analyzer.extract_asset_features()
+
+                    # Clustering durchführen
+                    clusters = self.asset_analyzer.run_clustering()
+
+                    if not clusters.empty:
+                        self.logger.info(
+                            f"Asset-Clustering erfolgreich: {len(clusters)} Assets in {len(clusters['cluster'].unique())} Clustern")
+                        success = success and True
+            except Exception as e:
+                self.logger.error(f"Fehler beim Training des Asset-Cluster-Analyzers: {e}")
+
+        return success
