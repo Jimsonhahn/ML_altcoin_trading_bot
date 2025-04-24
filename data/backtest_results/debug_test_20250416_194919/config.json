@@ -1,0 +1,24 @@
+{
+    "strategy": "momentum",
+    "date": "20250416_194919",
+    "tags": [
+        "debug"
+    ],
+    "parameters": {
+        "backtest.start_date": "2023-01-01",
+        "backtest.end_date": "2023-12-31",
+        "backtest.initial_balance": 10000,
+        "backtest.commission": 0.001,
+        "risk.position_size": 0.1,
+        "risk.stop_loss": 0.03,
+        "risk.take_profit": 0.06,
+        "risk.max_open_positions": 5,
+        "momentum.rsi_period": 14,
+        "momentum.rsi_overbought": 70,
+        "momentum.rsi_oversold": 30,
+        "trading_pairs": [
+            "BTC/USDT",
+            "ETH/USDT"
+        ]
+    }
+}

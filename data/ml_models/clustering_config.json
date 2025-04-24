@@ -1,0 +1,15 @@
+{
+  "n_clusters": 2,
+  "algorithm": "kmeans",
+  "random_state": 42,
+  "key_features": [
+    "returns",
+    "volatility_5",
+    "volatility_20",
+    "rsi",
+    "macd",
+    "bb_width",
+    "volume_change"
+  ],
+  "scaling": "standard"
+}

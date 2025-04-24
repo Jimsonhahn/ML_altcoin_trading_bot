@@ -1,0 +1,11 @@
+{
+    "test_name": "debug_test_20250416_194213",
+    "strategy": "momentum",
+    "timestamp": "20250416_194213",
+    "total_return": -3.1452484277015857,
+    "total_trades": 208,
+    "win_rate": 44.230769230769226,
+    "sharpe_ratio": -0.07296199701225779,
+    "max_drawdown": -7.318609019875575,
+    "profit_factor": 1.0192683128448594
+}

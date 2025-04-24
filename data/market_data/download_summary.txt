@@ -1,0 +1,18 @@
+Daten-Download-Zusammenfassung
+===========================
+
+Zeitstempel: 2025-04-17 17:31:43
+Exchange: Binance
+Zeitraum: 2022-01-01 bis 2023-12-31
+Zeitintervall: 1d
+
+Erfolgreiche Downloads: 5/5
+
+Verfügbare Paare:
+  - BTC/USDT: ✓
+  - ETH/USDT: ✓
+  - SOL/USDT: ✓
+  - BNB/USDT: ✓
+  - XRP/USDT: ✓
+
+Nicht verfügbare Paare:

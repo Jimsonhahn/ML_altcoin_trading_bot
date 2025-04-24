@@ -1,0 +1,15 @@
+=== Projektbereinigung gestartet: 2025-04-16 18:50:08 ===
+
+
+--- Verschachtelte Data-Verzeichnisse: 1 gefunden ---
+  WÜRDE LÖSCHEN: data/data (92.1 KB)
+
+--- Doppelte Registry-Dateien: 0 gefunden ---
+
+--- Alte Backtest-Verzeichnisse: 0 gefunden ---
+
+=== Zusammenfassung ===
+Würde löschen: 0 Verzeichnisse/Dateien
+Gespeicherter Speicherplatz: 92.1 KB (0.09 MB)
+
+=== Bereinigung abgeschlossen: 2025-04-16 18:50:08 ===

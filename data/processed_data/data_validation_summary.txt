@@ -1,0 +1,48 @@
+Daten-Validierungs-Zusammenfassung
+===============================
+
+Zeitstempel: 2025-04-17 17:32:23
+Zeitraum: 2022-01-01 bis 2023-12-31
+Mindestabdeckung: 90.0%
+
+Zusammenfassung nach Symbol:
+
+== BTC ==
+Status: OK
+Einträge: 1000
+Datenabdeckung: 136.99% ✓
+Zeitraum: 2022-01-01 00:00:00 bis 2024-09-26 00:00:00
+Ausreißer: 15 (behandelt)
+  - volume: 15
+
+== BNB ==
+Status: OK
+Einträge: 1000
+Datenabdeckung: 136.99% ✓
+Zeitraum: 2022-01-01 00:00:00 bis 2024-09-26 00:00:00
+Ausreißer: 21 (behandelt)
+  - volume: 21
+
+== SOL ==
+Status: OK
+Einträge: 1000
+Datenabdeckung: 136.99% ✓
+Zeitraum: 2022-01-01 00:00:00 bis 2024-09-26 00:00:00
+Ausreißer: 15 (behandelt)
+  - volume: 15
+
+== XRP ==
+Status: OK
+Einträge: 1000
+Datenabdeckung: 136.99% ✓
+Zeitraum: 2022-01-01 00:00:00 bis 2024-09-26 00:00:00
+Ausreißer: 17 (behandelt)
+  - volume: 17
+
+== ETH ==
+Status: OK
+Einträge: 1000
+Datenabdeckung: 136.99% ✓
+Zeitraum: 2022-01-01 00:00:00 bis 2024-09-26 00:00:00
+Ausreißer: 15 (behandelt)
+  - volume: 15
