@@ -12,9 +12,10 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 import requests
 import logging
+import time
 from requests.exceptions import RequestException
 
-from data_sources.data_sources.base import DataSourceBase, DataSourceException
+from data_sources.base import DataSourceBase, DataSourceException
 
 
 class CoinGeckoDataSource(DataSourceBase):
@@ -43,6 +44,10 @@ class CoinGeckoDataSource(DataSourceBase):
 
         # Coins-Cache für ID-Mapping
         self.coins_cache = {}
+
+    def _throttle(self):
+        """Rate limiting to avoid hitting API limits."""
+        time.sleep(self.rate_limit_delay)
 
     def get_historical_data(self, symbol: str, timeframe: str = "1d",
                             start_date=None, end_date=None,

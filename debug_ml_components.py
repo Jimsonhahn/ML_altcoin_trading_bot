@@ -1,9 +1,9 @@
-
-# !/usr/bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
 Debug-Skript für ML-Komponenten.
+Dieses Skript diagnostiziert und testet die ML-Komponenten des Trading Bots.
 """
 
 import os
@@ -11,6 +11,7 @@ import sys
 import logging
 import pandas as pd
 import json
+import traceback
 
 # Logger einrichten
 logging.basicConfig(level=logging.DEBUG)
@@ -36,7 +37,10 @@ def check_imports():
         try:
             logger.info("Überprüfe Projekt-Module...")
 
-            sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            # Füge den Projektpfad zum Systempfad hinzu
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            if current_dir not in sys.path:
+                sys.path.insert(0, current_dir)
 
             from config.settings import Settings
             logger.info("Settings-Modul OK")
@@ -98,10 +102,25 @@ def check_data_availability():
             df = pd.read_csv(file_path)
             logger.info(f"Datei {csv_file}: {len(df)} Zeilen, Spalten: {df.columns.tolist()}")
 
-            # Versuche Datum zu konvertieren, falls vorhanden
+            # Verbesserte Datumskonvertierung
             if 'timestamp' in df.columns:
-                df['date'] = pd.to_datetime(df['timestamp'], unit='ms')
-                logger.info(f"Zeitraum: {df['date'].min()} bis {df['date'].max()}")
+                try:
+                    # Versuchen als String-Datum zu parsen, wenn es kein numerischer Wert ist
+                    if pd.api.types.is_string_dtype(df['timestamp']):
+                        df['date'] = pd.to_datetime(df['timestamp'], errors='coerce')
+                    else:
+                        # Versuchen als ms-Timestamp zu parsen
+                        df['date'] = pd.to_datetime(df['timestamp'], unit='ms', errors='coerce')
+
+                    # Fallback-Strategie, wenn 'date' NaT-Werte enthält
+                    if df['date'].isna().any():
+                        # Für ISO-Datumsformate wie '2022-01-01'
+                        if pd.api.types.is_string_dtype(df['timestamp']):
+                            df['date'] = pd.to_datetime(df['timestamp'], format='%Y-%m-%d', errors='coerce')
+
+                    logger.info(f"Zeitraum: {df['date'].min()} bis {df['date'].max()}")
+                except Exception as e:
+                    logger.warning(f"Konnte Datum nicht konvertieren für {csv_file}: {e}")
         except Exception as e:
             logger.error(f"Fehler beim Lesen von {csv_file}: {e}")
 
@@ -176,11 +195,32 @@ def test_market_regime_detector():
         test_file = os.path.join(data_dir, files[0])
         logger.info(f"Verwende Testdatei: {test_file}")
 
-        # Daten laden
-        df = pd.read_csv(test_file)
-        if 'timestamp' in df.columns:
-            df['date'] = pd.to_datetime(df['timestamp'], unit='ms')
-            df.set_index('date', inplace=True)
+        # Daten laden mit verbesserter Datumskonvertierung
+        try:
+            df = pd.read_csv(test_file)
+
+            # Verbesserte Datumskonvertierung
+            if 'timestamp' in df.columns:
+                # Versuchen als String-Datum zu parsen, wenn es kein numerischer Wert ist
+                if pd.api.types.is_string_dtype(df['timestamp']):
+                    df['date'] = pd.to_datetime(df['timestamp'], errors='coerce')
+                else:
+                    # Versuchen als ms-Timestamp zu parsen
+                    df['date'] = pd.to_datetime(df['timestamp'], unit='ms', errors='coerce')
+
+                # Fallback-Strategie, wenn 'date' NaT-Werte enthält
+                if df['date'].isna().any():
+                    # Für ISO-Datumsformate wie '2022-01-01'
+                    if pd.api.types.is_string_dtype(df['timestamp']):
+                        df['date'] = pd.to_datetime(df['timestamp'], format='%Y-%m-%d', errors='coerce')
+
+                df.set_index('date', inplace=True)
+
+            logger.info(f"Daten erfolgreich geladen: {len(df)} Zeilen")
+        except Exception as e:
+            logger.error(f"Fehler beim Laden der Testdaten: {e}")
+            logger.error(traceback.format_exc())
+            return False
 
         # Symbol extrahieren
         symbol_parts = files[0].split('_')
@@ -212,9 +252,13 @@ def test_market_regime_detector():
                     regime = detector.predict_regime(current_features)
 
                     logger.info(f"Aktuelles Regime: {regime}")
-                    logger.info(f"Regime-Label: {detector.regime_labels.get(regime, 'Unbekannt')}")
+                    if isinstance(regime, tuple):
+                        logger.info(f"Regime-Label: {regime[1]}")
+                    else:
+                        logger.info(f"Regime-Label: {detector.regime_labels.get(regime, 'Unbekannt')}")
 
                     # Modell speichern und laden testen
+                    os.makedirs("data/ml_models", exist_ok=True)
                     model_path = "data/ml_models/test_regime_model.pkl"
                     if detector.save_model(model_path):
                         logger.info(f"Modell erfolgreich gespeichert: {model_path}")
@@ -226,6 +270,7 @@ def test_market_regime_detector():
                 logger.error("Feature-Extraktion lieferte leeres DataFrame")
         except Exception as e:
             logger.error(f"Fehler bei der Feature-Extraktion: {e}")
+            logger.error(traceback.format_exc())
 
         return False
 
@@ -234,6 +279,7 @@ def test_market_regime_detector():
         return False
     except Exception as e:
         logger.error(f"Fehler beim Testen des MarketRegimeDetector: {e}")
+        logger.error(traceback.format_exc())
         return False
 
 
@@ -262,8 +308,3 @@ if __name__ == "__main__":
         logger.info("ML-Komponenten sind BEREIT FÜR DEN EINSATZ!")
     else:
         logger.warning("Es gibt PROBLEME mit den ML-Komponenten. Siehe Details oben.")
-EOF
-
-# Debug-Skript ausführbar machen (nur für Linux/Mac)
-chmod + x
-debug_ml_components.py

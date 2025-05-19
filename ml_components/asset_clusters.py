@@ -41,6 +41,8 @@ class AssetClusterAnalyzer:
         self.cluster_performances = None
         self.logger = logging.getLogger(__name__)
 
+    # Update für ml_components/asset_clusters.py
+
     def load_market_data(self, symbols: List[str] = None,
                          data_manager=None,  # DataManager-Objekt
                          timeframe: str = "1d",
@@ -122,16 +124,44 @@ class AssetClusterAnalyzer:
                 # Daten laden
                 df = pd.read_csv(csv_path)
 
-                # Datum als Index setzen, falls vorhanden
+                # Datum als Index setzen mit verbesserter Fehlerbehandlung
                 if 'timestamp' in df.columns:
-                    df['date'] = pd.to_datetime(df['timestamp'], unit='ms')
-                    df.set_index('date', inplace=True)
+                    try:
+                        # Versuchen als String-Datum zu parsen, wenn es kein numerischer Wert ist
+                        if pd.api.types.is_string_dtype(df['timestamp']):
+                            df['date'] = pd.to_datetime(df['timestamp'], errors='coerce')
+                        else:
+                            # Versuchen als ms-Timestamp zu parsen
+                            df['date'] = pd.to_datetime(df['timestamp'], unit='ms', errors='coerce')
+
+                        # Fallback-Strategie, wenn 'date' NaT-Werte enthält
+                        if df['date'].isna().any():
+                            # Für ISO-Datumsformate wie '2022-01-01'
+                            if pd.api.types.is_string_dtype(df['timestamp']):
+                                df['date'] = pd.to_datetime(df['timestamp'], format='%Y-%m-%d', errors='coerce')
+
+                        df.set_index('date', inplace=True)
+
+                    except Exception as e:
+                        self.logger.warning(
+                            f"Fehler bei der Datumskonvertierung für {symbol}: {e}, versuche alternative Methode")
+                        # Alternative Methode: Direktes Parsen ohne unit-Parameter
+                        try:
+                            df['date'] = pd.to_datetime(df['timestamp'])
+                            df.set_index('date', inplace=True)
+                        except Exception as e2:
+                            self.logger.error(f"Auch alternative Datumskonvertierung fehlgeschlagen: {e2}")
+                            continue
+
                 elif 'date' in df.columns:
                     df['date'] = pd.to_datetime(df['date'])
                     df.set_index('date', inplace=True)
                 elif 'time' in df.columns:
                     df['date'] = pd.to_datetime(df['time'])
                     df.set_index('date', inplace=True)
+                else:
+                    self.logger.warning(f"Keine Datum-/Zeitspalte in {csv_path} gefunden")
+                    continue
 
                 # Datum filtern, falls angegeben
                 if start_date and end_date:

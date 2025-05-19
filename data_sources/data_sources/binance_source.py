@@ -11,10 +11,11 @@ import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 import logging
+import time
 
 import ccxt
 
-from data_sources.data_sources.base import DataSourceBase, DataSourceException
+from data_sources.base import DataSourceBase, DataSourceException
 
 
 class BinanceDataSource(DataSourceBase):
@@ -42,7 +43,6 @@ class BinanceDataSource(DataSourceBase):
         """
         Simple rate limiting mechanism to avoid hitting Binance API limits.
         """
-        import time
         time.sleep(self.rate_limit_delay)
 
     def get_historical_data(self, symbol: str, timeframe: str = "1h",

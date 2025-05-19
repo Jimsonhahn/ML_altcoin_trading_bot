@@ -27,6 +27,9 @@ from config.settings import Settings
 from strategies.strategy_base import Strategy
 from core.position import Position
 
+# Data Manager importieren
+from data_sources import DataManager
+
 # ML-Module importieren (sicherstellen, dass diese Pfade korrekt sind)
 try:
     from ml_components.market_regime import MarketRegimeDetector
@@ -37,7 +40,6 @@ try:
 except ImportError as e:
     logging.warning(f"ML-Komponenten konnten nicht importiert werden: {e}")
     ML_AVAILABLE = False
-
 
 class MLEnhancedBacktester(EnhancedBacktester):
     """Erweiterte Backtesting-Engine mit ML-Komponenten-Integration"""
@@ -689,56 +691,56 @@ class MLEnhancedBacktester(EnhancedBacktester):
                 # Trading-Regeln für das aktuelle Regime abrufen
                 regime_info = self.regime_detector.get_current_regime_info()
 
-                if regime_info and 'regime_id' in regime_info:
-                    regime_id = regime_info['regime_id']
+                # Prüfen, ob regime_info gültig ist (nie None wegen der korrigierten get_current_regime_info)
+                if regime_info and isinstance(regime_info, dict) and regime_info.get('status') == 'available':
+                    regime_id = regime_info.get('regime_id')
                     regime_label = regime_info.get('label', f"Regime {regime_id}")
 
-                    # Regime-Empfehlungen anwenden
-                    if 'strategy' in regime_info:
-                        strategy = regime_info['strategy'].lower()
+                    # Regime-Strategie anwenden
+                    strategy = regime_info.get('strategy', '')
 
-                        # Signal basierend auf Regime-Strategie anpassen
-                        if 'bullish' in regime_label.lower() or 'aufwärtstrend' in regime_label.lower():
-                            # In bullishem Regime: Buy-Signale verstärken, Sell-Signale abschwächen
-                            if standard_signal == "BUY":
-                                ml_signal_data['confidence'] = min(1.0,
-                                                                   standard_signal_data.get('confidence', 0.5) * 1.2)
-                            elif standard_signal == "SELL" and current_position:
-                                # Verkauf nur, wenn deutlich unter Stop Loss
-                                current_price = symbol_data.iloc[-1]['close']
-                                if current_position.stop_loss and current_price < current_position.stop_loss * 0.98:
-                                    ml_signal = "SELL"
-                                else:
-                                    ml_signal = "HOLD"
-
-                        elif 'bearish' in regime_label.lower() or 'abwärtstrend' in regime_label.lower():
-                            # In bearishem Regime: Sell-Signale verstärken, Buy-Signale abschwächen
-                            if standard_signal == "SELL":
+                    # Signal basierend auf Regime-Strategie anpassen
+                    if 'bullish' in regime_label.lower() or 'aufwärtstrend' in regime_label.lower():
+                        # In bullishem Regime: Buy-Signale verstärken, Sell-Signale abschwächen
+                        if standard_signal == "BUY":
+                            ml_signal_data['confidence'] = min(1.0,
+                                                               standard_signal_data.get('confidence', 0.5) * 1.2)
+                        elif standard_signal == "SELL" and current_position:
+                            # Verkauf nur, wenn deutlich unter Stop Loss
+                            current_price = symbol_data.iloc[-1]['close']
+                            if current_position.stop_loss and current_price < current_position.stop_loss * 0.98:
                                 ml_signal = "SELL"
-                            elif standard_signal == "BUY":
-                                # Buy nur mit höherer Konfidenz
-                                confidence = standard_signal_data.get('confidence', 0.5)
-                                if confidence > 0.7:
-                                    ml_signal = "BUY"
-                                    # Aber Stop-Loss enger setzen
-                                    ml_signal_data['stop_loss_pct'] = standard_signal_data.get('stop_loss_pct',
-                                                                                               0.03) * 0.8
-                                else:
-                                    ml_signal = "HOLD"
+                            else:
+                                ml_signal = "HOLD"
 
-                        elif 'neutral' in regime_label.lower():
-                            # In neutralem Regime: Standard-Signale verwenden
-                            ml_signal = standard_signal
+                    elif 'bearish' in regime_label.lower() or 'abwärtstrend' in regime_label.lower():
+                        # In bearishem Regime: Sell-Signale verstärken, Buy-Signale abschwächen
+                        if standard_signal == "SELL":
+                            ml_signal = "SELL"
+                        elif standard_signal == "BUY":
+                            # Buy nur mit höherer Konfidenz
+                            confidence = standard_signal_data.get('confidence', 0.5)
+                            if confidence > 0.7:
+                                ml_signal = "BUY"
+                                # Aber Stop-Loss enger setzen
+                                ml_signal_data['stop_loss_pct'] = standard_signal_data.get('stop_loss_pct',
+                                                                                           0.03) * 0.8
+                            else:
+                                ml_signal = "HOLD"
 
-                        elif 'volatility' in regime_label.lower() or 'volatilität' in regime_label.lower():
-                            # In volatilen Phasen: Engere Stops, vorsichtigere Entries
-                            ml_signal = standard_signal
-                            if standard_signal == "BUY":
-                                # Enger Stop-Loss in volatilen Phasen
-                                ml_signal_data['stop_loss_pct'] = standard_signal_data.get('stop_loss_pct', 0.03) * 0.7
-                                ml_signal_data['trailing_stop_pct'] = standard_signal_data.get('trailing_stop_pct',
-                                                                                               0.02) * 0.7
-                                ml_signal_data['use_trailing_stop'] = True
+                    elif 'neutral' in regime_label.lower():
+                        # In neutralem Regime: Standard-Signale verwenden
+                        ml_signal = standard_signal
+
+                    elif 'volatility' in regime_label.lower() or 'volatilität' in regime_label.lower():
+                        # In volatilen Phasen: Engere Stops, vorsichtigere Entries
+                        ml_signal = standard_signal
+                        if standard_signal == "BUY":
+                            # Enger Stop-Loss in volatilen Phasen
+                            ml_signal_data['stop_loss_pct'] = standard_signal_data.get('stop_loss_pct', 0.03) * 0.7
+                            ml_signal_data['trailing_stop_pct'] = standard_signal_data.get('trailing_stop_pct',
+                                                                                           0.02) * 0.7
+                            ml_signal_data['use_trailing_stop'] = True
 
                     # Coin-spezifische Anpassungen basierend auf Regime-Performance
                     if 'top_performers' in regime_info:
@@ -747,7 +749,7 @@ class MLEnhancedBacktester(EnhancedBacktester):
                         # Kurznamen extrahieren
                         short_name = symbol.split('/')[0]
 
-                        # Prüfen, ob dieser Coin ein Top-Performer im aktuellen Regime ist
+                        # Prüfen, ob dieser Coin ein Top-Performer im aktuellen Regime ist (Liste, nicht Dict)
                         if short_name in top_performers:
                             # Für Top-Performer aggressivere Positionsgröße
                             ml_signal_data['confidence'] = min(1.0, standard_signal_data.get('confidence', 0.5) * 1.3)

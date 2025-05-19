@@ -62,6 +62,8 @@ class EnhancedBacktester:
         self.data = {}
         self.results = {}
 
+    # Update für core/enhanced_backtesting.py
+
     def load_real_data(self, symbols: List[str], source: str = 'binance',
                        timeframe: str = '1h', use_cache: bool = True) -> Dict[str, pd.DataFrame]:
         """
@@ -92,7 +94,38 @@ class EnhancedBacktester:
                     use_cache=use_cache
                 )
 
+                # Stellen Sie sicher, dass der DataFrame einen DatetimeIndex hat
                 if not df.empty:
+                    if not isinstance(df.index, pd.DatetimeIndex):
+                        try:
+                            df.index = pd.to_datetime(df.index)
+                        except Exception as e:
+                            self.logger.warning(f"Konnte Index von {symbol} nicht in Datetime konvertieren: {e}")
+                            # Alternative Methode basierend auf den Daten, die wir haben
+                            if 'timestamp' in df.columns:
+                                try:
+                                    df['date'] = pd.to_datetime(df['timestamp'], errors='coerce')
+
+                                    # Wenn das nicht funktioniert, versuchen wir einen anderen Ansatz
+                                    if df['date'].isna().any():
+                                        # Für String-Datumswerte
+                                        if pd.api.types.is_string_dtype(df['timestamp']):
+                                            df['date'] = pd.to_datetime(df['timestamp'], format='%Y-%m-%d',
+                                                                        errors='coerce')
+                                        else:
+                                            # Für Millisekunden-Timestamps
+                                            df['date'] = pd.to_datetime(df['timestamp'], unit='ms', errors='coerce')
+
+                                    df.set_index('date', inplace=True)
+                                    df = df.sort_index()
+                                except Exception as e2:
+                                    self.logger.error(f"Konnte timestamp-Spalte nicht konvertieren für {symbol}: {e2}")
+                                    continue
+
+                    # Datum filtern, falls angegeben
+                    if self.start_date and self.end_date:
+                        df = df[(df.index >= self.start_date) & (df.index <= self.end_date)]
+
                     data[symbol] = df
                     self.logger.info(f"Loaded {len(df)} data points for {symbol}")
                 else:

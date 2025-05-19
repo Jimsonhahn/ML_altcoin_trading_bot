@@ -26,7 +26,7 @@ from strategies.momentum import MomentumStrategy
 from strategies.mean_reversion import MeanReversionStrategy
 from strategies.ml_strategy import MLStrategy
 from utils.logger import setup_logger
-from data_sources import DataManager  # Korrigierter Import
+from data_sources import DataManager
 
 
 class TradingBot:

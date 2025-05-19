@@ -10,12 +10,13 @@ import logging
 import pandas as pd
 from datetime import datetime
 import os
+import glob
 from typing import Dict, Any, Optional, List
 
 # Importe für die Datenquellen
-from data_sources.data_sources.base import DataSourceBase
-from data_sources.data_sources.binance_source import BinanceDataSource
-from data_sources.data_sources.coingecko_source import CoinGeckoDataSource
+from data_sources.base import DataSourceBase
+from data_sources.binance_source import BinanceDataSource
+from data_sources.coingecko_source import CoinGeckoDataSource
 
 
 class DataManager:
@@ -74,9 +75,11 @@ class DataManager:
 
         return self.sources[source_name]
 
+    # Update für data_sources/data_sources/data_manager.py
+
     def get_historical_data(self, symbol: str, source: str = None, timeframe: str = "1h",
-                          start_date: Optional[datetime] = None, end_date: Optional[datetime] = None,
-                          use_cache: bool = True) -> pd.DataFrame:
+                            start_date: Optional[datetime] = None, end_date: Optional[datetime] = None,
+                            use_cache: bool = True) -> pd.DataFrame:
         """
         Ruft historische Daten für ein Symbol ab.
 
@@ -103,7 +106,7 @@ class DataManager:
             end_str = end_date.strftime("%Y%m%d") if end_date else ""
 
             cache_file = os.path.join(
-                self.cache_dir, 
+                self.cache_dir,
                 source_name,
                 f"{symbol_safe}_{timeframe}_{start_str}_{end_str}.csv"
             )
@@ -113,6 +116,11 @@ class DataManager:
                 self.logger.debug(f"Lade Daten aus Cache: {cache_file}")
                 try:
                     df = pd.read_csv(cache_file, index_col=0, parse_dates=True)
+
+                    # Sicherstellen, dass der Index ein Datetime-Index ist
+                    if not isinstance(df.index, pd.DatetimeIndex):
+                        df.index = pd.to_datetime(df.index)
+
                     return df
                 except Exception as e:
                     self.logger.warning(f"Fehler beim Laden aus Cache: {e}")
@@ -131,6 +139,10 @@ class DataManager:
             try:
                 # Verzeichnis erstellen, falls nicht vorhanden
                 os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+
+                # Sicherstellen, dass der Index ein Datetime-Index ist
+                if not isinstance(df.index, pd.DatetimeIndex):
+                    df.index = pd.to_datetime(df.index)
 
                 # Als CSV speichern
                 df.to_csv(cache_file)

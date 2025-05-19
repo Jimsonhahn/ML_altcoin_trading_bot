@@ -5,7 +5,7 @@
 MarketRegimeDetector für den Trading Bot und Backtest-Modul.
 Erkennt und klassifiziert Marktregimes basierend auf historischen Daten.
 """
-
+import traceback
 import logging
 import os
 import json
@@ -46,6 +46,8 @@ class MarketRegimeDetector:
         self.regime_transitions = None
         self.feature_columns = []  # Speichern der Feature-Spalten beim Training
         self.logger = logging.getLogger(__name__)
+        self.regime_descriptions = {}  # Dictionary für Beschreibungen der Regimes
+        self.coins = []  # Liste der unterstützten Coins
 
     def load_market_data(self, symbols: List[str] = None,
                          data_manager=None,  # DataManager-Objekt
@@ -95,6 +97,8 @@ class MarketRegimeDetector:
                     return False
 
                 self.logger.info(f"Marktdaten für {len(self.market_data)} Symbole geladen")
+                # Liste der Coins aktualisieren
+                self.coins = [symbol.split('/')[0] for symbol in self.market_data.keys()]
                 return True
 
             # Alternativ: Direkt aus dem Verzeichnis laden
@@ -175,6 +179,8 @@ class MarketRegimeDetector:
                 return False
 
             self.logger.info(f"Marktdaten für {len(self.market_data)} Symbole geladen")
+            # Liste der Coins aktualisieren
+            self.coins = [symbol.split('/')[0] for symbol in self.market_data.keys()]
             return True
 
         except Exception as e:
@@ -217,14 +223,30 @@ class MarketRegimeDetector:
             # Volatilität (20-Tage Rolling Std)
             btc_df['volatility_20d'] = btc_df['return'].rolling(20).std()
 
-            # Relative Stärke zum EMA
+            # EMAs berechnen
+            btc_df['ema_12'] = btc_df['close'].ewm(span=12, adjust=False).mean()
             btc_df['ema_20'] = btc_df['close'].ewm(span=20, adjust=False).mean()
+            btc_df['ema_26'] = btc_df['close'].ewm(span=26, adjust=False).mean()
             btc_df['ema_50'] = btc_df['close'].ewm(span=50, adjust=False).mean()
             btc_df['ema_200'] = btc_df['close'].ewm(span=200, adjust=False).mean()
 
+            # EMA-Verhältnisse berechnen
+            btc_df['ema_ratio'] = btc_df['ema_20'] / btc_df['ema_50']
+
+            # Relative Stärke zum EMA
             btc_df['rel_to_ema20'] = btc_df['close'] / btc_df['ema_20'] - 1
             btc_df['rel_to_ema50'] = btc_df['close'] / btc_df['ema_50'] - 1
             btc_df['rel_to_ema200'] = btc_df['close'] / btc_df['ema_200'] - 1
+
+            # MACD berechnen
+            btc_df['macd'] = btc_df['ema_12'] - btc_df['ema_26']
+            btc_df['macd_signal'] = btc_df['macd'].ewm(span=9, adjust=False).mean()
+            btc_df['macd_hist'] = btc_df['macd'] - btc_df['macd_signal']
+
+            # MACD zu EMA-50 Verhältnis
+            # Vermeiden von Division durch Null
+            ema_50_nonzero = btc_df['ema_50'].replace(0, 0.00001)
+            btc_df['macd_signal_ratio'] = btc_df['macd_signal'] / ema_50_nonzero
 
             # Volumen-basierte Features
             if 'volume' in btc_df.columns:
@@ -275,24 +297,7 @@ class MarketRegimeDetector:
             btc_df['dx'] = (di_diff / di_sum) * 100
             btc_df['adx'] = btc_df['dx'].rolling(atr_period).mean()
 
-            # MACD berechnen
-            btc_df['ema_12'] = btc_df['close'].ewm(span=12, adjust=False).mean()
-            btc_df['ema_26'] = btc_df['close'].ewm(span=26, adjust=False).mean()
-            btc_df['macd'] = btc_df['ema_12'] - btc_df['ema_26']
-            btc_df['macd_signal'] = btc_df['macd'].ewm(span=9, adjust=False).mean()
-            btc_df['macd_hist'] = btc_df['macd'] - btc_df['macd_signal']
-
-            # MACD zu EMA-50 Verhältnis (vorher fehlend)
-            # Vermeiden von Division durch Null
-            ema_50_nonzero = btc_df['ema_50'].replace(0, 0.00001)
-            btc_df['macd_signal_ratio'] = btc_df['macd_signal'] / ema_50_nonzero
-
-            # EMA-Verhältnis (vorher fehlend)
-            # Vermeiden von Division durch Null
-            ema_26_nonzero = btc_df['ema_26'].replace(0, 0.00001)
-            btc_df['ema_ratio'] = btc_df['ema_12'] / ema_26_nonzero
-
-            # RSI berechnen (vorher fehlend)
+            # RSI berechnen
             delta = btc_df['close'].diff()
             gain = delta.where(delta > 0, 0)
             loss = -delta.where(delta < 0, 0)
@@ -302,24 +307,35 @@ class MarketRegimeDetector:
             rs = avg_gain / avg_loss
             btc_df['rsi'] = 100 - (100 / (1 + rs))
 
-            # Mittlere Returns (vorher fehlend)
+            # Mittlere Returns
             btc_df['mean_return'] = btc_df['return'].rolling(window=20).mean()
 
-            # Volatilität (vorher fehlend)
+            # Volatilität
             btc_df['volatility'] = btc_df['return'].rolling(window=20).std()
+
+            # BTC Momentum (14-Tage)
+            btc_df['btc_momentum_14d'] = (
+                    btc_df['close'] / btc_df['close'].shift(14) - 1
+            )
 
             # Hinzufügen der Bitcoin-Features zum Feature DataFrame
             bitcoin_features = [
                 'return', 'volatility_20d', 'volatility',
                 'rel_to_ema20', 'rel_to_ema50', 'rel_to_ema200',
-                'adx', 'mean_return', 'rsi', 'ema_ratio', 'macd_signal_ratio'
+                'adx', 'mean_return', 'rsi', 'ema_ratio', 'macd_signal_ratio',
+                'btc_momentum_14d'
             ]
 
             if 'volume' in btc_df.columns:
                 bitcoin_features.extend(['volume_change', 'volume_ma_ratio'])
 
             for feature in bitcoin_features:
-                features_df[f'btc_{feature}'] = btc_df[feature]
+                if feature in btc_df.columns:
+                    features_df[f'btc_{feature}'] = btc_df[feature]
+                else:
+                    # Feature existiert nicht, mit 0 füllen
+                    features_df[f'btc_{feature}'] = 0
+                    self.logger.warning(f"Bitcoin-Feature {feature} nicht verfügbar, mit 0 gefüllt")
 
             # 2. Altcoin zu Bitcoin Relative Stärke
             altcoin_symbols = []
@@ -364,12 +380,15 @@ class MarketRegimeDetector:
 
             # 3. Marktbreite-Indikatoren
             # Anzahl der Altcoins, die BTC outperformen
-            outperform_columns = [c for c in features_df.columns if c.startswith('rel_strength_')]
+            outperform_columns = [c for c in features_df.columns if
+                                  c.startswith('rel_strength_') and not c.endswith('_ma20')]
 
             if outperform_columns:
                 features_df['pct_outperform_btc'] = (
                         (features_df[outperform_columns] > 0).sum(axis=1) / len(outperform_columns)
                 )
+            else:
+                features_df['pct_outperform_btc'] = 0
 
             # 4. Rollende Korrelationen
             # Durchschnittliche Korrelation zwischen Altcoins
@@ -383,32 +402,30 @@ class MarketRegimeDetector:
                         symbol_df = market_data[symbol].copy()
                         returns_df[short_name] = symbol_df['close'].pct_change()
 
-                # Leeren Korrelations-DataFrame erstellen
-                corr_matrix = pd.DataFrame(index=features_df.index)
+                # Berechne die durchschnittliche Korrelation
+                if len(returns_df.columns) > 1:
+                    corr_matrix = returns_df.rolling(20).corr()
+                    # Extrahiere nur die Korrelationen zwischen verschiedenen Assets
+                    avg_correlations = []
 
-                # Für jedes Paar eine Spalte erstellen
-                pair_count = 0
+                    for date in returns_df.index[20:]:
+                        daily_corr = corr_matrix.loc[date]
+                        # Nimm nur die obere Dreiecksmatrix (ohne Diagonale)
+                        upper_triangle = np.triu_indices(len(returns_df.columns), k=1)
+                        correlations = daily_corr.values[upper_triangle]
 
-                for i in range(len(returns_df.columns)):
-                    for j in range(i + 1, len(returns_df.columns)):
-                        if i != j:
-                            col1 = returns_df.columns[i]
-                            col2 = returns_df.columns[j]
+                        if len(correlations) > 0 and not np.isnan(correlations).all():
+                            avg_correlations.append(np.nanmean(correlations))
+                        else:
+                            avg_correlations.append(0)
 
-                            # Rollende Korrelation berechnen und speichern
-                            pair_name = f"corr_{col1}_{col2}"
-                            corr_matrix[pair_name] = returns_df[col1].rolling(20).corr(returns_df[col2])
-                            pair_count += 1
-
-                # Durchschnittliche Korrelation für jeden Zeitpunkt berechnen
-                if pair_count > 0:
-                    features_df['avg_altcoin_correlation'] = corr_matrix.mean(axis=1)
-
-            # 5. Feature Engineering: Gleitende Mittelwerte, Momentum
-            # BTC Momentum (Nachhinkendes Indikator)
-            features_df['btc_momentum_14d'] = (
-                    btc_df['close'] / btc_df['close'].shift(14) - 1
-            )
+                    # Pad mit 0 für die ersten 19 Tage
+                    avg_correlations = [0] * 20 + avg_correlations
+                    features_df['avg_altcoin_correlation'] = avg_correlations[:len(features_df)]
+                else:
+                    features_df['avg_altcoin_correlation'] = 0
+            else:
+                features_df['avg_altcoin_correlation'] = 0
 
             # Alle NaN-Werte entfernen, da sie für das Training nicht nützlich sind
             features_df = features_df.dropna()
@@ -421,7 +438,6 @@ class MarketRegimeDetector:
 
         except Exception as e:
             self.logger.error(f"Fehler bei der Feature-Extraktion: {e}")
-            import traceback
             self.logger.error(traceback.format_exc())
             return pd.DataFrame()
 
@@ -489,11 +505,10 @@ class MarketRegimeDetector:
 
         except Exception as e:
             self.logger.error(f"Fehler beim Training des Regime-Modells: {e}")
-            import traceback
             self.logger.error(traceback.format_exc())
             return False
 
-    def predict_regime(self, features: pd.DataFrame) -> Tuple[int, str]:
+    def predict_regime(self, features: pd.DataFrame) -> int:
         """
         Sagt das aktuelle Marktregime voraus.
 
@@ -501,11 +516,11 @@ class MarketRegimeDetector:
             features: DataFrame mit Features für die Vorhersage
 
         Returns:
-            Tuple aus (Regime-ID, Regime-Label) oder (-1, "Fehler") bei Fehler
+            Regime-ID oder -1 bei Fehler
         """
         if not self.model_trained or self.regime_model is None:
             self.logger.error("Modell nicht trainiert")
-            return -1, "Modell nicht trainiert"
+            return -1
 
         try:
             # Prüfen, ob die Features mit den Trainingsfeatures übereinstimmen
@@ -540,18 +555,18 @@ class MarketRegimeDetector:
 
             # Regime vorhersagen
             regime = self.regime_model.predict(features_scaled)[0]
-            regime_label = self.regime_labels.get(regime, f"Regime {regime}")
 
             self.current_regime = regime
+
+            regime_label = self.regime_labels.get(regime, f"Regime {regime}")
             self.logger.info(f"Aktuelles Marktregime: {regime} - {regime_label}")
 
-            return regime, regime_label
+            return regime
 
         except Exception as e:
             self.logger.error(f"Fehler bei der Regime-Vorhersage: {e}")
-            import traceback
             self.logger.error(traceback.format_exc())
-            return -1, f"Fehler: {str(e)}"
+            return -1
 
     def analyze_regime_transitions(self, features_df: pd.DataFrame) -> None:
         """
@@ -609,7 +624,6 @@ class MarketRegimeDetector:
 
         except Exception as e:
             self.logger.error(f"Fehler bei der Analyse der Regime-Übergänge: {e}")
-            import traceback
             self.logger.error(traceback.format_exc())
 
     def analyze_regime_characteristics(self, features_df: pd.DataFrame, X: pd.DataFrame) -> None:
@@ -696,16 +710,19 @@ class MarketRegimeDetector:
                     else:
                         self.regime_labels[regime] = f"Regime {regime}"
 
+                    # Beschreibung hinzufügen
+                    self.regime_descriptions[regime] = f"Regime {regime}: {self.regime_labels[regime]}"
+
                     self.logger.info(f"Regime {regime} charakterisiert als: {self.regime_labels[regime]}")
 
         except Exception as e:
             self.logger.error(f"Fehler bei der Analyse der Regime-Charakteristiken: {e}")
-            import traceback
             self.logger.error(traceback.format_exc())
             # Sicherstellen, dass alle Regime-Labels existieren
             for regime in range(self.n_regimes):
                 if regime not in self.regime_labels:
                     self.regime_labels[regime] = f"Regime {regime}"
+                    self.regime_descriptions[regime] = f"Regime {regime}: Uncharakterisiert"
 
     def analyze_regime_performance(self, features_df: pd.DataFrame) -> None:
         """
@@ -745,7 +762,7 @@ class MarketRegimeDetector:
                 perf_df = perf_df.fillna(0)
 
                 # Regime-Namen hinzufügen
-                perf_df = perf_df.rename(columns=self.regime_labels)
+                perf_df.columns = [self.regime_labels.get(col, f"Regime {col}") for col in perf_df.columns]
 
                 self.regime_performances = perf_df
 
@@ -755,87 +772,55 @@ class MarketRegimeDetector:
 
         except Exception as e:
             self.logger.error(f"Fehler bei der Analyse der Performance pro Regime: {e}")
-            import traceback
             self.logger.error(traceback.format_exc())
 
-    def extract_trading_rules(self) -> Dict[int, Dict[str, Any]]:
+    def extract_trading_rules(self, perf_series):
         """
-        Extrahiert Trading-Regeln für jedes Marktregime.
+        Extrahiert Trading-Regeln basierend auf der Performance-Serie
+
+        Parameters:
+        -----------
+        perf_series : pandas.Series oder pandas.DataFrame
+            Performance-Serie oder DataFrame mit Coin-Performance
 
         Returns:
-            Dictionary mit Regeln für jedes Regime
+        --------
+        dict
+            Trading-Regeln mit Top-Performern und Bottom-Performern
         """
-        if not self.model_trained:
-            self.logger.error("Modell nicht trainiert")
-            return {}
-
         try:
-            trading_rules = {}
+            # Überprüfen ob perf_series ein DataFrame oder eine Series ist
+            if isinstance(perf_series, pd.DataFrame):
+                # Wenn es ein DataFrame ist, benötigen wir eine Spalte für sort_values
+                # Nehmen wir an, die letzte Spalte enthält die Performancewerte
+                col_name = perf_series.columns[-1]
+                top_performers = perf_series.sort_values(by=col_name, ascending=False).head(3)
+                bottom_performers = perf_series.sort_values(by=col_name, ascending=True).head(3)
 
-            # Für jedes Regime
-            for regime in range(self.n_regimes):
-                regime_label = self.regime_labels.get(regime, f"Regime {regime}")
+                # Extrahiere nur die Coin-Namen als Liste
+                top_coins = top_performers.index.tolist()
+                bottom_coins = bottom_performers.index.tolist()
+            elif isinstance(perf_series, pd.Series):
+                # Für Series ist kein 'by' Parameter notwendig
+                top_performers = perf_series.sort_values(ascending=False).head(3)
+                bottom_performers = perf_series.sort_values(ascending=True).head(3)
 
-                # Performance-Daten für dieses Regime
-                if self.regime_performances is not None and regime in self.regime_performances.columns:
-                    perf_series = self.regime_performances[regime]
+                # Extrahiere nur die Coin-Namen als Liste
+                top_coins = top_performers.index.tolist()
+                bottom_coins = bottom_performers.index.tolist()
+            else:
+                # Falls perf_series weder DataFrame noch Series ist
+                self.logger.error(f"Unerwarteter Typ für perf_series: {type(perf_series)}")
+                return None
 
-                    # Top-Performer
-                    top_performers = perf_series.sort_values(ascending=False).head(3)
-                    worst_performers = perf_series.sort_values().head(3)
-
-                    # Durchschnittliche Performance
-                    avg_performance = perf_series.mean()
-
-                    # Anteil der positiven Performer
-                    pct_positive = (perf_series > 0).mean() * 100
-
-                    # Trading-Strategieempfehlung
-                    if avg_performance > 0.01:  # 1% durchschnittliche tägliche Rendite
-                        if pct_positive > 70:
-                            strategy = "Aggressive Long-Strategie mit breitem Altcoin-Exposure"
-                        else:
-                            strategy = "Selektive Long-Strategie, fokussiert auf Top-Performer"
-                    elif avg_performance > 0:
-                        strategy = "Vorsichtige Long-Strategie, kleine Positionen"
-                    elif avg_performance > -0.01:
-                        strategy = "Überwiegend Cash-Position, minimales Exposure"
-                    else:
-                        if pct_positive < 30:
-                            strategy = "Defensive Strategie, primär Stablecoins"
-                        else:
-                            strategy = "Sehr selektive Trades, überwiegend Stablecoins"
-
-                    # Regel erstellen
-                    trading_rules[regime] = {
-                        "label": regime_label,
-                        "top_performers": top_performers.to_dict(),
-                        "worst_performers": worst_performers.to_dict(),
-                        "avg_performance": avg_performance,
-                        "pct_positive": pct_positive,
-                        "recommended_strategy": strategy,
-                        "portfolio_allocation": self._get_portfolio_allocation(avg_performance, pct_positive)
-                    }
-                else:
-                    # Fallback, wenn keine Performance-Daten verfügbar sind
-                    trading_rules[regime] = {
-                        "label": regime_label,
-                        "top_performers": {},
-                        "worst_performers": {},
-                        "avg_performance": 0,
-                        "pct_positive": 50,
-                        "recommended_strategy": "Neutrale Position, weitere Daten abwarten",
-                        "portfolio_allocation": {"altcoins": 0.2, "bitcoin": 0.3, "stablecoins": 0.5}
-                    }
-
-            self.logger.info(f"Trading-Regeln für {len(trading_rules)} Regime extrahiert")
-            return trading_rules
-
+            return {
+                "top_performers": top_coins,
+                "bottom_performers": bottom_coins
+            }
         except Exception as e:
-            self.logger.error(f"Fehler bei der Extraktion von Trading-Regeln: {e}")
-            import traceback
-            self.logger.error(traceback.format_exc())
-            return {}
+            self.logger.error(f"Fehler bei der Extraktion von Trading-Regeln: {str(e)}")
+            self.logger.error(f"Traceback (most recent call last):\n{traceback.format_exc()}")
+            return None
 
     def _get_portfolio_allocation(self, avg_performance: float, pct_positive: float) -> Dict[str, float]:
         """
@@ -931,7 +916,8 @@ class MarketRegimeDetector:
                 "regime_transitions": self.regime_transitions,
                 "regime_performances": self.regime_performances,
                 "regime_durations": getattr(self, "regime_durations", {}),
-                "feature_columns": self.feature_columns  # Wichtig: Feature-Spalten speichern
+                "feature_columns": self.feature_columns,  # Wichtig: Feature-Spalten speichern
+                "regime_descriptions": self.regime_descriptions  # Regime-Beschreibungen speichern
             }
 
             with open(filepath, 'wb') as f:
@@ -942,7 +928,6 @@ class MarketRegimeDetector:
 
         except Exception as e:
             self.logger.error(f"Fehler beim Speichern des Modells: {e}")
-            import traceback
             self.logger.error(traceback.format_exc())
             return False
 
@@ -976,6 +961,16 @@ class MarketRegimeDetector:
             else:
                 self.logger.warning("Keine Feature-Spalten im Modell gefunden. Prädiktionen könnten fehlschlagen.")
 
+            # Regime-Beschreibungen laden
+            if "regime_descriptions" in model_data:
+                self.regime_descriptions = model_data["regime_descriptions"]
+            else:
+                # Beschreibungen aus Labels erstellen
+                self.regime_descriptions = {
+                    regime: f"Regime {regime}: {label}"
+                    for regime, label in self.regime_labels.items()
+                }
+
             self.model_trained = True
 
             self.logger.info(f"Regime-Modell geladen von {filepath}")
@@ -983,43 +978,65 @@ class MarketRegimeDetector:
 
         except Exception as e:
             self.logger.error(f"Fehler beim Laden des Modells: {e}")
-            import traceback
             self.logger.error(traceback.format_exc())
             return False
 
-    def get_current_regime_info(self) -> Dict[str, Any]:
+    def get_current_regime_info(self):
         """
-        Gibt Informationen über das aktuelle Marktregime zurück.
+        Gibt Informationen zum aktuellen Marktregime zurück
 
         Returns:
-            Dictionary mit Regime-Informationen
+        --------
+        dict
+            Informationen zum aktuellen Marktregime
         """
-        if not self.model_trained or self.current_regime is None:
-            return {"error": "No current regime detected"}
-
         try:
-            # Trading-Regeln für aktuelles Regime abrufen
-            trading_rules = self.extract_trading_rules()
-            current_rule = trading_rules.get(self.current_regime, {})
+            current_regime = self.detect_market_regime()
+            regime_label = self.get_regime_label(current_regime)
 
-            # Informationen zusammenstellen
-            regime_info = {
-                "regime_id": self.current_regime,
-                "label": self.regime_labels.get(self.current_regime, f"Regime {self.current_regime}"),
-                "strategy": current_rule.get("recommended_strategy", "Keine spezifische Empfehlung"),
-                "top_performers": current_rule.get("top_performers", {}),
-                "portfolio_allocation": current_rule.get("portfolio_allocation", {}),
-                "avg_performance": current_rule.get("avg_performance", 0) * 100,  # In Prozent
-                "pct_positive": current_rule.get("pct_positive", 0)
+            # Erstellen der Performance-Serie für extract_trading_rules
+            # Verwenden der Marktdaten um eine Performance-Serie zu erstellen
+            perf_series = None
+
+            if self.market_data:
+                # Berechne Performance für jeden Coin in market_data
+                perf_series = pd.Series()
+
+                for symbol, df in self.market_data.items():
+                    if not df.empty:
+                        # Extrahiere Währungsnamen aus dem Symbol (z.B. "BTC/USDT" -> "BTC")
+                        coin = symbol.split('/')[0]
+
+                        # Prozentuale Veränderung der letzten 30 Tage (oder weniger, falls nicht genügend Daten)
+                        days = min(30, len(df))
+                        if days > 1:
+                            perf = (df['close'].iloc[-1] / df['close'].iloc[-days] - 1) * 100
+                            perf_series[coin] = perf
+
+            # Falls keine Marktdaten verfügbar oder keine Performance berechnet werden konnte
+            if perf_series is None or len(perf_series) == 0:
+                self.logger.warning("Keine Performance-Daten verfügbar für Trading Rules")
+                trading_rules = None
+            else:
+                # Extrahiere Trading-Regeln mit der nun vorhandenen Performance-Serie
+                trading_rules = self.extract_trading_rules(perf_series)
+
+            return {
+                "regime": current_regime,
+                "label": regime_label,
+                "description": self.regime_descriptions.get(current_regime, "Unbekanntes Regime"),
+                "trading_rules": trading_rules
             }
-
-            return regime_info
-
         except Exception as e:
-            self.logger.error(f"Fehler beim Abrufen der Regime-Informationen: {e}")
-            import traceback
-            self.logger.error(traceback.format_exc())
-            return {"error": str(e)}
+            self.logger.error(f"Fehler beim Abrufen der Regime-Informationen: {str(e)}")
+            self.logger.error(f"Traceback (most recent call last):\n{traceback.format_exc()}")
+            # Statt None zurückzugeben, geben wir ein Minimalobjekt zurück
+            return {
+                "regime": 0,  # Standardregime (z.B. neutral)
+                "label": "Fehler bei Regimebestimmung",
+                "description": "Fehler bei der Bestimmung des Marktregimes",
+                "trading_rules": {"top_performers": [], "bottom_performers": []}
+            }
 
     def analyze(self, file_path=None, data=None, plot=False):
         """
@@ -1077,12 +1094,12 @@ class MarketRegimeDetector:
                 single_features = pd.DataFrame([row])
 
                 # Regime vorhersagen
-                regime, regime_label = self.predict_regime(single_features)
+                regime = self.predict_regime(single_features)
 
                 regimes.append({
                     'date': idx,
                     'regime': regime,
-                    'regime_name': regime_label
+                    'regime_name': self.regime_labels.get(regime, f"Regime {regime}")
                 })
 
             # Zu DataFrame konvertieren
@@ -1102,6 +1119,64 @@ class MarketRegimeDetector:
 
         except Exception as e:
             self.logger.error(f"Fehler bei der Analyse: {e}")
-            import traceback
             self.logger.error(traceback.format_exc())
             return None
+
+    def detect_market_regime(self):
+        """
+        Erkennt das aktuelle Marktregime basierend auf den neuesten Daten.
+
+        Returns:
+        --------
+        int
+            ID des erkannten Marktregimes oder -1 bei Fehler
+        """
+        try:
+            # Features aus den aktuellsten Daten extrahieren
+            # Wir nehmen die aktuellsten X Tage (z.B. 30 Tage) für eine stabilere Vorhersage
+            latest_data = {}
+            for symbol, df in self.market_data.items():
+                # Nehme die letzten 30 Tage, oder alle verfügbaren Daten, wenn weniger
+                days = min(30, len(df))
+                latest_data[symbol] = df.iloc[-days:]
+
+            # Features aus den aktuellen Daten extrahieren
+            features_df = self.extract_market_features(latest_data)
+
+            if features_df.empty:
+                self.logger.error("Keine Features für Regime-Erkennung extrahiert")
+                return -1
+
+            # Nur die letzte Zeile verwenden (aktuellster Zeitpunkt)
+            latest_features = features_df.iloc[-1:].copy()
+
+            # Regime vorhersagen
+            regime = self.predict_regime(latest_features)
+
+            self.current_regime = regime
+            return regime
+
+        except Exception as e:
+            self.logger.error(f"Fehler bei der Marktregime-Erkennung: {str(e)}")
+            self.logger.error(f"Traceback (most recent call last):\n{traceback.format_exc()}")
+            return -1
+
+    def get_regime_label(self, regime_id):
+        """
+        Gibt das Label für das angegebene Regime zurück.
+
+        Parameters:
+        -----------
+        regime_id : int
+            ID des Regimes
+
+        Returns:
+        --------
+        str
+            Label des Regimes oder "Unbekanntes Regime" bei ungültiger ID
+        """
+        if regime_id == -1:
+            return "Fehler bei Regimebestimmung"
+
+        # Regime-Label aus dem Dictionary abrufen oder Standardlabel verwenden
+        return self.regime_labels.get(regime_id, f"Regime {regime_id}")
