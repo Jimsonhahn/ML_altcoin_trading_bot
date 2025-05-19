@@ -1,0 +1,33 @@
+{
+  "backtest.start_date": "2022-01-01",
+  "backtest.end_date": "2023-12-31",
+  "backtest.initial_balance": 10000,
+  "backtest.commission": 0.001,
+  "backtest.create_plots": true,
+  "backtest.export_results": true,
+  "backtest.export_format": "excel",
+  "trading_pairs": [
+    "BTC/USDT",
+    "ETH/USDT",
+    "SOL/USDT",
+    "BNB/USDT",
+    "XRP/USDT"
+  ],
+  "data.source": "binance",
+  "data.use_cache": true,
+  "timeframes.analysis": "1d",
+  "timeframes.check_interval": 86400,
+  "risk.position_size": 0.1,
+  "risk.stop_loss": 0.03,
+  "risk.take_profit": 0.06,
+  "risk.max_open_positions": 5,
+  "risk.use_trailing_stop": true,
+  "risk.trailing_stop": 0.02,
+  "risk.trailing_activation": 0.02,
+  "ml.enabled": true,
+  "ml.data_dir": "data/market_data",
+  "ml.models_dir": "data/ml_models",
+  "ml.output_dir": "data/ml_analysis",
+  "ml.n_regimes": 5,
+  "ml.train_on_start": true
+}
