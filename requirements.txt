@@ -1,29 +1,56 @@
+pandas
+numpy
+scikit-learn
+tensorflow # Wenn Sie LSTMs weiterhin verwenden wollen
+ccxt
+python-telegram-bot
+pandas-ta
+matplotlib
+seaborn
+# hmmlearn # Falls Sie HMM für Regime-Erkennung nutzen wollen (optional)
+# optuna # Für fortgeschrittene Hyperparameter-Optimierung (optional)
+# requirements-advanced.txt
+# Fügen Sie diese zu Ihrer bestehenden requirements.txt hinzu
 
+# Performance & Async
+aiohttp==3.9.1
+aioredis==2.0.1
+aiokafka==0.10.0
+uvloop==0.19.0
+numba==0.58.1
+cupy-cuda11x==12.3.0  # Nur wenn GPU vorhanden
 
-# Core dependencies
-pandas>=1.3.0
-numpy>=1.20.0
-ccxt>=2.7.0
-python-dotenv>=0.19.0
+# Security
+cryptography==41.0.7
+pyjwt==2.8.0
+python-jose==3.3.0
 
-# Technical Analysis
-ta-lib>=0.4.0
+# ML & Data Science
+torch==2.1.2
+scikit-learn==1.3.2
+xgboost==2.0.3
+lightgbm==4.1.0
+optuna==3.5.0  # Hyperparameter Optimization
+shap==0.44.0   # Model Explainability
 
-# Data visualization
-matplotlib>=3.4.0
-seaborn>=0.11.0
+# Monitoring
+prometheus-client==0.19.0
+opentelemetry-api==1.21.0
+opentelemetry-sdk==1.21.0
 
-# Machine Learning
-scikit-learn>=0.24.0
-joblib>=1.0.0
+# Web & API
+fastapi==0.108.0
+websockets==12.0
+python-socketio==5.10.0
 
-# Social Media Analysis (optional)
-praw>=7.5.0       # Reddit API
-tweepy>=4.5.0     # Twitter API
-google-api-python-client>=2.0.0  # YouTube API
-nltk>=3.6.0       # Natural Language Processing
+# Database
+asyncpg==0.29.0
+motor==3.3.2  # Async MongoDB
+redis==5.0.1
 
 # Utilities
-tqdm>=4.62.0     # Progress bars
-requests>=2.26.0  # HTTP requests
-pytz>=2021.1     # Timezone handling
+msgpack==1.0.7
+lz4==4.3.2
+python-dotenv==1.0.0
+pydantic==2.5.3
+pydantic-settings==2.1.0

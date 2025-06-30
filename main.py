@@ -85,3 +85,14 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+    # Erweiterte Argumente
+    parser.add_argument('--enable-gpu', action='store_true', help='Enable GPU acceleration')
+    parser.add_argument('--risk-profile', choices=['conservative', 'moderate', 'aggressive'], default='moderate')
+    parser.add_argument('--multi-exchange', action='store_true', help='Enable multi-exchange trading')
+
+    # Performance Engine initialisieren
+    if args.enable_gpu:
+        from core.performance.gpu import GPUAcceleratedCalculations
+
+        gpu_calc = GPUAcceleratedCalculations()
+        trading_engine.register_calculator(gpu_calc)
