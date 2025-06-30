@@ -1,24 +1,92 @@
-# Byte-compiled / optimized / DLL files
+# Python Virtual Environment - WICHTIG!
+.venv/
+venv/
+env/
+ENV/
+.env
+
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Virtual environments
-env/
-venv/
-ENV/
-.venv/
+# ML Models und große Dateien
+data/ml_models/*.pkl
+data/ml_models/*.h5
+data/ml_models/*.joblib
+*.model
 
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints
+# Marktdaten
+data/market_data/*
+!data/market_data/.gitkeep
+!data/market_data/sample/
 
-# Environment variables
-.env
-*.env
+# Backtest Ergebnisse
+data/backtest_results/*
+!data/backtest_results/.gitkeep
+!data/backtest_results/sample/
 
-# PyCharm
+# Trading Logs
+logs/
+*.log
+trading_logs/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE
+.vscode/
 .idea/
-
-# OS files
+*.swp
+*.swo
+*~
 .DS_Store
-Thumbs.db
+
+# Test Coverage
+htmlcov/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+
+# Datenbank
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporäre Dateien
+temp/
+tmp/
+cache/
+
+# Trading spezifisch
+order_history/
+portfolio_snapshots/
+performance_reports/
+*.pickle
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Git LFS (wird über .gitattributes gehandhabt)
+# Keine LFS-Dateien in .gitignore!

@@ -1,18 +1,3 @@
-Daten-Download-Zusammenfassung
-===========================
-
-Zeitstempel: 2025-04-17 17:31:43
-Exchange: Binance
-Zeitraum: 2022-01-01 bis 2023-12-31
-Zeitintervall: 1d
-
-Erfolgreiche Downloads: 5/5
-
-Verfügbare Paare:
-  - BTC/USDT: ✓
-  - ETH/USDT: ✓
-  - SOL/USDT: ✓
-  - BNB/USDT: ✓
-  - XRP/USDT: ✓
-
-Nicht verfügbare Paare:
+version https://git-lfs.github.com/spec/v1
+oid sha256:e385903844eff3ea6f774d9b31e478996442250732442e4c505ad1308ca7ffee
+size 330
