@@ -1,0 +1,17 @@
+# Bestehende Strategien beibehalten
+from .momentum import MomentumStrategy
+from .mean_reversion import MeanReversionStrategy
+
+# Neue ML Strategien hinzufügen
+from .advanced.hybrid_ml import HybridMLStrategy
+from .advanced.arbitrage import QuantitativeArbitrageStrategy
+from .advanced.defi import DeFiYieldStrategy
+
+STRATEGY_MAP = {
+    'momentum': MomentumStrategy,
+    'mean_reversion': MeanReversionStrategy,
+    'ml': MLStrategy,  # Bestehend
+    'hybrid_ml': HybridMLStrategy,  # NEU
+    'arbitrage': QuantitativeArbitrageStrategy,  # NEU
+    'defi_yield': DeFiYieldStrategy  # NEU
+}
