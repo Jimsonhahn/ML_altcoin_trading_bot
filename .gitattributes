@@ -1,0 +1,12 @@
+\# filter=lfs diff=lfs merge=lfs -text
+Für filter=lfs diff=lfs merge=lfs -text
+ML-Modelle filter=lfs diff=lfs merge=lfs -text
+*.pkl filter=lfs diff=lfs merge=lfs -text
+*.csv filter=lfs diff=lfs merge=lfs -text
+große filter=lfs diff=lfs merge=lfs -text
+Datensätze filter=lfs diff=lfs merge=lfs -text
+Excel-Dateien filter=lfs diff=lfs merge=lfs -text
+*.xlsx filter=lfs diff=lfs merge=lfs -text
+data/market_data/** filter=lfs diff=lfs merge=lfs -text
+Ganze filter=lfs diff=lfs merge=lfs -text
+Verzeichnisse filter=lfs diff=lfs merge=lfs -text
