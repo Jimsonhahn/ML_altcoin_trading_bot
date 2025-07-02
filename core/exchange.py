@@ -422,6 +422,9 @@ class PaperTradeExchange(ExchangeBase):
         self.trades = []
         self.commission_rate = settings.get('backtest.commission', 0.001)
 
+        # Positions tracking
+        self.positions = {}
+
     def connect(self) -> bool:
         """
         Stellt eine Verbindung zum Daten-Exchange her.
@@ -688,6 +691,23 @@ class PaperTradeExchange(ExchangeBase):
             return [order for order in self.open_orders if order['symbol'] == symbol]
         else:
             return self.open_orders
+
+    def get_account_info(self):
+        """Get simulated account info for paper trading"""
+        # Stelle sicher, dass balance existiert
+        if not hasattr(self, 'balance'):
+            self.balance = {'USDT': 10000.0}
+
+        return {
+            'balances': {
+                'USDT': {
+                    'free': self.balance.get('USDT', 10000.0),
+                    'locked': 0.0
+                }
+            },
+            'positions': list(self.positions.values()) if hasattr(self, 'positions') else [],
+            'total_balance_usdt': self.balance.get('USDT', 10000.0)
+        }
 
     def update(self) -> None:
         """
