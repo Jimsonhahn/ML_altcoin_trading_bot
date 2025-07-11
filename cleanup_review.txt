@@ -1,0 +1,286 @@
+DETAILLIERTER BEREINIGUNGSBERICHT
+=================================
+
+Gefundene zu bereinigende Dateien: 149
+
+BACKUP-DATEIEN (16)
+--------------------------------------------------
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/.env.backup
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/strategies/__init__.py.backup
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/exchange.py.backup
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/trading_bot.py.backup_final
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/__init__.py.backup
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/exchange.py.backup
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/__init__.py.backup
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backups/main.py.backup.20250710_233142
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backups/main.py.backup.20250710_233355
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backups/main.py.backup.20250710_233702
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backups/main.py.backup.20250710_233922
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/check_system_extended.py.bak
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/core/exchange.py.backup
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/core/trading_bot.py.backup
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/core/trading_bot.py.backup_final
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/__init__.py.backup
+
+TEMPORÄRE DATEIEN (11)
+--------------------------------------------------
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/.DS_Store
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/debug_imports.py
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/fix_exchange_sustainable.py
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/fix_files.py
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/fix_logger_problem.py
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/fix_trading_bot_sustainable.py
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/logs/test_check.log
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/logs/trading_bot.log
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/ml_backtest.log
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/test_bot.py
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/test_setup.py
+
+DUPLIKATE (107)
+--------------------------------------------------
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/security.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/risk.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/security/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/performance/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/risk/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/init.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/advanced/__init__.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/data_collector.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/data_collector.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/risk.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/security.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/core/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/advanced/__init__.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/backtest_engine.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/backtest_engine.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/enhanced_backtesting.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/enhanced_backtesting.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/position.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/position.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/order_manager.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/order_manager.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/core/security.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/risk.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/core/init.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/advanced/__init__.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/performance.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/performance.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/risk_manager.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/risk_manager.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/ml_enhanced_backtesting.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/ml_enhanced_backtesting.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/core/security/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/advanced/__init__.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/core/performance/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/advanced/__init__.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/core/performance/engine.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/performance/engine.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/core/risk/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/advanced/__init__.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/advanced/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/on_chain.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/technical.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/on_chain.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/on_chain.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/__init__.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/machine_learning.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/__init__.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/social_media.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/__init__.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/config/api_keys..py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/config/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/config/init.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/advanced.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/advanced.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/strategy_base.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/strategy_base.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/ml_strategy.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/ml_strategy.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/arbitrage.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/arbitrage.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/regime_adaptive.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/regime_adaptive.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/copy_trading.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/copy_trading.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/DeFi_yield.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/DeFi_yield.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/grid_trading.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/grid_trading.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/init.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/mean_reversion.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/mean_reversion.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/liquidation.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/liquidation.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/advanced/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/advanced/hybird_ml.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/advanced/hybird_ml.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/utils/visualization.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/utils/init.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/utils/helpers.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/ml_components/model_storage.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/ml_components/model_monitor.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/config/api_keys..py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/config/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/config/backtest_config.json
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/config/backtest_config.json)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/config/settings.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/config/settings.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/config/init.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/config/examples/momentum_standard.json
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/config/examples/momentum_standard.json)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/config/examples/config/examples/momentum_standard.json
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/config/examples/config/examples/momentum_standard.json)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/config/examples/config/examples/config_examples.json
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/config/examples/config/examples/config_examples.json)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/config/profiles/liquidation.json
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/config/profiles/liquidation.json)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/config/profiles/arbitrage.json
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/config/profiles/arbitrage.json)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/config/profiles/autopilot.json
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/config/profiles/autopilot.json)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/config/profiles/copy_trading.json
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/config/profiles/copy_trading.json)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/config/profiles/grid.json
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/config/profiles/grid.json)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/config/profiles/default.json
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/config/profiles/default.json)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/config/profiles/defi.json
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/config/profiles/defi.json)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/strategies/advanced.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/advanced.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/strategies/ml_strategy.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/ml_strategy.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/strategies/regime_adaptive.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/regime_adaptive.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/strategies/init.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/strategies/mean_reversion.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/mean_reversion.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/momentum.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/strategies/momentum.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/strategies/advanced/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_20250711_144916/strategies/advanced/hybird_ml.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/advanced/hybird_ml.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/data_sources/data_sources/coingecko_source.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/data_sources/coingecko_source.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/data_sources/data_sources/base.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/data_sources/base.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/main.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/main.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/data_collector.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/data_collector.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/security.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/risk.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/backtest_engine.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/backtest_engine.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/enhanced_backtesting.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/enhanced_backtesting.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/position.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/position.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/order_manager.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/order_manager.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/risk.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/risk.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/init.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/performance.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/performance.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/risk_manager.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/risk_manager.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/ml_enhanced_backtesting.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/ml_enhanced_backtesting.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/security/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/performance/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/performance/engine.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/core/performance/engine.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/core/risk/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/advanced.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/advanced.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/strategy_base.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/strategy_base.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_imports_20250711_145555/strategies/autopilot.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/autopilot.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/ml_strategy.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/ml_strategy.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/arbitrage.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/arbitrage.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/regime_adaptive.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/regime_adaptive.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/copy_trading.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/copy_trading.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/DeFi_yield.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/DeFi_yield.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/grid_trading.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/grid_trading.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/init.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/mean_reversion.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/mean_reversion.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/liquidation.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/liquidation.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/momentum.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/momentum.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/advanced/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/backup_final_20250711_152841/strategies/advanced/hybird_ml.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/advanced/hybird_ml.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/services/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/services/websocket/__init__.py
+    (Duplikat von: /Users/jnb/PycharmProjects/altcoin_trading_bot/analysis/init.py)
+
+VERALTETE CONFIGS (2)
+--------------------------------------------------
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/config/backtest_config.json
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/config/profiles/copy_trading.json
+
+VERALTETE STRATEGIEN (3)
+--------------------------------------------------
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/DeFi_yield.py
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/advanced.py
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/strategies/regime_adaptive.py
+
+TEST-ARTEFAKTE (10)
+--------------------------------------------------
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/LAZY_MILLIONAIRE_STACK_SETUP.sh
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/debug_imports.py
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/fix_everything.sh
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/fix_imports.sh
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/paper_trading_wrapper.py
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/run_all_strategies.sh
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/run_paper_trading.py
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/start_autopilot.py
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/test_bot.py
+  - /Users/jnb/PycharmProjects/altcoin_trading_bot/timestamp_patch.py
+
+
+EMPFEHLUNGEN
+==================================================
+1. Überprüfen Sie die Liste sorgfältig
+2. Führen Sie das generierte cleanup.sh Script aus
+3. Die Dateien werden in .trash_* verschoben (nicht gelöscht)
+4. Nach Überprüfung können Sie .trash_* endgültig löschen

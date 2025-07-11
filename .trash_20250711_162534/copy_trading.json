@@ -1,0 +1,73 @@
+cat > config/profiles/copy_trading.json << 'EOF'
+{
+  "name": "copy_trading",
+  "description": "Copy Trading Bot - Kopiere erfolgreiche Trader automatisch",
+  "trading_pairs": ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT"],
+  "copy_trading": {
+    "enabled": true,
+    "min_win_rate": 0.6,
+    "min_profit_factor": 1.5,
+    "lookback_days": 30,
+    "position_scale": 0.1,
+    "max_traders_to_copy": 5,
+    "whale_wallets": [
+      {
+        "address": "0x1234567890abcdef",
+        "name": "DeFi Whale Alpha",
+        "type": "defi",
+        "priority": 1
+      },
+      {
+        "address": "0xabcdef1234567890",
+        "name": "Smart Money Trader",
+        "type": "smart",
+        "priority": 2
+      },
+      {
+        "address": "0x9876543210fedcba",
+        "name": "Arbitrage Master",
+        "type": "arbitrage",
+        "priority": 3
+      },
+      {
+        "address": "0xfedcba9876543210",
+        "name": "Yield Optimization Pro",
+        "type": "yield",
+        "priority": 4
+      },
+      {
+        "address": "0x1111222233334444",
+        "name": "Trend Following Expert",
+        "type": "trend",
+        "priority": 5
+      }
+    ],
+    "filters": {
+      "min_trade_size": 100,
+      "max_trade_size": 100000,
+      "allowed_tokens": ["BTC", "ETH", "BNB", "SOL", "MATIC", "AVAX"],
+      "exclude_memecoins": true
+    },
+    "risk_management": {
+      "max_copy_per_trader": 0.2,
+      "stop_copying_on_drawdown": 0.15,
+      "diversification_required": 3
+    }
+  },
+  "risk": {
+    "position_size": 0.05,
+    "max_open_positions": 10,
+    "stop_loss": 0.05,
+    "take_profit": 0.1
+  },
+  "timeframes": {
+    "analysis": "5m",
+    "check_interval": 60
+  },
+  "logging": {
+    "level": "INFO",
+    "console": true,
+    "file": true
+  }
+}
+EOF

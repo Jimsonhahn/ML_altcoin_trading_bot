@@ -1,30 +1,142 @@
 {
   "name": "ultimate_autopilot",
-  "description": "Ultimate 6-Strategy AutoPilot - Maximum Profit",
-  "trading_pairs": ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT"],
-  "timeframe": "5m",
-  "initial_capital": 10000,
-  "strategy_params": {
-    "momentum_params": {"rsi_oversold": 25, "rsi_overbought": 75},
-    "mr_params": {"bb_period": 20, "bb_std": 2},
-    "ml_params": {"features": ["rsi", "macd", "volume"]},
-    "grid_params": {"grid_levels": 20, "grid_spacing": 0.01},
-    "arb_params": {"min_spread": 0.002},
-    "defi_params": {"min_apy": 0.15}
+  "description": "Ultimate AutoPilot v3.0 - Complete Lazy Millionaire Stack with DeFi",
+  "version": "3.0",
+
+  "trading_pairs": ["BTC/USDT", "ETH/USDT", "SOL/USDT", "USDT/USDT", "USDC/USDC"],
+
+  "mode": "balanced",
+  "rebalance_interval": 3600,
+
+  "capital_allocation": {
+    "defi_yield": 0.30,
+    "grid_trading": 0.25,
+    "arbitrage": 0.20,
+    "momentum": 0.10,
+    "mean_reversion": 0.05,
+    "ml": 0.05,
+    "liquidation": 0.05
   },
-  "risk_management": {
-    "max_positions": 10,
-    "position_sizing": "dynamic",
-    "stop_loss_enabled": true,
-    "stop_loss_percentage": 0.03,
-    "take_profit_enabled": true,
-    "take_profit_percentage": 0.05,
-    "trailing_stop": true,
-    "trailing_stop_percentage": 0.02
+
+  "strategy_configs": {
+    "defi_yield": {
+      "min_apy": 0.15,
+      "compound_frequency": 24,
+      "protocol_weights": {
+        "aave": 0.25,
+        "compound": 0.20,
+        "yearn": 0.20,
+        "curve": 0.20,
+        "convex": 0.15
+      }
+    },
+
+    "grid_trading": {
+      "num_grids": 20,
+      "investment_per_grid": 300,
+      "auto_adjust_range": true
+    },
+
+    "arbitrage": {
+      "min_profit_threshold": 0.004,
+      "max_position_size": 1500,
+      "execution_timeout": 10
+    }
   },
-  "execution": {
-    "order_type": "limit",
-    "slippage_tolerance": 0.002,
-    "min_order_size": 10
+
+  "defi": {
+    "enabled": true,
+    "min_apy": 0.15,
+    "compound_frequency": 24,
+    "gas_limit": 0.005,
+    "max_protocols": 5,
+    "risk_levels": ["low", "medium"],
+
+    "protocol_weights": {
+      "aave": 0.25,
+      "compound": 0.20,
+      "yearn": 0.20,
+      "curve": 0.20,
+      "convex": 0.15
+    },
+
+    "compound_settings": {
+      "auto_compound": true,
+      "compound_threshold": 50,
+      "gas_price_limit": 100,
+      "optimal_times": ["02:00", "14:00"]
+    },
+
+    "risk_management": {
+      "max_single_protocol": 0.4,
+      "min_tvl": 10000000,
+      "require_audit": true,
+      "min_protocol_age": 30
+    }
+  },
+
+  "performance_targets": {
+    "daily_return": 0.002,
+    "weekly_return": 0.015,
+    "monthly_return": 0.065,
+    "annual_return": 1.0
+  },
+
+  "risk": {
+    "position_size": 0.10,
+    "max_open_positions": 20,
+    "stop_loss": 0.03,
+    "take_profit": 0.06,
+    "max_drawdown": 0.15,
+    "daily_loss_limit": 0.05
+  },
+
+  "monitoring": {
+    "performance_check_interval": 300,
+    "strategy_rotation_enabled": true,
+    "auto_optimize": true,
+    "alert_on_drawdown": 0.10,
+    "report_interval": 3600
+  },
+
+  "advanced_features": {
+    "cross_strategy_synergy": true,
+    "market_regime_detection": true,
+    "dynamic_allocation": true,
+    "ml_optimization": true,
+    "multi_chain_support": true
+  },
+
+  "expected_performance": {
+    "conservative": {
+      "annual_return": "30-50%",
+      "max_drawdown": "10%",
+      "sharpe_ratio": 1.5
+    },
+    "balanced": {
+      "annual_return": "50-100%",
+      "max_drawdown": "15%",
+      "sharpe_ratio": 2.0
+    },
+    "aggressive": {
+      "annual_return": "100-200%",
+      "max_drawdown": "25%",
+      "sharpe_ratio": 1.8
+    }
+  },
+
+  "backtest": {
+    "start_date": "2024-01-01",
+    "end_date": "2024-12-31",
+    "initial_balance": 10000,
+    "commission": 0.001
+  },
+
+  "logging": {
+    "level": "INFO",
+    "file_enabled": true,
+    "file_path": "logs/ultimate_autopilot.log",
+    "performance_tracking": true,
+    "trade_journal": true
   }
 }

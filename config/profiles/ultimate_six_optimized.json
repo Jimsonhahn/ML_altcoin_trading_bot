@@ -1,0 +1,82 @@
+{
+  "name": "ultimate_six_optimized",
+  "description": "Optimized 6-Strategy Configuration for Maximum Profit",
+  "trading_pairs": ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "MATIC/USDT", "DOT/USDT"],
+  "timeframe": "5m",
+  "initial_capital": 10000,
+  "strategy_params": {
+    "grid_params": {
+      "grid_levels": 25,
+      "grid_spacing": 0.008,
+      "position_size_per_grid": 0.04
+    },
+    "arbitrage_params": {
+      "min_spread": 0.0015,
+      "exchanges": ["binance", "kraken", "coinbase"],
+      "max_position": 0.25
+    },
+    "momentum_params": {
+      "rsi_period": 14,
+      "rsi_oversold": 25,
+      "rsi_overbought": 75,
+      "ma_fast": 12,
+      "ma_slow": 26
+    },
+    "mean_reversion_params": {
+      "bb_period": 20,
+      "bb_std": 2.0,
+      "z_score_threshold": 2.5
+    },
+    "ml_params": {
+      "model_type": "ensemble",
+      "features": ["technical", "sentiment", "volume"],
+      "retrain_interval": 168,
+      "min_confidence": 0.7
+    },
+    "liquidation_params": {
+      "hunt_distance": 0.015,
+      "min_liquidation_volume": 500000,
+      "leverage_threshold": 10
+    },
+    "weights": {
+      "grid_trading": 0.20,
+      "arbitrage": 0.20,
+      "momentum": 0.20,
+      "mean_reversion": 0.15,
+      "ml": 0.15,
+      "liquidation": 0.10
+    },
+    "max_total_exposure": 0.95,
+    "max_per_strategy": 0.25,
+    "min_confidence_threshold": 0.65,
+    "rebalance_hours": 12
+  },
+  "risk_management": {
+    "max_positions": 24,
+    "position_sizing": "kelly_criterion",
+    "stop_loss_enabled": true,
+    "stop_loss_percentage": 0.025,
+    "take_profit_enabled": true,
+    "take_profit_percentage": 0.04,
+    "trailing_stop": true,
+    "trailing_stop_percentage": 0.015,
+    "max_drawdown": 0.12,
+    "risk_per_trade": 0.015
+  },
+  "execution": {
+    "order_type": "limit",
+    "slippage_tolerance": 0.0015,
+    "rebalance_interval": 3600,
+    "min_order_size": 10,
+    "parallel_execution": true,
+    "smart_routing": true,
+    "fee_optimization": true
+  },
+  "monitoring": {
+    "performance_tracking": true,
+    "strategy_adaptation": true,
+    "alert_on_opportunity": true,
+    "log_level": "INFO",
+    "metrics_interval": 300
+  }
+}

@@ -560,7 +560,8 @@ def main():
     try:
         # Load configuration
         print("📂 Loading configuration...")
-        settings = Settings(args.config)
+        settings = Settings()
+        settings.load_profile(args.config)
 
         # Apply intelligent overrides
         apply_intelligent_overrides(settings, args)

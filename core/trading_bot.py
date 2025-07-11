@@ -16,12 +16,10 @@ Features:
 """
 
 import logging
-from strategies import STRATEGIES, get_strategy
-
 import time
 import threading
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, List
 import os
 import json
 import pandas as pd
@@ -32,10 +30,7 @@ from config.settings import Settings
 from core.exchange import ExchangeManager
 from core.position import Position, PositionManager
 from strategies.strategy_base import Strategy
-from strategies.momentum import MomentumStrategy
-from strategies.mean_reversion import MeanReversionStrategy
-from strategies.ml_strategy import MLStrategy
-# from strategies.grid_trading import GridTradingStrategy as GridStrategy
+from strategies import STRATEGIES
 from utils.logger import setup_logger
 from data_sources import DataManager
 
@@ -52,6 +47,8 @@ class TradingBot:
     - Mean Reversion
     - Machine Learning
     - Grid Trading (Automatische Geldmaschine)
+    - Arbitrage
+    - AutoPilot (Multi-Strategy)
     """
 
     def __init__(self, mode: str = "paper", strategy_name: str = "default", settings: Optional[Settings] = None):
@@ -76,57 +73,51 @@ class TradingBot:
         self.running = False
         self.check_interval = self.settings.get('timeframes.check_interval', 300)  # Sekunden
 
+        # Trading Pairs aus Konfiguration laden
+        self.trading_pairs = self.settings.get('trading_pairs', ['BTC/USDT', 'ETH/USDT'])
+        if isinstance(self.trading_pairs, str):
+            self.trading_pairs = [self.trading_pairs]
+
+        # Data Manager initialisieren
+        self.data_manager = DataManager(self.settings)
+
         # Exchange initialisieren
         self.exchange = ExchangeManager(self.settings, mode)
 
         # Position Manager initialisieren
         self.position_manager = PositionManager()
 
+        # Thread-Sicherheit
+        self.data_cache = {}
+        self.data_cache_lock = threading.Lock()
+        self.max_workers = self.settings.get('system.max_workers', 4)
+
+        # Callback-Listen initialisieren
+        self.on_trade_callbacks = []
+        self.on_error_callbacks = []
+        self.on_status_update_callbacks = []
+
+        # Status-Tracking
+        self.start_time = None
+        self.start_balance = 0
+        self.last_status = {}
+        self.status_update_interval = 60  # 1 Minute
+
+        # API Error Tracking
+        self.api_error_count = 0
+        self.last_api_error_time = None
+        self.max_api_errors = self.settings.get('system.max_api_errors', 10)
+        self.api_error_window = self.settings.get('system.api_error_window', 300)  # 5 Minuten
+
+        # Thread-Referenzen
+        self.trading_thread = None
+        self.monitor_thread = None
+
         # Strategie initialisieren
-        
-        # Initialize strategy with proper error handling
-                self.strategy = None
+        self.strategy = self._initialize_strategy(strategy_name)
 
-                # Ensure STRATEGIES registry is available
-                try:
-                    from strategies import STRATEGIES
-                except ImportError as e:
-                    logger.error(f"Failed to import STRATEGIES registry: {e}")
-                    raise RuntimeError("Cannot load strategies - check strategies/__init__.py")
-
-                # Load the requested strategy
-                strategy_name_lower = strategy_name.lower()
-
-                if strategy_name_lower in STRATEGIES:
-                    try:
-                        strategy_class = STRATEGIES[strategy_name_lower]
-                        strategy_params = self.config.get('strategy_params', {})
-                        self.strategy = strategy_class(strategy_params)
-                        logger.info(f"Successfully loaded strategy: {strategy_name} ({strategy_class.__name__})")
-
-                    except Exception as e:
-                        logger.error(f"Failed to instantiate strategy {strategy_name}: {e}")
-                        logger.warning("Attempting to load fallback strategy...")
-
-                        try:
-                            self._load_fallback_strategy()
-                        except Exception as fallback_error:
-                            logger.error(f"Failed to load fallback strategy: {fallback_error}")
-                            raise RuntimeError(f"Cannot load any strategy. Original error: {e}")
-                else:
-                    available_strategies = list(STRATEGIES.keys())
-                    logger.warning(f"Strategy '{strategy_name}' not found. Available: {available_strategies}")
-                    logger.info("Loading fallback strategy...")
-
-                    try:
-                        self._load_fallback_strategy()
-                    except Exception as e:
-                        logger.error(f"Failed to load fallback strategy: {e}")
-                        raise RuntimeError(f"Strategy '{strategy_name}' not found and fallback failed")
-
-                # Verify strategy was loaded
-                if self.strategy is None:
-                    raise RuntimeError("No strategy could be loaded")
+        self.logger.info(f"TradingBot initialized - Mode: {mode}, Strategy: {strategy_name}")
+        self.logger.info(f"Trading pairs: {self.trading_pairs}")
 
     def _initialize_strategy(self, strategy_name: str) -> Strategy:
         """
@@ -138,18 +129,56 @@ class TradingBot:
         Returns:
             Strategy-Objekt
         """
-        # Standardstrategie ist Momentum
-        if strategy_name == "default" or strategy_name == "momentum":
-            return MomentumStrategy(self.settings)
-        elif strategy_name == "mean_reversion":
-            return MeanReversionStrategy(self.settings)
-        elif strategy_name == "ml":
-            return MLStrategy(self.settings)
-        elif strategy_name == "grid_trading":  # GRID TRADING SUPPORT
-            return GridStrategy(self.settings)
-        else:
-            self.logger.warning(f"Unknown strategy '{strategy_name}', using default")
-            return MomentumStrategy(self.settings)
+        try:
+            # Normalize strategy name
+            strategy_name_lower = strategy_name.lower()
+
+            # Handle aliases
+            if strategy_name_lower == "default":
+                strategy_name_lower = "momentum"
+
+            if strategy_name_lower in STRATEGIES:
+                strategy_class = STRATEGIES[strategy_name_lower]
+                strategy = strategy_class(self.settings)
+                self.logger.info(f"Successfully loaded strategy: {strategy_name} ({strategy_class.__name__})")
+                return strategy
+            else:
+                available = list(STRATEGIES.keys())
+                self.logger.warning(f"Strategy '{strategy_name}' not found. Available: {available}")
+
+                # Load fallback strategy
+                return self._load_fallback_strategy()
+
+        except Exception as e:
+            self.logger.error(f"Error loading strategy {strategy_name}: {e}")
+            return self._load_fallback_strategy()
+
+    def _load_fallback_strategy(self):
+        """Load fallback strategy when requested strategy fails"""
+        try:
+            # Try momentum as fallback
+            from strategies.momentum import MomentumStrategy
+            strategy = MomentumStrategy(self.settings)
+            self.logger.info("Loaded fallback momentum strategy")
+            return strategy
+        except ImportError:
+            try:
+                # Try mean reversion
+                from strategies.mean_reversion import MeanReversionStrategy
+                strategy = MeanReversionStrategy(self.settings)
+                self.logger.info("Loaded fallback mean reversion strategy")
+                return strategy
+            except ImportError:
+                # Create a minimal working strategy if all else fails
+                from strategies.strategy_base import Strategy, Signal
+
+                class MinimalStrategy(Strategy):
+                    def calculate_signal(self, symbol, data, current_price):
+                        return Signal.HOLD, 0.5
+
+                strategy = MinimalStrategy({})
+                self.logger.info("Loaded minimal fallback strategy")
+                return strategy
 
     def connect(self) -> bool:
         """
@@ -165,14 +194,17 @@ class TradingBot:
 
                 # Überprüfe API-Limits und Kontostatus
                 if self.mode in ['live', 'paper']:
-                    account_info = self.exchange.get_account_info()
-                    if account_info:
-                        self.logger.info(f"Account status: {account_info.get('status', 'Unknown')}")
+                    try:
+                        account_info = self.exchange.get_account_info()
+                        if account_info:
+                            self.logger.info(f"Account status: {account_info.get('status', 'Unknown')}")
 
-                        # Limits abrufen
-                        limits = account_info.get('limits', {})
-                        if limits:
-                            self.logger.info(f"API rate limits: {limits}")
+                            # Limits abrufen
+                            limits = account_info.get('limits', {})
+                            if limits:
+                                self.logger.info(f"API rate limits: {limits}")
+                    except Exception as e:
+                        self.logger.warning(f"Could not get account info: {e}")
 
             return success
         except Exception as e:
@@ -346,7 +378,7 @@ class TradingBot:
             # Daten abrufen über den geeigneten Weg
             if data_source == 'exchange' or self.mode == 'live' or self.mode == 'paper':
                 # Direkt vom Exchange für Live/Paper-Trading abrufen
-                df = self.exchange.get_ohlcv(symbol, timeframe)
+                df = self.exchange.fetch_ohlcv(symbol, timeframe)
             else:
                 # Alternativ den DataManager für historische oder alternative Daten verwenden
                 source = self.settings.get('data.source_name', 'binance')
@@ -427,18 +459,24 @@ class TradingBot:
             # Aktuelle Position für dieses Symbol abrufen
             current_position = self.position_manager.get_position_by_symbol(symbol)
 
-            # Strategie anwenden, um Signal zu generieren
-            signal, signal_data = self.strategy.generate_signal(df, symbol, current_position)
-
             # Aktuellen Preis abrufen
             current_price = df.iloc[-1]['close']
 
-            # Signal loggen
-            signal_str = signal_data.get('signal', 'UNKNOWN')
-            confidence = signal_data.get('confidence', 0.0)
+            # Strategie anwenden, um Signal zu generieren
+            signal, confidence = self.strategy.calculate_signal(symbol, df, current_price)
 
+            # Signal-Daten aufbereiten
+            signal_data = {
+                'signal': signal.value,
+                'confidence': confidence,
+                'symbol': symbol,
+                'current_price': current_price,
+                'strategy': self.strategy_name
+            }
+
+            # Signal loggen
             self.logger.info(
-                f"{symbol} @ {current_price}: Signal={signal_str}, "
+                f"{symbol} @ {current_price}: Signal={signal.value}, "
                 f"Confidence={confidence:.2f}, Position={'OPEN' if current_position else 'NONE'}"
             )
 
@@ -498,7 +536,12 @@ class TradingBot:
                 return
 
             # Kapital für den Trade berechnen
-            balance = self.exchange.get_balance()
+            try:
+                balance = self.exchange.get_balance()
+            except Exception as e:
+                self.logger.error(f"Error getting balance: {e}")
+                balance = 10000  # Fallback für paper trading
+
             if balance <= 0:
                 self.logger.warning(f"Insufficient balance for {symbol}")
                 return
@@ -508,23 +551,26 @@ class TradingBot:
 
             # Mindestorder-Größe prüfen
             if self.mode in ['live', 'paper']:
-                min_order_size = self.exchange.get_min_order_size(symbol)
-                if min_order_size and trade_amount < min_order_size:
-                    self.logger.warning(
-                        f"Trade amount {trade_amount} below minimum order size {min_order_size} for {symbol}"
-                    )
+                try:
+                    min_order_size = self.exchange.get_min_order_size(symbol)
+                    if min_order_size and trade_amount < min_order_size:
+                        self.logger.warning(
+                            f"Trade amount {trade_amount} below minimum order size {min_order_size} for {symbol}"
+                        )
 
-                    # Entweder auf Mindestgröße erhöhen oder Signal ignorieren
-                    if self.settings.get('risk.adjust_to_min_size', True):
-                        trade_amount = min_order_size
-                        self.logger.info(f"Adjusted trade amount to minimum order size: {min_order_size}")
-                    else:
-                        self.logger.info(f"Buy signal for {symbol} ignored due to insufficient trade amount")
-                        return
+                        # Entweder auf Mindestgröße erhöhen oder Signal ignorieren
+                        if self.settings.get('risk.adjust_to_min_size', True):
+                            trade_amount = min_order_size
+                            self.logger.info(f"Adjusted trade amount to minimum order size: {min_order_size}")
+                        else:
+                            self.logger.info(f"Buy signal for {symbol} ignored due to insufficient trade amount")
+                            return
+                except Exception as e:
+                    self.logger.warning(f"Could not check min order size: {e}")
 
             try:
                 # Order platzieren
-                order = self.exchange.place_order(
+                order = self.exchange.create_order(
                     symbol=symbol,
                     order_type='market',
                     side='buy',
@@ -571,7 +617,7 @@ class TradingBot:
         elif signal == 'SELL' and current_position and current_position.side == 'buy':
             try:
                 # Order platzieren
-                order = self.exchange.place_order(
+                order = self.exchange.create_order(
                     symbol=symbol,
                     order_type='market',
                     side='sell',
@@ -611,7 +657,7 @@ class TradingBot:
             for position in closed_positions:
                 try:
                     # Verkaufsorder platzieren
-                    order = self.exchange.place_order(
+                    order = self.exchange.create_order(
                         symbol=position.symbol,
                         order_type='market',
                         side='sell',
@@ -663,7 +709,7 @@ class TradingBot:
 
             try:
                 # Grid-Buy Order platzieren
-                order = self.exchange.place_order(
+                order = self.exchange.create_order(
                     symbol=symbol,
                     order_type='market',
                     side='buy',
@@ -720,7 +766,7 @@ class TradingBot:
         elif signal == 'SELL' and current_position:
             try:
                 # Grid-Sell Order platzieren
-                order = self.exchange.place_order(
+                order = self.exchange.create_order(
                     symbol=symbol,
                     order_type='market',
                     side='sell',
@@ -763,7 +809,12 @@ class TradingBot:
 
         self.running = True
         self.start_time = datetime.now()
-        self.start_balance = self.exchange.get_balance()
+
+        try:
+            self.start_balance = self.exchange.get_balance()
+        except Exception as e:
+            self.logger.warning(f"Could not get initial balance: {e}")
+            self.start_balance = 10000  # Fallback für Paper Trading
 
         self.logger.info(f"Starting trading bot with {len(self.trading_pairs)} pairs")
         self.logger.info(f"Initial balance: {self.start_balance}")
@@ -868,7 +919,7 @@ class TradingBot:
             final_balance = self.exchange.get_balance()
         except Exception as e:
             self.logger.error(f"Error getting final balance: {e}")
-            final_balance = 0
+            final_balance = self.start_balance
 
         # Strategie-Zustand sichern, falls erforderlich
         if hasattr(self.strategy, 'save_state') and callable(self.strategy.save_state):
@@ -937,7 +988,7 @@ class TradingBot:
             current_balance = self.exchange.get_balance()
         except Exception as e:
             self.logger.error(f"Error getting current balance: {e}")
-            current_balance = 0
+            current_balance = self.start_balance
 
         # Performance berechnen
         profit_loss = 0

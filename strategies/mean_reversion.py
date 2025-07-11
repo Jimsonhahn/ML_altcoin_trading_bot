@@ -2,368 +2,320 @@
 # -*- coding: utf-8 -*-
 
 """
-Mean Reversion Trading-Strategie.
-Implementiert eine Strategie, die auf Rückkehr zum Mittelwert setzt.
+Mean Reversion Strategy - Complete Working Implementation
+=========================================================
+
+Diese Strategie nutzt Bollinger Bands und RSI, um Überkaufte/Überverkaufte
+Situationen zu identifizieren und von Preiskorrekturen zu profitieren.
+
+Funktionsweise:
+- Kauft wenn der Preis unter das untere Bollinger Band fällt (überverkauft)
+- Verkauft wenn der Preis über das obere Bollinger Band steigt (überkauft)
+- RSI wird zur Bestätigung verwendet
 """
 
-import logging
 import pandas as pd
 import numpy as np
-import talib
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Tuple, Any, Optional
+import logging
+from datetime import datetime
 
-from config.settings import Settings
-from core.position import Position
-from strategies.strategy_base import Strategy
+from .strategy_base import Strategy
+
+logger = logging.getLogger(__name__)
 
 
 class MeanReversionStrategy(Strategy):
-    """Mean Reversion Trading-Strategie"""
+    """
+    Mean Reversion Trading Strategy
 
-    def __init__(self, settings: Settings):
+    Nutzt Preiskorrekturen nach extremen Bewegungen.
+    Ideal für seitwärts tendierende Märkte.
+    """
+
+    def __init__(self, config: Dict[str, Any]):
         """
-        Initialisiert die Mean Reversion Strategie.
+        Initialisiert die Mean Reversion Strategy
 
         Args:
-            settings: Bot-Konfiguration
+            config: Konfigurationsdictionary mit Strategie-Parametern
         """
-        super().__init__(settings)
-        self.name = "mean_reversion"
+        super().__init__(config)
 
-        # Strategie-Parameter aus Konfiguration laden
-        self.rsi_period = settings.get('technical.rsi.period', 14)
-        self.rsi_oversold = settings.get('technical.rsi.oversold', 30)
-        self.rsi_overbought = settings.get('technical.rsi.overbought', 70)
+        # Strategy name for logging
+        self.name = "Mean Reversion"
 
-        self.bollinger_period = settings.get('technical.bollinger.period', 20)
-        self.bollinger_std = settings.get('technical.bollinger.std_dev', 2)
+        # Lookback period for calculations
+        self.lookback_period = config.get('lookback_period', 20)
 
-        self.atr_period = 14
-        self.ema_period = 50
+        # Entry/Exit thresholds in standard deviations
+        self.entry_threshold = config.get('entry_threshold', 2.0)
+        self.exit_threshold = config.get('exit_threshold', 0.5)
 
-    def prepare_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        # Bollinger Bands parameters
+        self.bb_period = config.get('bollinger_period', 20)
+        self.bb_std = config.get('bollinger_std', 2.0)
+
+        # RSI parameters for confirmation
+        self.rsi_period = config.get('rsi_period', 14)
+        self.rsi_oversold = config.get('rsi_oversold', 30)
+        self.rsi_overbought = config.get('rsi_overbought', 70)
+
+        # Additional filters
+        self.use_volume_filter = config.get('use_volume_filter', True)
+        self.volume_threshold = config.get('volume_threshold', 1.2)  # 20% above average
+
+        # Risk management
+        self.max_positions = config.get('max_positions', 3)
+        self.position_timeout = config.get('position_timeout', 48)  # hours
+
+        logger.info(f"Mean Reversion Strategy initialized:")
+        logger.info(f"  - Bollinger Period: {self.bb_period}")
+        logger.info(f"  - Bollinger Std: {self.bb_std}")
+        logger.info(f"  - RSI Period: {self.rsi_period}")
+        logger.info(f"  - RSI Oversold: {self.rsi_oversold}")
+        logger.info(f"  - RSI Overbought: {self.rsi_overbought}")
+
+    def calculate_signal(self, data: pd.DataFrame, symbol: str,
+                         current_position: Optional[Any] = None) -> Tuple[str, Dict[str, Any]]:
         """
-        Bereitet Daten für die Analyse vor.
-        Berechnet alle benötigten Indikatoren.
+        Calculate mean reversion trading signal based on Bollinger Bands and RSI
 
         Args:
-            df: DataFrame mit OHLCV-Daten
+            data: DataFrame mit OHLCV Daten
+            symbol: Trading Symbol (z.B. 'BTC/USDT')
+            current_position: Aktuelle Position falls vorhanden
 
         Returns:
-            DataFrame mit berechneten Indikatoren
+            Tuple of (signal, signal_data)
+            signal: 'BUY', 'SELL', or 'HOLD'
+            signal_data: Dict mit Konfidenz und anderen Metriken
         """
-        if len(df) < self.bollinger_period:
-            return df
+        # Validate data
+        if data is None or data.empty:
+            logger.warning(f"No data available for {symbol}")
+            return 'HOLD', {'confidence': 0.0, 'reason': 'no_data'}
 
-        # Indikatoren berechnen
-        df = self.calculate_indicators(df)
-
-        # Zusätzliche abgeleitete Signale berechnen
-
-        # Bollinger Band-Signale
-        df['bb_width'] = (df['bb_upper'] - df['bb_lower']) / df['bb_middle']
-
-        # Bollinger Band-Position (0 bis 1, wo sich der Preis relativ zu den Bändern befindet)
-        df['bb_position'] = (df['close'] - df['bb_lower']) / (df['bb_upper'] - df['bb_lower'])
-
-        # RSI-Extreme erkennen
-        df['rsi_extreme'] = np.where(
-            df['rsi'] < self.rsi_oversold,
-            -1,  # Überverkauft
-            np.where(
-                df['rsi'] > self.rsi_overbought,
-                1,  # Überkauft
-                0  # Neutral
-            )
-        )
-
-        # Preisabweichung vom Mittelwert
-        df['price_deviation'] = (df['close'] - df['ema']) / df['ema'] * 100
-
-        # Bollinger Band-Berührungen oder Durchbrüche
-        df['bb_touch_lower'] = np.where(df['low'] <= df['bb_lower'], 1, 0)
-        df['bb_touch_upper'] = np.where(df['high'] >= df['bb_upper'], 1, 0)
-
-        # Rückkehrsignale zum Mittelwert
-        df['mean_reversion_signal'] = np.where(
-            (df['bb_touch_lower'].shift(1) == 1) & (df['close'] > df['low'].shift(1)),
-            1,  # Kaufsignal nach unterer Band-Berührung
-            np.where(
-                (df['bb_touch_upper'].shift(1) == 1) & (df['close'] < df['high'].shift(1)),
-                -1,  # Verkaufssignal nach oberer Band-Berührung
-                0  # Kein Signal
-            )
-        )
-
-        # Volatilität relativ zum historischen Durchschnitt
-        df['volatility_ratio'] = df['atr'] / df['atr'].rolling(window=50).mean()
-
-        return df
-
-    def calculate_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Berechnet technische Indikatoren für die Analyse.
-
-        Args:
-            df: DataFrame mit OHLCV-Daten
-
-        Returns:
-            DataFrame mit hinzugefügten Indikatoren
-        """
-        # Bollinger Bands
-        df['bb_upper'], df['bb_middle'], df['bb_lower'] = talib.BBANDS(
-            df['close'],
-            timeperiod=self.bollinger_period,
-            nbdevup=self.bollinger_std,
-            nbdevdn=self.bollinger_std,
-            matype=0
-        )
-
-        # RSI
-        df['rsi'] = talib.RSI(df['close'], timeperiod=self.rsi_period)
-
-        # Exponential Moving Average (für Trendrichtung)
-        df['ema'] = talib.EMA(df['close'], timeperiod=self.ema_period)
-
-        # Average True Range (für Volatilität)
-        df['atr'] = talib.ATR(df['high'], df['low'], df['close'], timeperiod=self.atr_period)
-
-        # Stochastic Oscillator
-        df['stoch_k'], df['stoch_d'] = talib.STOCH(
-            df['high'],
-            df['low'],
-            df['close'],
-            fastk_period=14,
-            slowk_period=3,
-            slowk_matype=0,
-            slowd_period=3,
-            slowd_matype=0
-        )
-
-        # MACD für Trendbestätigung
-        df['macd'], df['macd_signal'], df['macd_hist'] = talib.MACD(
-            df['close'],
-            fastperiod=12,
-            slowperiod=26,
-            signalperiod=9
-        )
-
-        # Commodity Channel Index
-        df['cci'] = talib.CCI(df['high'], df['low'], df['close'], timeperiod=20)
-
-        return df
-
-    def generate_signal(self, df: pd.DataFrame, symbol: str,
-                        current_position: Optional[Position] = None) -> Tuple[str, Dict[str, Any]]:
-        """
-        Generiert ein Trading-Signal basierend auf den Daten.
-
-        Args:
-            df: DataFrame mit OHLCV-Daten
-            symbol: Handelssymbol
-            current_position: Aktuelle Position (oder None)
-
-        Returns:
-            Tuple aus Signal (BUY, SELL, HOLD) und zusätzlichen Signaldaten
-        """
-        # Sicherstellen, dass wir genügend Daten haben
-        if len(df) < self.bollinger_period + 10:
-            return "HOLD", {"signal": "HOLD", "reason": "insufficient_data", "confidence": 0.0}
-
-        # Daten vorbereiten
-        df = self.prepare_data(df.copy())
-
-        # Letzten Datenpunkt für die Analyse verwenden
-        current = df.iloc[-1]
-        previous = df.iloc[-2] if len(df) > 1 else current
-
-        # Signal-Bewertung initialisieren
-        long_signals = 0
-        short_signals = 0
-        signal_count = 0
-        confidence = 0.0
-        reason = "no_signal"
-
-        # 1. Bollinger Band-Position
-        if current['bb_position'] < 0.05:  # Nahe am unteren Band
-            long_signals += 1.5
-            reason = "bb_lower_touch"
-        elif current['bb_position'] > 0.95:  # Nahe am oberen Band
-            short_signals += 1.5
-            reason = "bb_upper_touch"
-        signal_count += 1.5
-
-        # 2. RSI
-        if current['rsi'] < self.rsi_oversold:
-            long_signals += 1
-            reason = "rsi_oversold"
-        elif current['rsi'] > self.rsi_overbought:
-            short_signals += 1
-            reason = "rsi_overbought"
-        signal_count += 1
-
-        # 3. Mean Reversion Signal
-        if current['mean_reversion_signal'] == 1:
-            long_signals += 2
-            reason = "mean_reversion_buy"
-        elif current['mean_reversion_signal'] == -1:
-            short_signals += 2
-            reason = "mean_reversion_sell"
-        signal_count += 2
-
-        # 4. CCI (Extreme Werte)
-        if current['cci'] < -100:
-            long_signals += 1
-        elif current['cci'] > 100:
-            short_signals += 1
-        signal_count += 1
-
-        # 5. Stochastic Oscillator
-        if current['stoch_k'] < 20 and current['stoch_k'] > current['stoch_d']:
-            long_signals += 1
-        elif current['stoch_k'] > 80 and current['stoch_k'] < current['stoch_d']:
-            short_signals += 1
-        signal_count += 1
-
-        # 6. Preisabweichung vom Mittelwert
-        if current['price_deviation'] < -5:  # Preis > 5% unter dem Mittelwert
-            long_signals += 1
-        elif current['price_deviation'] > 5:  # Preis > 5% über dem Mittelwert
-            short_signals += 1
-        signal_count += 1
-
-        # Konfidenz berechnen (0.0 - 1.0)
-        bull_confidence = long_signals / signal_count if signal_count > 0 else 0
-        bear_confidence = short_signals / signal_count if signal_count > 0 else 0
-
-        # Signal-Entscheidung
-        signal = "HOLD"
-
-        # Schwellenwert für Signalstärke
-        threshold = 0.6
-
-        # Aktuelle Position berücksichtigen
-        if current_position is None:
-            # Keine offene Position: Nur Kaufsignale betrachten
-            if bull_confidence > threshold and bull_confidence > bear_confidence:
-                signal = "BUY"
-                confidence = bull_confidence
-        else:
-            # Offene Position: Nur Verkaufssignale betrachten
-            if bear_confidence > threshold and bear_confidence > bull_confidence:
-                signal = "SELL"
-                confidence = bear_confidence
-
-            # Take-Profit bei Rückkehr zum Mittelwert
-            if current_position.side == "buy" and current['close'] >= current['bb_middle']:
-                signal = "SELL"
-                confidence = 0.8
-                reason = "mean_reversion_target_reached"
-
-        # Zusätzliche Signal-Daten
-        signal_data = {
-            "signal": signal,
-            "confidence": confidence,
-            "reason": reason,
-            "indicators": {
-                "bb_position": current['bb_position'],
-                "rsi": current['rsi'],
-                "cci": current['cci'],
-                "price_deviation": current['price_deviation'],
-                "volatility_ratio": current['volatility_ratio']
-            },
-            # Engere Stop-Loss und Take-Profit für Mean Reversion
-            "use_trailing_stop": True,
-            "trailing_stop_pct": 0.015,  # Engerer Trailing-Stop
-            "trailing_activation_pct": 0.02  # Frühere Aktivierung
-        }
-
-        return signal, signal_data
-
-    def optimize(self, df: pd.DataFrame, symbol: str,
-                 param_grid: Optional[Dict[str, List[Any]]] = None) -> Dict[str, Any]:
-        """
-        Optimiert Strategie-Parameter basierend auf historischen Daten.
-
-        Args:
-            df: DataFrame mit OHLCV-Daten
-            symbol: Handelssymbol
-            param_grid: Dictionary mit Parametern und möglichen Werten
-
-        Returns:
-            Dictionary mit optimierten Parametern
-        """
-        if param_grid is None:
-            # Standard-Parametergrid für Mean Reversion
-            param_grid = {
-                'rsi_period': [7, 14, 21],
-                'rsi_oversold': [20, 25, 30],
-                'rsi_overbought': [70, 75, 80],
-                'bollinger_period': [10, 20, 30],
-                'bollinger_std': [1.5, 2.0, 2.5]
+        # Check if we have enough data
+        min_required = max(self.bb_period, self.rsi_period) + 1
+        if len(data) < min_required:
+            logger.debug(f"Insufficient data for {symbol}: {len(data)} < {min_required}")
+            return 'HOLD', {
+                'confidence': 0.0,
+                'reason': 'insufficient_data',
+                'required_candles': min_required,
+                'available_candles': len(data)
             }
 
-        self.logger.info(f"Optimizing mean reversion parameters for {symbol}...")
+        try:
+            # Extract price and volume data
+            close_prices = data['close']
+            volume = data['volume'] if 'volume' in data.columns else None
 
-        best_params = {}
-        best_result = -float('inf')
-        total_combinations = 1
+            # Calculate Bollinger Bands
+            sma = close_prices.rolling(window=self.bb_period).mean()
+            std = close_prices.rolling(window=self.bb_period).std()
+            upper_band = sma + (self.bb_std * std)
+            lower_band = sma - (self.bb_std * std)
 
-        for values in param_grid.values():
-            total_combinations *= len(values)
+            # Get current values
+            current_price = float(close_prices.iloc[-1])
+            current_sma = float(sma.iloc[-1])
+            current_upper = float(upper_band.iloc[-1])
+            current_lower = float(lower_band.iloc[-1])
+            current_std = float(std.iloc[-1])
 
-        self.logger.info(f"Testing {total_combinations} parameter combinations")
+            # Calculate position relative to bands
+            band_width = current_upper - current_lower
+            price_position = (current_price - current_lower) / band_width if band_width > 0 else 0.5
 
-        # Grid Search
-        from itertools import product
+            # Calculate standard deviations from mean
+            deviations_from_mean = (current_price - current_sma) / current_std if current_std > 0 else 0
 
-        # Alle Parameterkombinationen aufbauen
-        keys = list(param_grid.keys())
-        values = list(param_grid.values())
+            # Calculate RSI
+            rsi_series = self._calculate_rsi(close_prices, self.rsi_period)
+            current_rsi = float(rsi_series.iloc[-1])
 
-        # Fortschritt speichern
-        progress = 0
+            # Volume analysis
+            volume_ok = True
+            volume_ratio = 1.0
+            if self.use_volume_filter and volume is not None and len(volume) > 20:
+                avg_volume = volume.rolling(window=20).mean().iloc[-1]
+                current_volume = volume.iloc[-1]
+                if avg_volume > 0:
+                    volume_ratio = current_volume / avg_volume
+                    volume_ok = volume_ratio >= self.volume_threshold
 
-        # Jede Kombination testen
-        for combination in product(*values):
-            progress += 1
-            if progress % 10 == 0:
-                self.logger.debug(f"Optimization progress: {progress}/{total_combinations}")
+            # Initialize signal and confidence
+            signal = 'HOLD'
+            confidence = 0.0
+            reason = 'no_signal'
 
-            # Parameter zuweisen
-            params = dict(zip(keys, combination))
+            # Check if we have a position
+            if current_position is None:
+                # No position - look for entry signals
 
-            # Strategie mit aktuellen Parametern konfigurieren
-            temp_strategy = MeanReversionStrategy(self.settings)
+                # BUY Signal: Price at lower band + RSI oversold + volume confirmation
+                if (current_price <= current_lower and
+                        current_rsi < self.rsi_oversold and
+                        volume_ok):
 
-            for param, value in params.items():
-                setattr(temp_strategy, param, value)
+                    signal = 'BUY'
+                    # Confidence based on how far below the band and how oversold
+                    distance_factor = min(1.0, abs(deviations_from_mean) / 3)
+                    rsi_factor = min(1.0, (self.rsi_oversold - current_rsi) / self.rsi_oversold)
+                    confidence = 0.5 + (distance_factor * 0.25) + (rsi_factor * 0.25)
+                    confidence = min(0.95, confidence)
+                    reason = 'oversold_at_lower_band'
 
-            # Strategie evaluieren
-            result = temp_strategy.evaluate(df, symbol)
+                # SELL Signal: Price at upper band + RSI overbought + volume confirmation
+                elif (current_price >= current_upper and
+                      current_rsi > self.rsi_overbought and
+                      volume_ok):
 
-            # Bewertungsmetrik (win_rate und profit kombinieren)
-            score = result['total_profit'] * (result['win_rate'] / 100)
+                    signal = 'SELL'
+                    # Confidence based on how far above the band and how overbought
+                    distance_factor = min(1.0, abs(deviations_from_mean) / 3)
+                    rsi_factor = min(1.0, (current_rsi - self.rsi_overbought) / (100 - self.rsi_overbought))
+                    confidence = 0.5 + (distance_factor * 0.25) + (rsi_factor * 0.25)
+                    confidence = min(0.95, confidence)
+                    reason = 'overbought_at_upper_band'
 
-            # Bessere Parameter gefunden?
-            if score > best_result:
-                best_result = score
-                best_params = params
+            else:
+                # Have position - look for exit signals
+                position_age_hours = 0
+                if hasattr(current_position, 'entry_time'):
+                    position_age_hours = (datetime.now() - current_position.entry_time).total_seconds() / 3600
 
-                self.logger.debug(
-                    f"New best parameters: {params}, "
-                    f"Score: {score:.2f}, "
-                    f"Total Profit: {result['total_profit']:.2f}%, "
-                    f"Win Rate: {result['win_rate']:.2f}%, "
-                    f"Trades: {result['total_trades']}"
-                )
+                if current_position.side == 'buy':
+                    # Long position - exit conditions
+                    if current_price >= current_sma:
+                        # Price returned to mean - take profit
+                        signal = 'SELL'
+                        confidence = 0.8
+                        reason = 'price_returned_to_mean'
 
-        # Optimierungsergebnisse zurückgeben
-        final_result = {
-            'best_params': best_params,
-            'score': best_result
+                    elif current_rsi > self.rsi_overbought:
+                        # RSI overbought - strong exit signal
+                        signal = 'SELL'
+                        confidence = 0.9
+                        reason = 'rsi_overbought'
+
+                    elif position_age_hours > self.position_timeout:
+                        # Position timeout
+                        signal = 'SELL'
+                        confidence = 0.6
+                        reason = 'position_timeout'
+
+                else:  # short position
+                    # Short position - exit conditions
+                    if current_price <= current_sma:
+                        # Price returned to mean - take profit
+                        signal = 'BUY'
+                        confidence = 0.8
+                        reason = 'price_returned_to_mean'
+
+                    elif current_rsi < self.rsi_oversold:
+                        # RSI oversold - strong exit signal
+                        signal = 'BUY'
+                        confidence = 0.9
+                        reason = 'rsi_oversold'
+
+                    elif position_age_hours > self.position_timeout:
+                        # Position timeout
+                        signal = 'BUY'
+                        confidence = 0.6
+                        reason = 'position_timeout'
+
+            # Prepare comprehensive signal data
+            signal_data = {
+                'signal': signal,
+                'confidence': float(confidence),
+                'strategy': 'mean_reversion',
+                'reason': reason,
+                'indicators': {
+                    'current_price': current_price,
+                    'sma': current_sma,
+                    'upper_band': current_upper,
+                    'lower_band': current_lower,
+                    'band_width': float(band_width),
+                    'price_position': float(price_position),  # 0 = at lower band, 1 = at upper band
+                    'deviations_from_mean': float(deviations_from_mean),
+                    'rsi': current_rsi,
+                    'volume_ratio': float(volume_ratio)
+                },
+                'thresholds': {
+                    'rsi_oversold': self.rsi_oversold,
+                    'rsi_overbought': self.rsi_overbought,
+                    'bb_std': self.bb_std
+                }
+            }
+
+            # Add position info if available
+            if current_position:
+                signal_data['position_info'] = {
+                    'side': current_position.side,
+                    'entry_price': getattr(current_position, 'entry_price', 0),
+                    'unrealized_pnl': self._calculate_unrealized_pnl(current_position, current_price)
+                }
+
+            return signal, signal_data
+
+        except Exception as e:
+            logger.error(f"Error calculating mean reversion signal for {symbol}: {e}")
+            return 'HOLD', {
+                'confidence': 0.0,
+                'reason': 'calculation_error',
+                'error': str(e)
+            }
+
+    def _calculate_rsi(self, prices: pd.Series, period: int = 14) -> pd.Series:
+        """
+        Calculate RSI (Relative Strength Index)
+
+        Args:
+            prices: Series of prices
+            period: RSI period (default 14)
+
+        Returns:
+            Series with RSI values
+        """
+        delta = prices.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+
+        # Handle edge cases
+        rsi = rsi.fillna(50)  # Neutral RSI for NaN values
+
+        return rsi
+
+    def _calculate_unrealized_pnl(self, position: Any, current_price: float) -> float:
+        """Calculate unrealized P&L for a position"""
+        if not hasattr(position, 'entry_price') or not hasattr(position, 'amount'):
+            return 0.0
+
+        if position.side == 'buy':
+            return (current_price - position.entry_price) * position.amount
+        else:  # short
+            return (position.entry_price - current_price) * position.amount
+
+    def get_strategy_info(self) -> Dict[str, Any]:
+        """Get information about the strategy"""
+        return {
+            'name': self.name,
+            'type': 'mean_reversion',
+            'description': 'Trades price reversions to the mean using Bollinger Bands and RSI',
+            'parameters': {
+                'bollinger_period': self.bb_period,
+                'bollinger_std': self.bb_std,
+                'rsi_period': self.rsi_period,
+                'rsi_oversold': self.rsi_oversold,
+                'rsi_overbought': self.rsi_overbought,
+                'use_volume_filter': self.use_volume_filter
+            },
+            'suitable_for': 'Ranging/sideways markets',
+            'risk_level': 'Medium'
         }
-
-        self.logger.info(f"Optimization completed. Best parameters: {best_params}")
-
-        return final_result

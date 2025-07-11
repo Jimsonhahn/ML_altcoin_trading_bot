@@ -1,0 +1,192 @@
+{
+  "name": "autopilot",
+  "description": "AutoPilot multi-strategy configuration for automated portfolio management",
+  "version": "1.0.0",
+
+  "trading": {
+    "pairs": ["BTC/USDT", "ETH/USDT", "SOL/USDT", "ADA/USDT", "DOT/USDT"],
+    "base_currency": "USDT",
+    "max_positions": 10,
+    "position_size": 500,
+    "leverage": 1,
+    "order_type": "market",
+    "time_in_force": "GTC"
+  },
+
+  "risk_management": {
+    "max_position_size": 2000,
+    "max_drawdown": 0.20,
+    "stop_loss_percentage": 0.02,
+    "take_profit_percentage": 0.05,
+    "trailing_stop_percentage": 0.015,
+    "max_positions": 8,
+    "risk_per_trade": 0.02,
+    "daily_loss_limit": 0.05,
+    "use_dynamic_sizing": true,
+    "correlation_limit": 0.7
+  },
+
+  "autopilot": {
+    "enabled": true,
+    "mode": "aggressive",
+    "capital_allocation": {
+      "grid_trading": 0.3,
+      "arbitrage": 0.2,
+      "momentum": 0.2,
+      "mean_reversion": 0.15,
+      "ml_strategy": 0.1,
+      "reserve": 0.05
+    },
+    "rebalance_interval": 3600,
+    "auto_optimize": true,
+    "performance_check_interval": 300,
+    "min_strategy_trades": 10,
+    "strategy_rotation_enabled": true,
+    "risk_adjustment_enabled": true,
+    "market_condition_check": true,
+    "emergency_stop_loss": 0.15,
+    "profit_taking": {
+      "enabled": true,
+      "daily_target": 0.02,
+      "weekly_target": 0.05,
+      "monthly_target": 0.15
+    }
+  },
+
+  "strategy_configs": {
+    "grid_trading": {
+      "enabled": true,
+      "weight": 0.3,
+      "price_range": {
+        "mode": "dynamic",
+        "lower_multiplier": 0.85,
+        "upper_multiplier": 1.15
+      },
+      "num_grids": 20,
+      "investment_per_grid": 100,
+      "stop_loss_multiplier": 0.95,
+      "take_profit_enabled": true,
+      "grid_spacing_mode": "geometric"
+    },
+
+    "arbitrage": {
+      "enabled": true,
+      "weight": 0.2,
+      "min_profit_threshold": 0.003,
+      "max_position_size": 1500,
+      "execution_timeout": 10,
+      "exchanges": ["binance", "kraken", "coinbase"],
+      "triangular_enabled": true,
+      "cross_exchange_enabled": true,
+      "latency_limit_ms": 100
+    },
+
+    "momentum": {
+      "enabled": true,
+      "weight": 0.2,
+      "lookback_period": 20,
+      "rsi_period": 14,
+      "rsi_overbought": 75,
+      "rsi_oversold": 25,
+      "volume_factor": 1.5,
+      "breakout_confirmation": 2,
+      "trend_strength_min": 0.6
+    },
+
+    "mean_reversion": {
+      "enabled": true,
+      "weight": 0.15,
+      "lookback_period": 30,
+      "bollinger_period": 20,
+      "bollinger_std": 2.0,
+      "rsi_period": 14,
+      "entry_threshold": 0.02,
+      "exit_threshold": 0.005,
+      "max_holding_period": 48
+    },
+
+    "ml_strategy": {
+      "enabled": true,
+      "weight": 0.1,
+      "model_update_interval": 86400,
+      "feature_lookback": 100,
+      "confidence_threshold": 0.65,
+      "ensemble_enabled": true,
+      "online_learning": true,
+      "model_validation_period": 30
+    }
+  },
+
+  "portfolio_management": {
+    "rebalance_threshold": 0.1,
+    "max_correlation": 0.8,
+    "diversification_penalty": 0.05,
+    "sector_limits": {
+      "defi": 0.4,
+      "layer1": 0.3,
+      "layer2": 0.2,
+      "other": 0.1
+    }
+  },
+
+  "market_analysis": {
+    "fear_greed_enabled": true,
+    "sentiment_weight": 0.2,
+    "technical_weight": 0.5,
+    "fundamental_weight": 0.3,
+    "market_regime_detection": true,
+    "correlation_monitoring": true
+  },
+
+  "monitoring": {
+    "performance_alerts": true,
+    "risk_alerts": true,
+    "system_health_check": true,
+    "alert_channels": ["email", "telegram"],
+    "report_interval": 3600,
+    "metrics_to_track": [
+      "total_pnl",
+      "win_rate",
+      "sharpe_ratio",
+      "max_drawdown",
+      "strategy_performance",
+      "correlation_matrix"
+    ]
+  },
+
+  "backtesting": {
+    "initial_capital": 10000,
+    "commission": 0.001,
+    "slippage": 0.0005,
+    "use_limit_orders": false,
+    "walk_forward_enabled": true,
+    "optimization_metric": "sharpe_ratio"
+  },
+
+  "data_sources": {
+    "primary": "binance",
+    "fallback": ["coingecko", "cryptocompare"],
+    "news_sources": ["cryptopanic", "coindesk"],
+    "social_sources": ["twitter", "reddit"]
+  },
+
+  "execution": {
+    "order_timeout": 30,
+    "retry_attempts": 3,
+    "partial_fill_timeout": 60,
+    "slippage_protection": 0.01,
+    "iceberg_orders": false,
+    "order_size_randomization": 0.1
+  },
+
+  "logging": {
+    "level": "INFO",
+    "performance_log": true,
+    "trade_log": true,
+    "error_log": true,
+    "strategy_log": true,
+    "file_rotation": "daily",
+    "max_file_size": "100MB",
+    "retention_days": 30
+  }
+}

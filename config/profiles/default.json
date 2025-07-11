@@ -60,6 +60,13 @@
     "training_interval": 86400
   },
 
+  "risk_management": {
+    "max_drawdown": 0.15,
+    "daily_loss_limit": 0.05,
+    "position_sizing": "kelly",
+    "risk_per_trade": 0.02
+  },
+
   "backtest": {
     "start_date": "2023-01-01",
     "end_date": "2023-12-31",
@@ -74,10 +81,4 @@
     "notify_trades": true,
     "notify_errors": true
   }
-}  ,
-  "risk_management": {
-    "max_drawdown": 0.15,
-    "daily_loss_limit": 0.05,
-    "position_sizing": "kelly",
-    "risk_per_trade": 0.02
-  }
+}
