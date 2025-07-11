@@ -5,9 +5,19 @@
 Hauptmodul für die Trading-Logik des Altcoin Trading Bots.
 Dieses Modul enthält die erweiterte TradingBot-Klasse und die
 zugehörigen Hilfsfunktionen für das Trading-System.
+
+Features:
+- Multi-Strategy Support (Momentum, Mean Reversion, ML, Grid Trading)
+- Grid Trading: Automatische Geldmaschine die bei jeder Preisbewegung verdient
+- Risk Management mit Stop-Loss, Take-Profit, Position Limits
+- Paper Trading und Live Trading Support
+- Backtesting Engine
+- Multi-Threading für Performance
 """
 
 import logging
+from strategies import STRATEGIES, get_strategy
+
 import time
 import threading
 from datetime import datetime, timedelta
@@ -19,12 +29,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import traceback
 
 from config.settings import Settings
-from core.exchange import ExchangeFactory
+from core.exchange import ExchangeManager
 from core.position import Position, PositionManager
 from strategies.strategy_base import Strategy
 from strategies.momentum import MomentumStrategy
 from strategies.mean_reversion import MeanReversionStrategy
 from strategies.ml_strategy import MLStrategy
+# from strategies.grid_trading import GridTradingStrategy as GridStrategy
 from utils.logger import setup_logger
 from data_sources import DataManager
 
@@ -35,6 +46,12 @@ class TradingBot:
 
     Diese Klasse koordiniert alle Trading-Aktivitäten und ist die
     zentrale Schnittstelle für die Ausführung des Bots.
+
+    Unterstützte Strategien:
+    - Momentum Trading
+    - Mean Reversion
+    - Machine Learning
+    - Grid Trading (Automatische Geldmaschine)
     """
 
     def __init__(self, mode: str = "paper", strategy_name: str = "default", settings: Optional[Settings] = None):
@@ -50,8 +67,8 @@ class TradingBot:
         self.settings = settings or Settings()
 
         # Logger einrichten
-        log_level = getattr(logging, self.settings.get('logging.level', 'INFO'))
-        self.logger = setup_logger(log_level)
+        log_level_str = self.settings.get('logging.level', 'INFO')
+        self.logger = setup_logger(name='trading_bot', level=log_level_str)
 
         # Trading-Parameter
         self.mode = mode
@@ -60,53 +77,56 @@ class TradingBot:
         self.check_interval = self.settings.get('timeframes.check_interval', 300)  # Sekunden
 
         # Exchange initialisieren
-        self.exchange = ExchangeFactory.create(self.settings, mode)
+        self.exchange = ExchangeManager(self.settings, mode)
 
         # Position Manager initialisieren
         self.position_manager = PositionManager()
 
         # Strategie initialisieren
-        self.strategy = self._initialize_strategy(strategy_name)
+        
+        # Initialize strategy with proper error handling
+                self.strategy = None
 
-        # Event Callbacks
-        self.on_trade_callbacks = []
-        self.on_error_callbacks = []
-        self.on_status_update_callbacks = []
+                # Ensure STRATEGIES registry is available
+                try:
+                    from strategies import STRATEGIES
+                except ImportError as e:
+                    logger.error(f"Failed to import STRATEGIES registry: {e}")
+                    raise RuntimeError("Cannot load strategies - check strategies/__init__.py")
 
-        # Performance-Tracking
-        self.start_time = None
-        self.start_balance = 0.0
+                # Load the requested strategy
+                strategy_name_lower = strategy_name.lower()
 
-        # Trading-Paare
-        self.trading_pairs = self.settings.get('trading_pairs', ["BTC/USDT"])
+                if strategy_name_lower in STRATEGIES:
+                    try:
+                        strategy_class = STRATEGIES[strategy_name_lower]
+                        strategy_params = self.config.get('strategy_params', {})
+                        self.strategy = strategy_class(strategy_params)
+                        logger.info(f"Successfully loaded strategy: {strategy_name} ({strategy_class.__name__})")
 
-        # Daten-Cache
-        self.data_cache = {}  # Speichert OHLCV-Daten für jedes Symbol
-        self.data_cache_lock = threading.Lock()  # Thread-Sicherheit für Cache-Zugriffe
+                    except Exception as e:
+                        logger.error(f"Failed to instantiate strategy {strategy_name}: {e}")
+                        logger.warning("Attempting to load fallback strategy...")
 
-        # DataManager für erweiterte Datenquellen initialisieren
-        self.data_manager = DataManager(self.settings)
+                        try:
+                            self._load_fallback_strategy()
+                        except Exception as fallback_error:
+                            logger.error(f"Failed to load fallback strategy: {fallback_error}")
+                            raise RuntimeError(f"Cannot load any strategy. Original error: {e}")
+                else:
+                    available_strategies = list(STRATEGIES.keys())
+                    logger.warning(f"Strategy '{strategy_name}' not found. Available: {available_strategies}")
+                    logger.info("Loading fallback strategy...")
 
-        # Trading-Threads und Status
-        self.trading_thread = None
-        self.monitor_thread = None
-        self.status_update_interval = self.settings.get('system.status_update_interval', 60)  # Sekunden
+                    try:
+                        self._load_fallback_strategy()
+                    except Exception as e:
+                        logger.error(f"Failed to load fallback strategy: {e}")
+                        raise RuntimeError(f"Strategy '{strategy_name}' not found and fallback failed")
 
-        # Thread-Pool für parallele Datenverarbeitung
-        self.max_workers = self.settings.get('system.max_workers', min(32, (os.cpu_count() or 4) + 4))
-
-        # Letzter Status für Benachrichtigungen
-        self.last_status = {}
-
-        # API Fehler-Tracking
-        self.api_error_count = 0
-        self.last_api_error_time = None
-        self.max_api_errors = self.settings.get('system.max_api_errors', 5)
-        self.api_error_window = self.settings.get('system.api_error_window', 300)  # Sekunden
-
-        # Initialen Status melden
-        self.logger.info(f"Trading bot initialized. Mode: {mode}, Strategy: {strategy_name}")
-        self.logger.info(f"Trading pairs: {', '.join(self.trading_pairs)}")
+                # Verify strategy was loaded
+                if self.strategy is None:
+                    raise RuntimeError("No strategy could be loaded")
 
     def _initialize_strategy(self, strategy_name: str) -> Strategy:
         """
@@ -125,6 +145,8 @@ class TradingBot:
             return MeanReversionStrategy(self.settings)
         elif strategy_name == "ml":
             return MLStrategy(self.settings)
+        elif strategy_name == "grid_trading":  # GRID TRADING SUPPORT
+            return GridStrategy(self.settings)
         else:
             self.logger.warning(f"Unknown strategy '{strategy_name}', using default")
             return MomentumStrategy(self.settings)
@@ -441,8 +463,14 @@ class TradingBot:
         """
         signal = signal_data.get('signal', 'HOLD')
         confidence = signal_data.get('confidence', 0.0)
+        strategy_type = signal_data.get('strategy', 'unknown')
 
-        # Risikomanagement-Parameter
+        # GRID-TRADING SPEZIFISCHE LOGIK
+        if strategy_type == 'grid_trading':
+            self._process_grid_signal(symbol, current_price, signal_data, current_position)
+            return
+
+        # Risikomanagement-Parameter für normale Strategien
         position_size = self.settings.get('risk.position_size', 0.05)
         stop_loss_pct = self.settings.get('risk.stop_loss', 0.03)
         take_profit_pct = self.settings.get('risk.take_profit', 0.06)
@@ -602,6 +630,128 @@ class TradingBot:
                     error_msg = f"Failed to place sell order for closed position {position.symbol}: {e}"
                     self.logger.error(error_msg)
                     self._notify_error("order_error", error_msg)
+
+    def _process_grid_signal(self, symbol: str, current_price: float, signal_data: Dict[str, Any],
+                             current_position: Optional[Position]) -> None:
+        """
+        Verarbeitet Grid-Trading spezifische Signale
+        """
+        signal = signal_data.get('signal', 'HOLD')
+        grid_action = signal_data.get('grid_action', '')
+
+        # 1. GRID BUY SIGNAL
+        if signal == 'BUY':
+            # Spezielle Grid-Positionsgröße verwenden
+            if 'target_amount' in signal_data:
+                trade_amount = signal_data['target_amount']
+            else:
+                # Fallback auf investment_per_grid
+                investment_per_grid = self.settings.get('grid_trading.investment_per_grid', 500)
+                trade_amount = investment_per_grid / current_price
+
+            # Maximale Grid-Investition prüfen
+            max_investment = self.settings.get('grid_trading.max_investment_per_symbol', 10000)
+            current_investment = sum(
+                pos.amount * pos.entry_price
+                for pos in self.position_manager.get_all_positions()
+                if pos.symbol == symbol
+            )
+
+            if current_investment + (trade_amount * current_price) > max_investment:
+                self.logger.warning(f"Grid investment limit reached for {symbol}")
+                return
+
+            try:
+                # Grid-Buy Order platzieren
+                order = self.exchange.place_order(
+                    symbol=symbol,
+                    order_type='market',
+                    side='buy',
+                    amount=trade_amount
+                )
+
+                # Position erstellen mit Grid-spezifischen Parametern
+                position = Position(
+                    symbol=symbol,
+                    entry_price=current_price,
+                    amount=trade_amount,
+                    side='buy',
+                    order_id=order.get('id'),
+                    entry_time=datetime.now()
+                )
+
+                # Grid-spezifische Stop-Loss und Take-Profit
+                if 'stop_loss_level' in signal_data:
+                    grid_stop_loss = abs(current_price - signal_data['stop_loss_level']) / current_price
+                    position.set_stop_loss(percentage=max(grid_stop_loss, 0.02))  # Mindestens 2%
+
+                if 'next_sell_level' in signal_data:
+                    grid_take_profit = abs(signal_data['next_sell_level'] - current_price) / current_price
+                    position.set_take_profit(percentage=min(grid_take_profit, 0.1))  # Maximal 10%
+
+                # Grid-spezifische Tags hinzufügen
+                if hasattr(position, 'tags'):
+                    position.tags = {
+                        'strategy': 'grid_trading',
+                        'grid_level': signal_data.get('current_grid', 0),
+                        'grid_action': grid_action
+                    }
+
+                # Position zum Manager hinzufügen
+                self.position_manager.add_position(position)
+
+                # Grid-Strategie über Trade informieren
+                if hasattr(self.strategy, 'on_trade_executed'):
+                    self.strategy.on_trade_executed(position, 'BUY')
+
+                self._notify_trade(position)
+
+                self.logger.info(
+                    f"Grid BUY executed for {symbol}: {trade_amount:.6f} @ ${current_price:,.2f} "
+                    f"(Grid: {signal_data.get('current_grid', 'unknown')})"
+                )
+
+            except Exception as e:
+                error_msg = f"Failed to place grid buy order for {symbol}: {e}"
+                self.logger.error(error_msg)
+                self._notify_error("grid_order_error", error_msg)
+
+        # 2. GRID SELL SIGNAL
+        elif signal == 'SELL' and current_position:
+            try:
+                # Grid-Sell Order platzieren
+                order = self.exchange.place_order(
+                    symbol=symbol,
+                    order_type='market',
+                    side='sell',
+                    amount=current_position.amount
+                )
+
+                # Position schließen
+                closed_position = self.position_manager.close_position(
+                    current_position.id,
+                    current_price,
+                    "grid_sell_signal"
+                )
+
+                if closed_position:
+                    # Grid-Strategie über Trade informieren
+                    if hasattr(self.strategy, 'on_trade_executed'):
+                        self.strategy.on_trade_executed(closed_position, 'SELL')
+
+                    self._notify_trade(closed_position)
+
+                    profit_pct = getattr(closed_position, 'profit_loss_percent', 0)
+                    self.logger.info(
+                        f"Grid SELL executed for {symbol} at ${current_price:,.2f}. "
+                        f"P/L: {profit_pct:.2f}% "
+                        f"(Grid: {signal_data.get('current_grid', 'unknown')})"
+                    )
+
+            except Exception as e:
+                error_msg = f"Failed to place grid sell order for {symbol}: {e}"
+                self.logger.error(error_msg)
+                self._notify_error("grid_order_error", error_msg)
 
     def run(self) -> None:
         """
@@ -832,10 +982,10 @@ class TradingBot:
                 'current_price': current_price,
                 'unrealized_pnl': unrealized_pnl,
                 'unrealized_pnl_pct': unrealized_pnl_pct,
-                'stop_loss': position.stop_loss,
-                'take_profit': position.take_profit,
-                'trailing_stop': position.trailing_stop,
-                'trailing_activation': position.trailing_activation
+                'stop_loss': getattr(position, 'stop_loss', None),
+                'take_profit': getattr(position, 'take_profit', None),
+                'trailing_stop': getattr(position, 'trailing_stop', None),
+                'trailing_activation': getattr(position, 'trailing_activation', None)
             })
 
         # Cache-Statistiken
@@ -844,7 +994,7 @@ class TradingBot:
             'total_candles': sum(len(df) for df in self.data_cache.values() if isinstance(df, pd.DataFrame))
         }
 
-        return {
+        status = {
             'mode': self.mode,
             'strategy': self.strategy_name,
             'running': self.running,
@@ -860,6 +1010,12 @@ class TradingBot:
             'cache_stats': cache_stats,
             'timestamp': datetime.now().isoformat()
         }
+
+        # GRID-SPEZIFISCHE STATUSINFOS HINZUFÜGEN
+        if hasattr(self.strategy, 'get_grid_status'):
+            status['grid_status'] = self.strategy.get_grid_status()
+
+        return status
 
     def save_state(self, filepath: str) -> bool:
         """
@@ -887,6 +1043,50 @@ class TradingBot:
         except Exception as e:
             self.logger.error(f"Failed to save bot state: {e}")
             return False
+
+    def generate_trading_report(self, days: int = 30, output_format: str = 'html') -> str:
+        """
+        Generiert einen Trading-Report.
+
+        Args:
+            days: Anzahl der Tage für den Report
+            output_format: Format des Reports ('html', 'pdf', 'csv')
+
+        Returns:
+            Pfad zur generierten Report-Datei
+        """
+        try:
+            from analysis.performance_tracker import PerformanceTracker
+
+            # Performance Tracker initialisieren
+            tracker = PerformanceTracker(self.settings)
+
+            # Report generieren
+            report_path = tracker.generate_report(
+                start_date=datetime.now() - timedelta(days=days),
+                end_date=datetime.now(),
+                output_format=output_format
+            )
+
+            return report_path
+        except ImportError:
+            self.logger.warning("Performance tracker not available, generating basic report")
+            # Basis-Report als Fallback
+            report_dir = os.path.join('data', 'reports')
+            os.makedirs(report_dir, exist_ok=True)
+
+            report_file = os.path.join(
+                report_dir,
+                f"trading_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            )
+
+            with open(report_file, 'w') as f:
+                status = self.get_status()
+                f.write("TRADING REPORT\n")
+                f.write("=" * 50 + "\n")
+                f.write(json.dumps(status, indent=2, default=str))
+
+            return report_file
 
     def run_backtest(self) -> Dict[str, Any]:
         """
@@ -939,14 +1139,14 @@ class TradingBot:
 
             # Ergebnisse visualisieren, falls konfiguriert
             if self.settings.get('backtest.create_plots', True):
-                output_dir = os.path.join("../data/data/backtest_results", self.settings.get('backtest.output_dir', 'latest'))
+                output_dir = os.path.join("data/backtest_results", self.settings.get('backtest.output_dir', 'latest'))
                 self.logger.info(f"Erstelle Visualisierungen in: {output_dir}")
                 plot_files = backtester.plot_results(output_dir=output_dir)
                 results['plot_files'] = plot_files
 
             # Ergebnisse exportieren, falls konfiguriert
             if self.settings.get('backtest.export_results', True):
-                output_dir = os.path.join("../data/data/backtest_results", self.settings.get('backtest.output_dir', 'latest'))
+                output_dir = os.path.join("data/backtest_results", self.settings.get('backtest.output_dir', 'latest'))
                 export_format = self.settings.get('backtest.export_format', 'excel')
                 self.logger.info(f"Exportiere Ergebnisse nach: {output_dir} (Format: {export_format})")
                 export_files = backtester.export_results(output_dir=output_dir, format=export_format)

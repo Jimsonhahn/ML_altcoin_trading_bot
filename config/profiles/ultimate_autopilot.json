@@ -1,0 +1,30 @@
+{
+  "name": "ultimate_autopilot",
+  "description": "Ultimate 6-Strategy AutoPilot - Maximum Profit",
+  "trading_pairs": ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT"],
+  "timeframe": "5m",
+  "initial_capital": 10000,
+  "strategy_params": {
+    "momentum_params": {"rsi_oversold": 25, "rsi_overbought": 75},
+    "mr_params": {"bb_period": 20, "bb_std": 2},
+    "ml_params": {"features": ["rsi", "macd", "volume"]},
+    "grid_params": {"grid_levels": 20, "grid_spacing": 0.01},
+    "arb_params": {"min_spread": 0.002},
+    "defi_params": {"min_apy": 0.15}
+  },
+  "risk_management": {
+    "max_positions": 10,
+    "position_sizing": "dynamic",
+    "stop_loss_enabled": true,
+    "stop_loss_percentage": 0.03,
+    "take_profit_enabled": true,
+    "take_profit_percentage": 0.05,
+    "trailing_stop": true,
+    "trailing_stop_percentage": 0.02
+  },
+  "execution": {
+    "order_type": "limit",
+    "slippage_tolerance": 0.002,
+    "min_order_size": 10
+  }
+}
