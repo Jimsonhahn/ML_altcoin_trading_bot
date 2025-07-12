@@ -1,0 +1,806 @@
+{
+  "import_graph": {},
+  "missing_imports": [
+    {
+      "file": "core/trading_bot.py",
+      "import": "from analysis.performance_tracker import PerformanceTracker",
+      "type": "from_import",
+      "module": "analysis.performance_tracker",
+      "names": [
+        "PerformanceTracker"
+      ]
+    }
+  ],
+  "circular_imports": [],
+  "undefined_references": [
+    {
+      "file": "Analysis/performance_tracker.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "Analysis/performance_tracker.py",
+      "reference": "abs",
+      "type": "function_or_class"
+    },
+    {
+      "file": "Analysis/performance_tracker.py",
+      "reference": "isinstance",
+      "type": "function_or_class"
+    },
+    {
+      "file": "Analysis/performance_tracker.py",
+      "reference": "max",
+      "type": "function_or_class"
+    },
+    {
+      "file": "Analysis/performance_tracker.py",
+      "reference": "sum",
+      "type": "function_or_class"
+    },
+    {
+      "file": "Analysis/performance_tracker.py",
+      "reference": "ValueError",
+      "type": "function_or_class"
+    },
+    {
+      "file": "analyze_connections.py",
+      "reference": "isinstance",
+      "type": "function_or_class"
+    },
+    {
+      "file": "analyze_connections.py",
+      "reference": "any",
+      "type": "function_or_class"
+    },
+    {
+      "file": "analyze_connections.py",
+      "reference": "sorted",
+      "type": "function_or_class"
+    },
+    {
+      "file": "config/settings.py",
+      "reference": "isinstance",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/backtest_engine.py",
+      "reference": "strategy_class",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/backtest_engine.py",
+      "reference": "abs",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/backtest_engine.py",
+      "reference": "max",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/backtest_engine.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/backtest_engine.py",
+      "reference": "sorted",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/data_collector.py",
+      "reference": "hasattr",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/data_collector.py",
+      "reference": "callback",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/data_collector.py",
+      "reference": "sum",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/enhanced_backtesting.py",
+      "reference": "abs",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/enhanced_backtesting.py",
+      "reference": "max",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/enhanced_backtesting.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/enhanced_backtesting.py",
+      "reference": "isinstance",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/enhanced_backtesting.py",
+      "reference": "sum",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/exchange.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/exchange.py",
+      "reference": "getattr",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/exchange.py",
+      "reference": "Exception",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/exchange.py",
+      "reference": "max",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/exchange.py",
+      "reference": "hasattr",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/exchange.py",
+      "reference": "sum",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/exchange.py",
+      "reference": "exchange_class",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/ml_enhanced_backtesting.py",
+      "reference": "abs",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/ml_enhanced_backtesting.py",
+      "reference": "hasattr",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/ml_enhanced_backtesting.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/ml_enhanced_backtesting.py",
+      "reference": "getattr",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/ml_enhanced_backtesting.py",
+      "reference": "isinstance",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/ml_enhanced_backtesting.py",
+      "reference": "super",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/ml_enhanced_backtesting.py",
+      "reference": "next",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/order_manager.py",
+      "reference": "abs",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/order_manager.py",
+      "reference": "isinstance",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/performance.py",
+      "reference": "func",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/position.py",
+      "reference": "cls",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/position.py",
+      "reference": "sum",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/risk.py",
+      "reference": "abs",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/risk.py",
+      "reference": "all",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/risk_manager.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/risk_manager.py",
+      "reference": "abs",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/risk_manager.py",
+      "reference": "round",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/risk_manager.py",
+      "reference": "max",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/risk_manager.py",
+      "reference": "sum",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/trading_bot.py",
+      "reference": "strategy_class",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/trading_bot.py",
+      "reference": "abs",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/trading_bot.py",
+      "reference": "callable",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/trading_bot.py",
+      "reference": "max",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/trading_bot.py",
+      "reference": "hasattr",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/trading_bot.py",
+      "reference": "ValueError",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/trading_bot.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/trading_bot.py",
+      "reference": "callback",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/trading_bot.py",
+      "reference": "getattr",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/trading_bot.py",
+      "reference": "isinstance",
+      "type": "function_or_class"
+    },
+    {
+      "file": "core/trading_bot.py",
+      "reference": "sum",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/base.py",
+      "reference": "NotImplementedError",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/binance_source.py",
+      "reference": "super",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/binance_source.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/binance_source.py",
+      "reference": "isinstance",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/binance_source.py",
+      "reference": "max",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/binance_source.py",
+      "reference": "hash",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/coingecko_source.py",
+      "reference": "super",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/coingecko_source.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/coingecko_source.py",
+      "reference": "max",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/coingecko_source.py",
+      "reference": "hash",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/data_manager.py",
+      "reference": "ValueError",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/data_sources/binance_source.py",
+      "reference": "super",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/data_sources/binance_source.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/data_sources/binance_source.py",
+      "reference": "max",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/data_sources/binance_source.py",
+      "reference": "hash",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/data_sources/data_manager.py",
+      "reference": "isinstance",
+      "type": "function_or_class"
+    },
+    {
+      "file": "data_sources/data_sources/data_manager.py",
+      "reference": "ValueError",
+      "type": "function_or_class"
+    },
+    {
+      "file": "main.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "main.py",
+      "reference": "abs",
+      "type": "function_or_class"
+    },
+    {
+      "file": "main.py",
+      "reference": "max",
+      "type": "function_or_class"
+    },
+    {
+      "file": "main.py",
+      "reference": "sum",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/asset_clusters.py",
+      "reference": "abs",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/asset_clusters.py",
+      "reference": "all",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/asset_clusters.py",
+      "reference": "max",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/asset_clusters.py",
+      "reference": "hasattr",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/asset_clusters.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/asset_clusters.py",
+      "reference": "sum",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/asset_clusters.py",
+      "reference": "sorted",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/feature_extraction.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/feature_extraction.py",
+      "reference": "abs",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/feature_extraction.py",
+      "reference": "all",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/feature_extraction.py",
+      "reference": "max",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/market_regime.py",
+      "reference": "abs",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/market_regime.py",
+      "reference": "all",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/market_regime.py",
+      "reference": "max",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/market_regime.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/market_regime.py",
+      "reference": "getattr",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/market_regime.py",
+      "reference": "isinstance",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/market_regime.py",
+      "reference": "sum",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/market_regime.py",
+      "reference": "next",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/market_regime.py",
+      "reference": "type",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/model_monitor.py",
+      "reference": "abs",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/model_monitor.py",
+      "reference": "isinstance",
+      "type": "function_or_class"
+    },
+    {
+      "file": "ml_components/model_monitor.py",
+      "reference": "sum",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/autopilot.py",
+      "reference": "super",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/autopilot.py",
+      "reference": "strategy_class",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/autopilot.py",
+      "reference": "getattr",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/autopilot.py",
+      "reference": "__import__",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/autopilot.py",
+      "reference": "isinstance",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/autopilot.py",
+      "reference": "max",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/autopilot.py",
+      "reference": "hasattr",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/autopilot.py",
+      "reference": "sum",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/defi_yield.py",
+      "reference": "super",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/defi_yield.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/grid_trading.py",
+      "reference": "super",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/mean_reversion.py",
+      "reference": "super",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/ml_strategy.py",
+      "reference": "super",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/ml_strategy.py",
+      "reference": "min",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/ml_strategy.py",
+      "reference": "abs",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/ml_strategy.py",
+      "reference": "max",
+      "type": "function_or_class"
+    },
+    {
+      "file": "strategies/momentum.py",
+      "reference": "super",
+      "type": "function_or_class"
+    },
+    {
+      "file": "utils/logger.py",
+      "reference": "super",
+      "type": "function_or_class"
+    },
+    {
+      "file": "utils/logger.py",
+      "reference": "type",
+      "type": "function_or_class"
+    },
+    {
+      "file": "utils/logger.py",
+      "reference": "getattr",
+      "type": "function_or_class"
+    }
+  ],
+  "unused_files": [
+    "Analysis/performance_tracker.py",
+    "config/settings.py",
+    "core/backtest_engine.py",
+    "core/data_collector.py",
+    "core/ml_enhanced_backtesting.py",
+    "core/order_manager.py",
+    "core/performance/engine.py",
+    "core/performance.py",
+    "core/risk.py",
+    "core/risk_manager.py",
+    "data/init.py",
+    "data_sources/base.py",
+    "data_sources/binance_source.py",
+    "data_sources/coingecko_source.py",
+    "data_sources/data_manager.py",
+    "data_sources/data_sources/binance_source.py",
+    "data_sources/data_sources/data_manager.py",
+    "ml_components/feature_extraction.py",
+    "strategies/arbitrage.py",
+    "strategies/autopilot.py",
+    "strategies/copy_trading.py",
+    "strategies/defi_yield.py",
+    "strategies/grid_trading.py",
+    "strategies/liquidation.py",
+    "utils/logger.py"
+  ],
+  "config_usage": {
+    "self.settings": [
+      "data_sources/data_manager.py",
+      "core/enhanced_backtesting.py",
+      "core/backtest_engine.py",
+      "core/trading_bot.py",
+      "data_sources/base.py",
+      "core/data_collector.py",
+      "data_sources/binance_source.py",
+      "core/ml_enhanced_backtesting.py",
+      "data_sources/data_sources/data_manager.py",
+      "data_sources/coingecko_source.py",
+      "data_sources/data_sources/binance_source.py",
+      "ml_components/__init__.py",
+      "core/risk_manager.py",
+      "core/order_manager.py",
+      "Analysis/performance_tracker.py"
+    ],
+    "self._analyze_config_usage": [
+      "analyze_connections.py"
+    ],
+    "self.config": [
+      "core/performance/engine.py",
+      "core/risk.py",
+      "config/settings.py",
+      "core/performance.py",
+      "strategies/autopilot.py"
+    ],
+    "self.DEFAULT_CONFIG.copy": [
+      "config/settings.py"
+    ],
+    "settings.config": [
+      "config/settings.py"
+    ],
+    "settings.load_profile": [
+      "main.py",
+      "config/settings.py"
+    ],
+    "settings.profiles_dir": [
+      "config/settings.py"
+    ],
+    "self.DEFAULT_CONFIG": [
+      "config/settings.py"
+    ],
+    "self.settings.get": [
+      "core/enhanced_backtesting.py",
+      "core/backtest_engine.py",
+      "core/trading_bot.py",
+      "data_sources/binance_source.py",
+      "core/ml_enhanced_backtesting.py",
+      "data_sources/coingecko_source.py",
+      "data_sources/data_sources/binance_source.py",
+      "ml_components/__init__.py",
+      "core/order_manager.py"
+    ],
+    "settings.get": [
+      "data_sources/data_manager.py",
+      "core/enhanced_backtesting.py",
+      "core/backtest_engine.py",
+      "main.py",
+      "data_sources/data_sources/data_manager.py",
+      "core/data_collector.py",
+      "core/ml_enhanced_backtesting.py",
+      "core/risk_manager.py",
+      "core/order_manager.py"
+    ],
+    "self.backtest_config": [
+      "core/backtest_engine.py"
+    ],
+    "self.settings.copy": [
+      "core/backtest_engine.py"
+    ],
+    "test_settings.set": [
+      "core/backtest_engine.py"
+    ],
+    "self.backtest_config.get": [
+      "core/backtest_engine.py"
+    ],
+    "self.data_config.get": [
+      "core/data_collector.py"
+    ],
+    "self.data_config": [
+      "core/data_collector.py"
+    ],
+    "settings.set": [
+      "main.py",
+      "core/ml_enhanced_backtesting.py",
+      "core/enhanced_backtesting.py"
+    ],
+    "logging.basicConfig": [
+      "core/ml_enhanced_backtesting.py",
+      "core/enhanced_backtesting.py",
+      "utils/logger.py"
+    ],
+    "os.getenv": [
+      "core/exchange.py"
+    ],
+    "self.execution_config": [
+      "core/order_manager.py"
+    ],
+    "self.execution_config.get": [
+      "core/order_manager.py"
+    ],
+    "self.risk_config.get": [
+      "core/risk_manager.py"
+    ],
+    "self.risk_config": [
+      "core/risk_manager.py"
+    ],
+    "args.validate_config": [
+      "main.py"
+    ],
+    "args.config": [
+      "main.py"
+    ],
+    "config.config": [
+      "strategies/autopilot.py"
+    ],
+    "config_dict.get": [
+      "strategies/autopilot.py"
+    ],
+    "self.defi_config": [
+      "strategies/autopilot.py"
+    ],
+    "config.get": [
+      "strategies/defi_yield.py",
+      "strategies/ml_strategy.py",
+      "utils/logger.py",
+      "strategies/mean_reversion.py"
+    ]
+  },
+  "class_inheritance": {},
+  "function_calls": {},
+  "critical_files": [
+    "main.py",
+    "data_sources/base.py",
+    "core/trading_bot.py",
+    "strategies/strategy_base.py",
+    "config/settings.py",
+    "core/exchange.py"
+  ],
+  "problem_summary": {}
+}
