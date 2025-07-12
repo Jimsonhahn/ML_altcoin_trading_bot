@@ -441,52 +441,55 @@ class TradingBot:
 
         return results
 
-    def _check_pair(self, symbol: str) -> None:
-        """
-        Überprüft ein Trading-Paar auf Handelssignale.
-
-        Args:
-            symbol: Handelssymbol
-        """
+    def _check_pair(self, symbol: str):
+        """Check single trading pair for signals"""
         try:
-            # Daten aktualisieren
-            df = self._update_data_cache(symbol)
-
-            if df.empty:
-                self.logger.warning(f"No data available for {symbol}, skipping")
-                return
-
-            # Aktuelle Position für dieses Symbol abrufen
-            current_position = self.position_manager.get_position_by_symbol(symbol)
-
-            # Aktuellen Preis abrufen
-            current_price = df.iloc[-1]['close']
-
-            # Strategie anwenden, um Signal zu generieren
-            signal, confidence = self.strategy.calculate_signal(symbol, df, current_price)
-
-            # Signal-Daten aufbereiten
-            signal_data = {
-                'signal': signal.value,
-                'confidence': confidence,
-                'symbol': symbol,
-                'current_price': current_price,
-                'strategy': self.strategy_name
-            }
-
-            # Signal loggen
-            self.logger.info(
-                f"{symbol} @ {current_price}: Signal={signal.value}, "
-                f"Confidence={confidence:.2f}, Position={'OPEN' if current_position else 'NONE'}"
+            # Get market data
+            df = self.data_manager.get_data(
+                symbol=symbol,
+                timeframe=self.timeframe,
+                limit=100
             )
 
-            # Signal verarbeiten
-            self._process_signal(symbol, current_price, signal_data, current_position)
+            if df is None or df.empty:
+                logger.warning(f"No data available for {symbol}")
+                return
+
+            # Get current price
+            current_price = float(df['close'].iloc[-1])
+
+            # Get trading signal
+            signal, confidence = self.strategy.calculate_signal(symbol, df, current_price)
+
+            # Handle both Signal enum and string
+            if hasattr(signal, 'value'):
+                signal_str = signal.value
+            else:
+                signal_str = str(signal)
+
+            # Log signal
+            if signal_str != 'HOLD' or confidence > 0.7:
+                logger.info(f"{symbol}: {signal_str} (confidence: {confidence:.2f})")
+
+            # Check if we should execute
+            if signal_str in ['BUY', 'SELL'] and confidence >= self.min_confidence:
+                # Prepare trade data
+                trade_data = {
+                    'symbol': symbol,
+                    'signal': signal_str,  # Use the string version
+                    'confidence': confidence,
+                    'price': current_price,
+                    'timestamp': datetime.now()
+                }
+
+                # Execute trade
+                self._execute_trade(trade_data)
 
         except Exception as e:
-            error_msg = f"Error checking {symbol}: {str(e)}\n{traceback.format_exc()}"
-            self.logger.error(error_msg)
-            self._notify_error("signal_error", error_msg)
+            self.logger.error(f"Error checking {symbol}: {e}")
+            if self.debug:
+                import traceback
+                traceback.print_exc()
 
     def _process_signal(self, symbol: str, current_price: float, signal_data: Dict[str, Any],
                         current_position: Optional[Position]) -> None:

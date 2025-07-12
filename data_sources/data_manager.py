@@ -141,6 +141,58 @@ class DataManager:
 
         return df
 
+    def get_data(self, symbol: str, timeframe: str = '1h', limit: int = 100) -> pd.DataFrame:
+        """
+        Wrapper-Methode für Kompatibilität mit trading_bot.py
+
+        Args:
+            symbol: Trading-Symbol (z.B. "BTC/USDT")
+            timeframe: Zeitrahmen (z.B. "1h", "1d")
+            limit: Anzahl der Kerzen
+
+        Returns:
+            DataFrame mit OHLCV-Daten
+        """
+        # Berechne Start- und Enddatum basierend auf limit
+        from datetime import timedelta
+
+        end_date = datetime.now()
+
+        # Zeitrahmen zu timedelta konvertieren
+        timeframe_mapping = {
+            '1m': timedelta(minutes=1),
+            '5m': timedelta(minutes=5),
+            '15m': timedelta(minutes=15),
+            '30m': timedelta(minutes=30),
+            '1h': timedelta(hours=1),
+            '4h': timedelta(hours=4),
+            '1d': timedelta(days=1),
+            '1w': timedelta(weeks=1)
+        }
+
+        delta = timeframe_mapping.get(timeframe, timedelta(hours=1))
+        start_date = end_date - (delta * limit)
+
+        # Hole historische Daten
+        df = self.get_historical_data(
+            symbol=symbol,
+            timeframe=timeframe,
+            start_date=start_date,
+            end_date=end_date,
+            use_cache=True
+        )
+
+        # Limitiere auf die gewünschte Anzahl
+        if len(df) > limit:
+            df = df.iloc[-limit:]
+
+        return df
+
+    def get_latest_data(self, symbol: str, timeframe: str = '1h', limit: int = 100) -> pd.DataFrame:
+        """
+        Alias für get_data() - für Kompatibilität
+        """
+        return self.get_data(symbol, timeframe, limit)
     def get_symbols(self, source: str = None) -> List[str]:
         """
         Gibt eine Liste aller verfügbaren Symbole zurück.
