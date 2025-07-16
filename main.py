@@ -1,27 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""
-Altcoin Trading Bot - Ultimate Edition
-=====================================
-Der komplette "Lazy Millionaire Stack" mit intelligenter Multi-Strategy-Unterstützung
-
-Verfügbare Geldmaschinen:
-- Grid Trading: Verdient bei JEDER Preisbewegung (20-100% ROI/Jahr)
-- Arbitrage Bot: Risikofreie Gewinne durch Preisunterschiede (5-20% ROI/Monat)
-- AutoPilot Stack: Grid + Arbitrage + mehr parallel (50-200% ROI/Jahr)
-- Momentum Trading: Reitet die Trends
-- Mean Reversion: Nutzt Korrekturen
-- ML Strategy: KI-basierte Entscheidungen
-
-Intelligente Features:
-- Auto-Strategy-Selection basierend auf Marktbedingungen
-- Dynamische Parameter-Optimierung
-- Multi-Strategy Orchestration
-- Real-time Performance Monitoring
-- Adaptive Risk Management
-"""
-
 import argparse
 import logging
 import os
@@ -29,9 +5,9 @@ import sys
 import time
 from datetime import datetime
 import json
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Type  # Added Type import
 
-# Füge das Projektverzeichnis zum Pythonpfad hinzu
+# Add the project directory to the Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from config.settings import Settings
@@ -39,638 +15,469 @@ from core.trading_bot import TradingBot
 from utils.logger import setup_logger
 from strategies import STRATEGIES
 
+# New imports
+from ml_components import initialize_ml, get_ml_components
+from core.strategy_router import StrategyRouter
+from core.safety_manager import SafetyManager
+from data_sources.data_manager import DataManager
+
 
 def parse_arguments():
-    """Parse command line arguments with intelligent defaults"""
+    """Parses command line arguments for the trading bot."""
     parser = argparse.ArgumentParser(
-        description='🤖 Ultimate Altcoin Trading Bot - Lazy Millionaire Stack',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-🚀 STRATEGY EXAMPLES:
-
-  💰 GRID TRADING (Automatische Geldmaschine):
-  python main.py --strategy=grid_trading --symbol=BTC/USDT --grid-lower=35000 --grid-upper=50000
-
-  🔍 ARBITRAGE BOT (Risikofreie Gewinne):  
-  python main.py --strategy=arbitrage --config=arbitrage
-
-  🤖 AUTOPILOT STACK (Grid + Arbitrage parallel):
-  python main.py --strategy=autopilot --config=autopilot
-
-  📊 INTELLIGENT AUTO-SELECTION:
-  python main.py --auto-strategy --symbol=BTC/USDT
-
-  🧪 BACKTESTING & OPTIMIZATION:
-  python main.py --mode=backtest --strategy=autopilot --optimize
-
-📈 ROI EXPECTATIONS:
-  Grid Trading: 20-100%% per year
-  Arbitrage: 5-20%% per month  
-  AutoPilot: 50-200%% per year (combined)
-        """
+        description="Ultimate Crypto Trading Bot",
+        formatter_class=argparse.RawTextHelpFormatter
     )
 
-    # Core Arguments
-    parser.add_argument('--mode', type=str, default='paper',
-                        choices=['live', 'paper', 'backtest', 'autopilot', 'ultimate_autopilot'],
-                        help='Trading mode: live, paper, or backtest')
+    parser.add_argument(
+        'mode',
+        type=str,
+        choices=['live', 'paper', 'backtest', 'optimize'],
+        help="Bot mode: 'live' (real trading), 'paper' (simulated trading), "
+             "'backtest' (historical data simulation), 'optimize' (parameter optimization)."
+    )
+    parser.add_argument(
+        'strategy',
+        type=str,
+        default='default',
+        choices=list(STRATEGIES.keys()) + ['default', 'autopilot'],
+        help="Trading strategy to use. Choose from: " + ', '.join(STRATEGIES.keys()) +
+             ", 'default' (Momentum), 'autopilot' (Grid + Arbitrage + Rebalancing)."
+    )
+    parser.add_argument(
+        '--config',
+        type=str,
+        default='default',
+        help="Configuration profile name (e.g., 'aggressive', 'conservative', 'default'). "
+             "Looks for <name>.json in config/profiles."
+    )
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help="Only load and validate configuration, then exit. No bot execution."
+    )
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help="Enable debug logging for more verbose output."
+    )
+    parser.add_argument(
+        '--status-only',
+        action='store_true',
+        help="Only print current bot status (if running). No trading operations."
+    )
 
-    # Dynamische Strategy-Choices aus STRATEGIES
-    parser.add_argument('--strategy', type=str, default='momentum',
-                        choices=list(STRATEGIES.keys()),
-                        help=f'Trading strategy: {", ".join(STRATEGIES.keys())}')
-
-    parser.add_argument('--config', type=str, default='default',
-                        help='Configuration profile to use')
-
-    parser.add_argument('--symbol', type=str,
-                        help='Single trading pair (e.g., BTC/USDT, ETH/USDT)')
-
-    parser.add_argument('--debug', action='store_true',
-                        help='Enable debug logging')
-
-    # Intelligent Auto-Features
-    auto_group = parser.add_argument_group('🤖 Intelligent Auto-Features')
-    auto_group.add_argument('--auto-strategy', action='store_true',
-                            help='Auto-select best strategy based on market conditions')
-
-    auto_group.add_argument('--auto-optimize', action='store_true',
-                            help='Auto-optimize parameters for maximum profit')
-
-    auto_group.add_argument('--auto-risk', action='store_true',
-                            help='Auto-adjust risk based on volatility')
-
-    # Grid Trading Parameters
-    grid_group = parser.add_argument_group('📊 Grid Trading Options')
-    grid_group.add_argument('--grid-lower', type=float,
-                            help='Lower price bound (e.g., 35000)')
-    grid_group.add_argument('--grid-upper', type=float,
-                            help='Upper price bound (e.g., 50000)')
-    grid_group.add_argument('--grid-count', type=int,
-                            help='Number of grids (e.g., 15)')
-    grid_group.add_argument('--grid-investment', type=float,
-                            help='Investment per grid in USDT (e.g., 300)')
-
-    # Arbitrage Parameters
-    arb_group = parser.add_argument_group('🔍 Arbitrage Options')
-    arb_group.add_argument('--arb-min-profit', type=float,
-                           help='Minimum profit threshold %% (e.g., 0.5)')
-    arb_group.add_argument('--arb-max-position', type=float,
-                           help='Maximum position size USDT (e.g., 1000)')
-
-    # AutoPilot Parameters
-    autopilot_group = parser.add_argument_group('🤖 AutoPilot Options')
-    autopilot_group.add_argument('--autopilot-allocation', type=str,
-                                 help='Capital allocation: grid:arb:other (e.g., 50:30:20)')
-    autopilot_group.add_argument('--autopilot-rebalance', type=int,
-                                 help='Rebalance interval in seconds (e.g., 3600)')
-
-    # Advanced Options
-    advanced_group = parser.add_argument_group('⚡ Advanced Options')
-    advanced_group.add_argument('--dry-run', action='store_true',
-                                help='Show configuration without executing')
-    advanced_group.add_argument('--status-only', action='store_true',
-                                help='Show current bot status and exit')
-    advanced_group.add_argument('--validate-config', action='store_true',
-                                help='Validate configuration and exit')
-    advanced_group.add_argument('--optimize', action='store_true',
-                                help='Run parameter optimization')
-    advanced_group.add_argument('--paper-balance', type=float, default=10000,
-                                help='Paper trading starting balance')
+    auto_group = parser.add_mutually_exclusive_group(required=False)
+    auto_group.add_argument(
+        '--auto-strategy',
+        action='store_true',
+        help="Automatically select the optimal strategy based on market regime detection."
+    )
+    auto_group.add_argument(
+        '--validate-config',
+        action='store_true',
+        help="Validate the loaded configuration and exit."
+    )
+    parser.add_argument(
+        '--optimize',
+        action='store_true',
+        help="Run strategy parameter optimization before starting the bot (or as a standalone task)."
+    )
 
     return parser.parse_args()
 
 
-def print_ultimate_banner():
-    """Print the ultimate startup banner"""
-    print("\n" + "=" * 100)
-    print("🤖 ULTIMATE ALTCOIN TRADING BOT - LAZY MILLIONAIRE STACK")
-    print("=" * 100)
-    print("💰 Grid Trading: Automatische Geldmaschine (20-100% ROI/Jahr)")
-    print("🔍 Arbitrage Bot: Risikofreie Gewinne (5-20% ROI/Monat)")
-    print("🤖 AutoPilot Stack: Multi-Strategy Orchestrator (50-200% ROI/Jahr)")
-    print("📈 Momentum: Reitet die Trends | 🔄 Mean Reversion: Nutzt Korrekturen")
-    print("🧠 ML Strategy: KI-basierte Entscheidungen")
-    print("=" * 100)
-
-
-def auto_select_strategy(symbol: str = None) -> str:
+def auto_select_strategy(settings: Settings, data_manager: DataManager) -> str:
     """
     Intelligente Auto-Strategie-Auswahl basierend auf Marktbedingungen
+    Uses MarketRegimeDetector to determine the optimal strategy.
     """
-    print("\n🤖 Analyzing market conditions for optimal strategy selection...")
+    logger = logging.getLogger('trading_bot')
+    logger.info("🤖 Analyzing market conditions for optimal strategy selection...")
 
     try:
-        # Simuliere Marktanalyse (in echter Implementation: API-Calls)
-        import random
+        ml_components = get_ml_components()
+        if ml_components is None:
+            ml_components = initialize_ml(settings=settings)
 
-        # Mock market analysis
-        volatility = random.uniform(0.01, 0.08)  # 1-8% daily volatility
-        trend_strength = random.uniform(-0.5, 0.5)
-        volume_ratio = random.uniform(0.5, 2.0)
+        update_status = ml_components.update_all_components(data_manager=data_manager)
 
-        print(f"📊 Market Analysis:")
-        print(f"  📈 Volatility: {volatility * 100:.1f}% (daily)")
-        print(f"  🎯 Trend Strength: {trend_strength:.2f}")
-        print(f"  📊 Volume Ratio: {volume_ratio:.1f}x")
+        if update_status.get("regime_updated") and "current_regime" in update_status:
+            market_regime_info = ml_components.get_current_regime_info()
 
-        # Intelligente Strategy-Auswahl
-        if volatility > 0.05:  # Hohe Volatilität
-            if abs(trend_strength) < 0.2:  # Seitwärtsbewegung
-                selected = "grid_trading"
-                reason = "High volatility + sideways movement = perfect for Grid Trading"
-            else:
-                selected = "autopilot"
-                reason = "High volatility + trend = AutoPilot combines Grid + Arbitrage"
-        elif volatility > 0.03:  # Mittlere Volatilität
-            selected = "autopilot"
-            reason = "Medium volatility = AutoPilot Stack optimal"
-        else:  # Niedrige Volatilität
-            if abs(trend_strength) > 0.3:
-                selected = "momentum"
-                reason = "Low volatility + strong trend = Momentum strategy"
-            else:
-                selected = "arbitrage"
-                reason = "Low volatility + weak trend = Arbitrage opportunities"
+            strategy_router = StrategyRouter(settings)
+            selected_strategy = strategy_router.route_strategy(
+                market_regime_info, {}
+            )
 
-        print(f"\n🎯 AUTO-SELECTED STRATEGY: {selected.upper()}")
-        print(f"💡 Reason: {reason}")
+            logger.info(f"\n🎯 AUTO-SELECTED STRATEGY: {selected_strategy.upper()}")
+            logger.info(f"💡 Reason: Market is in {market_regime_info.get('label')} regime.")
 
-        return selected
+            return selected_strategy
+        else:
+            logger.warning("Market regime detection failed or not available. Falling back to default strategy.")
+            return settings.get('strategy_router.default_strategy', 'autopilot')
 
     except Exception as e:
-        print(f"⚠️  Auto-selection failed: {e}")
-        print("🔄 Falling back to AutoPilot strategy")
-        return "autopilot"
+        logger.error(f"⚠️  Auto-selection failed: {e}")
+        logger.info("🔄 Falling back to AutoPilot strategy")
+        return settings.get('strategy_router.default_strategy', 'autopilot')
 
 
-def apply_intelligent_overrides(settings: Settings, args) -> None:
-    """Apply intelligent CLI overrides with auto-optimization"""
+def apply_intelligent_overrides(settings: Settings, args: argparse.Namespace) -> None:
+    """Applies configuration overrides based on CLI arguments."""
+    if args.dry_run:
+        settings.set('mode', 'dry_run')
 
-    # Symbol override
-    if args.symbol:
-        settings.set('trading_pairs', [args.symbol])
-        print(f"🎯 Focusing on: {args.symbol}")
+    if args.debug:
+        settings.set('logging.level', 'DEBUG')
 
-    # Auto-Risk Management
-    if args.auto_risk:
-        print("🛡️  Auto-Risk Management enabled")
-        settings.set('risk.dynamic_position_sizing', True)
-        settings.set('risk.max_daily_loss', 0.03)  # Conservative 3%
-
-    # Strategy-specific intelligent overrides
-    strategy = args.strategy
-
-    if strategy == 'grid_trading':
-        apply_grid_overrides(settings, args)
-    elif strategy == 'arbitrage':
-        apply_arbitrage_overrides(settings, args)
-    elif strategy == 'autopilot':
-        apply_autopilot_overrides(settings, args)
-
-    # Auto-Optimization
-    if args.auto_optimize:
-        apply_auto_optimization(settings, strategy, args.symbol)
+    if args.auto_strategy:
+        settings.set('auto_strategy', True)
+        settings.set('strategy_router.enabled', True)
+        settings.set('ml.enabled', True)
 
 
-def apply_grid_overrides(settings: Settings, args):
-    """Apply Grid Trading specific overrides"""
-    print("\n📊 Configuring Grid Trading...")
+def print_ultimate_banner():
+    """Prints a welcoming banner."""
+    print("""
+      ██╗      ██╗    ██╗ ███████╗ ████████╗  ██████╗ ██╗  ██╗██╗     ██╗    ██╗███████╗ ██████╗
+      ██║      ██║    ██║ ██╔════╝ ╚══██╔══╝ ██╔════╝ ██║  ██║██║     ██║    ██║██╔════╝ ██╔════╝
+      ██║      ████████║ ███████╗    ██║    ██║      ███████║██║     ████████║███████╗ ███████╗
+      ██║      ██╔════██║ ╚════██║    ██║    ██║      ██╔════██║     ██╔════██║╚════██║ ╚════██║
+      ███████╗ ██║    ██║ ███████║    ██║    ╚██████╗ ██║  ██║███████╗██║    ██║███████║ ███████╗
+      ╚══════╝ ╚═╝    ╚═╝ ╚══════╝    ╚═╝     ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝    ╚═╝╚══════╝ ╚══════╝
 
-    # Price range with intelligent defaults
-    if args.grid_lower:
-        settings.set('grid_trading.price_range.lower', args.grid_lower)
-        print(f"📉 Grid lower: ${args.grid_lower:,.0f}")
-
-    if args.grid_upper:
-        settings.set('grid_trading.price_range.upper', args.grid_upper)
-        print(f"📈 Grid upper: ${args.grid_upper:,.0f}")
-
-    # Auto-optimize grid count based on range
-    if args.grid_lower and args.grid_upper and not args.grid_count:
-        price_range = args.grid_upper - args.grid_lower
-        optimal_grids = max(10, min(30, int(price_range / 1000)))  # 1 grid per $1000
-        settings.set('grid_trading.num_grids', optimal_grids)
-        print(f"🤖 Auto-optimized grids: {optimal_grids}")
-    elif args.grid_count:
-        settings.set('grid_trading.num_grids', args.grid_count)
-        print(f"📊 Manual grids: {args.grid_count}")
-
-    if args.grid_investment:
-        settings.set('grid_trading.investment_per_grid', args.grid_investment)
-        print(f"💰 Investment per grid: ${args.grid_investment:,.0f}")
-
-
-def apply_arbitrage_overrides(settings: Settings, args):
-    """Apply Arbitrage specific overrides"""
-    print("\n🔍 Configuring Arbitrage Bot...")
-
-    if args.arb_min_profit:
-        settings.set('arbitrage.min_profit_threshold', args.arb_min_profit / 100)
-        print(f"💎 Min profit: {args.arb_min_profit}%")
-
-    if args.arb_max_position:
-        settings.set('arbitrage.max_position_size', args.arb_max_position)
-        print(f"💵 Max position: ${args.arb_max_position:,.0f}")
-
-
-def apply_autopilot_overrides(settings: Settings, args):
-    """Apply AutoPilot specific overrides"""
-    print("\n🤖 Configuring AutoPilot Stack...")
-
-    if args.autopilot_allocation:
-        try:
-            parts = args.autopilot_allocation.split(':')
-            if len(parts) == 3:
-                grid_pct, arb_pct, other_pct = map(float, parts)
-                total = grid_pct + arb_pct + other_pct
-
-                allocation = {
-                    'grid_trading': grid_pct / total,
-                    'arbitrage': arb_pct / total,
-                    'defi_yield': other_pct / total
-                }
-
-                settings.set('autopilot.capital_allocation', allocation)
-                print(f"📊 Allocation: {grid_pct}% Grid, {arb_pct}% Arbitrage, {other_pct}% Other")
-        except:
-            print("⚠️  Invalid allocation format, using defaults")
-
-    if args.autopilot_rebalance:
-        settings.set('autopilot.rebalance_interval', args.autopilot_rebalance)
-        print(f"🔄 Rebalance: every {args.autopilot_rebalance}s")
-
-
-def apply_auto_optimization(settings: Settings, strategy: str, symbol: str = None):
-    """Apply intelligent auto-optimization"""
-    print(f"\n🤖 Auto-optimizing {strategy} parameters...")
-
-    # Mock optimization (in real implementation: historical data analysis)
-    if strategy == 'grid_trading':
-        # Optimize based on symbol volatility
-        if symbol and 'BTC' in symbol:
-            settings.set('grid_trading.num_grids', 15)
-            settings.set('grid_trading.investment_per_grid', 400)
-            print("📊 BTC optimization: 15 grids, $400 per grid")
-        elif symbol and 'ETH' in symbol:
-            settings.set('grid_trading.num_grids', 20)
-            settings.set('grid_trading.investment_per_grid', 250)
-            print("📊 ETH optimization: 20 grids, $250 per grid")
-
-    elif strategy == 'arbitrage':
-        settings.set('arbitrage.min_profit_threshold', 0.004)  # 0.4%
-        settings.set('arbitrage.max_position_size', 1200)
-        print("🔍 Arbitrage optimization: 0.4% threshold, $1200 max position")
+      Ultimate Crypto Trading Bot - AI Enhanced & Fully Automated
+      🚀 Ready to make some magic happen? 🚀
+    """)
 
 
 def print_strategy_info(settings: Settings, strategy: str):
-    """Print strategy-specific configuration info"""
+    """Print strategy-specific configuration info, enhanced for regime-adaptive strategies."""
 
-    if strategy == 'grid_trading':
-        print_grid_info(settings)
-    elif strategy == 'arbitrage':
-        print_arbitrage_info(settings)
-    elif strategy == 'autopilot':
+    def print_autopilot_info(s: Settings):
+        print("\n" + "=" * 70)
+        print("🤖 AUTOPILOT STACK - INTELLIGENTE ALLOKATION")
+        print("=" * 70)
+        print("Autopilot combines multiple strategies for diversified income streams.")
+        print(f"📊 Basisstrategie: {strategy.upper()}")
+        print(f"💰 Aktuelle Kapitalallokation (Standard): {s.get('autopilot.capital_allocation', {})}")
+        print("----------------------------------------------------------------------")
+        print("Sub-Strategien: Grid Trading (Side/Low-Vol), Arbitrage (Vol/Disparity),")
+        print("ML-Enhanced Momentum/Mean Reversion (Trends), DeFi Yield (Bear/Stability).")
+        print("======================================================================")
+
+    def print_basic_info(s: Settings, strat: str):
+        print("\n" + "=" * 70)
+        print(f"🧠 STRATEGY: {strat.upper()}")
+        print("=" * 70)
+        print(f"📊 Trading Pairs: {s.get('trading_pairs', [])}")
+        print(f"⏱️  Timeframe: {s.get('timeframes.analysis', '1h')}")
+        print(f"💰 Position Size: {s.get('risk.position_size', 0.05) * 100:.1f}% of balance per trade")
+        print(f"🛑 Stop Loss: {s.get('risk.stop_loss', 0.03) * 100:.1f}%")
+        print(f"🚀 Take Profit: {s.get('risk.take_profit', 0.06) * 100:.1f}%")
+        print("=" * 70)
+
+    if strategy == 'autopilot':
         print_autopilot_info(settings)
+    elif settings.get('strategy_router.enabled', False):
+        print("\n" + "=" * 70)
+        print("🤖 INTELLIGENTE STRATEGIELAUSWAHL AKTIV")
+        print("=" * 70)
+        print(f"🎯 Basisstrategie: {strategy.upper()}")
+        print(f"📊 Regime-basierte Strategien: {settings.get('strategy_router.regime_strategies', {})}")
+        print(f"💰 Kapitalallokationsregeln: {settings.get('strategy_router.capital_allocation_rules', {})}")
+        print(f"💡 ML-Modelle aktiviert: {settings.get('ml.enabled', False)}")
+        print(f"🚨 Killswitch aktiviert: {settings.get('risk_management.killswitch.enabled', False)}")
+        print("=" * 70)
     else:
         print_basic_info(settings, strategy)
 
 
-def print_grid_info(settings: Settings):
-    """Print Grid Trading configuration"""
-    print("\n" + "=" * 70)
-    print("📊 GRID TRADING CONFIGURATION - AUTOMATISCHE GELDMASCHINE")
-    print("=" * 70)
-
-    lower = settings.get('grid_trading.price_range.lower', 0)
-    upper = settings.get('grid_trading.price_range.upper', 0)
-    grids = settings.get('grid_trading.num_grids', 0)
-    investment = settings.get('grid_trading.investment_per_grid', 0)
-
-    if lower and upper and grids and investment:
-        spacing = (upper - lower) / grids
-        total_investment = investment * grids
-
-        print(f"📈 Price Range: ${lower:,.0f} - ${upper:,.0f}")
-        print(f"📊 Grids: {grids} (spacing: ${spacing:,.0f})")
-        print(f"💰 Investment: ${investment:,.0f} per grid (total: ${total_investment:,.0f})")
-        print(f"🎯 Expected Daily Trades: ~{grids * 0.1:.0f}")
-        print(f"📈 Estimated Monthly ROI: {grids * 0.1 * 0.005 * 30 * 100:.1f}%")
-
-    print(f"🎯 Trading Pairs: {', '.join(settings.get('trading_pairs', []))}")
-    print("=" * 70)
-
-
-def print_arbitrage_info(settings: Settings):
-    """Print Arbitrage configuration"""
-    print("\n" + "=" * 70)
-    print("🔍 ARBITRAGE BOT CONFIGURATION - RISIKOFREIE GEWINNE")
-    print("=" * 70)
-
-    threshold = settings.get('arbitrage.min_profit_threshold', 0.005) * 100
-    max_pos = settings.get('arbitrage.max_position_size', 1000)
-
-    print(f"💎 Min Profit Threshold: {threshold:.1f}%")
-    print(f"💵 Max Position Size: ${max_pos:,.0f}")
-    print(f"📊 Expected Opportunities: 1-3 per day")
-    print(f"📈 Monthly ROI Target: 5-20%")
-    print(f"🛡️  Risk Level: ZERO (guaranteed profits only)")
-    print(f"🎯 Trading Pairs: {', '.join(settings.get('trading_pairs', []))}")
-    print("=" * 70)
-
-
-def print_autopilot_info(settings: Settings):
-    """Print AutoPilot configuration"""
-    print("\n" + "=" * 70)
-    print("🤖 AUTOPILOT STACK - LAZY MILLIONAIRE CONFIGURATION")
-    print("=" * 70)
-
-    allocation = settings.get('autopilot.capital_allocation', {})
-    rebalance = settings.get('autopilot.rebalance_interval', 3600)
-
-    print(f"💰 Capital Allocation:")
-    for strategy, pct in allocation.items():
-        print(f"   {strategy.replace('_', ' ').title()}: {pct * 100:.0f}%")
-
-    print(f"🔄 Rebalance Interval: {rebalance // 60} minutes")
-    print(f"📊 Active Strategies: Grid Trading + Arbitrage")
-    print(f"📈 Combined ROI Target: 50-200% per year")
-    print(f"🛡️  Risk: Diversified across multiple strategies")
-    print(f"🎯 Trading Pairs: {', '.join(settings.get('trading_pairs', []))}")
-    print("=" * 70)
-
-
-def print_basic_info(settings: Settings, strategy: str):
-    """Print basic strategy info"""
-    print(f"\n📊 {strategy.upper()} STRATEGY ACTIVE")
-    print(f"🎯 Trading Pairs: {', '.join(settings.get('trading_pairs', []))}")
-
-
 def validate_configuration(settings: Settings, strategy: str) -> bool:
-    """Enhanced configuration validation"""
-    print("\n🔍 Validating configuration...")
-
+    """Validates the loaded configuration for the selected strategy."""
+    logger = logging.getLogger('trading_bot')
     issues = []
-    warnings = []
 
-    # Basic validation
     if not settings.get('trading_pairs'):
-        issues.append("❌ No trading pairs configured")
-
+        issues.append("❌ No trading pairs defined.")
     if not settings.get('exchange.name'):
-        issues.append("❌ No exchange configured")
+        issues.append("❌ Exchange name not defined.")
 
-    # Strategy-specific validation
-    if strategy == 'grid_trading':
-        issues.extend(validate_grid_config(settings))
-    elif strategy == 'arbitrage':
-        issues.extend(validate_arbitrage_config(settings))
-    elif strategy == 'autopilot':
-        issues.extend(validate_autopilot_config(settings))
+    if strategy not in STRATEGIES and strategy != 'autopilot':
+        issues.append(f"❌ Unknown strategy '{strategy}'. Available: {list(STRATEGIES.keys()) + ['autopilot']}.")
 
-    # Risk management validation
-    if not settings.get('risk.max_open_positions'):
-        warnings.append("⚠️  Max open positions not set")
+    if settings.get('ml.enabled', False):
+        if not settings.get('ml.data_dir'):
+            issues.append("❌ ML is enabled but 'ml.data_dir' is not set.")
+        if not settings.get('ml.models_dir'):
+            issues.append("❌ ML is enabled but 'ml.models_dir' is not set.")
 
-    if not settings.get('risk.stop_loss'):
-        warnings.append("⚠️  Stop loss not configured")
+    if settings.get('strategy_router.enabled', False):
+        if not settings.get('ml.enabled', False):
+            issues.append("❌ Strategy Router is enabled but ML components are not enabled.")
+        if not settings.get('strategy_router.regime_strategies'):
+            issues.append("⚠️  Strategy Router is enabled but 'regime_strategies' mapping is empty.")
+        # This check requires STRATEGIES imported from strategies/__init__.py
+        # For simplicity in this isolated file, assuming STRATEGIES is globally accessible
+        # or that this check can be re-evaluated within the main bot logic.
+        for strat_name in settings.get('strategy_router.regime_strategies', {}).values():
+            if strat_name.lower() not in STRATEGIES:
+                issues.append(f"❌ Strategy '{strat_name}' in 'regime_strategies' is not a valid strategy.")
 
-    # Report results
-    if warnings:
-        print("\n⚠️  Configuration Warnings:")
-        for warning in warnings:
-            print(f"  {warning}")
+    if settings.get('risk_management.killswitch.enabled', False):
+        if settings.get('risk_management.killswitch.max_drawdown', 0) <= 0:
+            issues.append("❌ Killswitch enabled but 'killswitch.max_drawdown' is not set or invalid.")
 
     if issues:
-        print("\n❌ Configuration Issues:")
+        logger.error("\n💥 Konfigurationsvalidierungsfehler:")
         for issue in issues:
-            print(f"  {issue}")
+            logger.error(f"  {issue}")
         return False
-    else:
-        print("✅ Configuration validation passed!")
-        return True
+
+    logger.info("\n✅ Konfiguration erfolgreich validiert!")
+    return True
 
 
-def validate_grid_config(settings: Settings) -> List[str]:
-    """Validate Grid Trading configuration"""
-    issues = []
+def optimize_parameters(settings: Settings, strategy_class: Type, symbol: str, start_date: datetime,
+                        end_date: datetime):
+    """
+    Runs parameter optimization for a given strategy.
+    """
+    logger = logging.getLogger('trading_bot')
 
-    lower = settings.get('grid_trading.price_range.lower')
-    upper = settings.get('grid_trading.price_range.upper')
-    grids = settings.get('grid_trading.num_grids')
-    investment = settings.get('grid_trading.investment_per_grid')
-
-    if not lower:
-        issues.append("❌ Grid lower price not set")
-    if not upper:
-        issues.append("❌ Grid upper price not set")
-    if lower and upper and lower >= upper:
-        issues.append("❌ Grid lower price must be less than upper")
-    if not grids or grids < 5:
-        issues.append("❌ Need at least 5 grids")
-    if not investment or investment < 50:
-        issues.append("❌ Need at least $50 investment per grid")
-
-    return issues
-
-
-def validate_arbitrage_config(settings: Settings) -> List[str]:
-    """Validate Arbitrage configuration"""
-    issues = []
-
-    threshold = settings.get('arbitrage.min_profit_threshold')
-    max_pos = settings.get('arbitrage.max_position_size')
-
-    if not threshold or threshold < 0.003:
-        issues.append("❌ Arbitrage threshold should be at least 0.3%")
-    if not max_pos or max_pos < 100:
-        issues.append("❌ Arbitrage max position should be at least $100")
-
-    return issues
-
-
-def validate_autopilot_config(settings: Settings) -> List[str]:
-    """Validate AutoPilot configuration"""
-    issues = []
-
-    allocation = settings.get('autopilot.capital_allocation')
-    if allocation:
-        total = sum(allocation.values())
-        if abs(total - 1.0) > 0.01:
-            issues.append("❌ AutoPilot allocation must sum to 100%")
-
-    return issues
-
-
-def optimize_parameters(bot: TradingBot, args) -> Dict[str, Any]:
-    """Run parameter optimization"""
-    print("\n🤖 Running parameter optimization...")
-
-    # Mock optimization results
-    optimization_results = {
-        'original_roi': 15.5,
-        'optimized_roi': 23.2,
-        'improvement': 7.7,
-        'optimal_parameters': {
-            'grid_count': 18,
-            'investment_per_grid': 350,
-            'profit_threshold': 0.004
-        }
+    param_grid_base = {
+        'lookback_period': [20, 50, 100],
+        'rsi_period': [10, 14, 20]
     }
 
-    print(f"📈 Optimization Results:")
-    print(f"  Original ROI: {optimization_results['original_roi']:.1f}%")
-    print(f"  Optimized ROI: {optimization_results['optimized_roi']:.1f}%")
-    print(f"  Improvement: +{optimization_results['improvement']:.1f}%")
+    param_grid_ml = {
+        'lookback_period': [50, 100, 150],
+        'prediction_threshold': [0.55, 0.6, 0.65]
+    }
+
+    if settings.get('ml.enabled', False) and 'ml_strategy' in strategy_class.__name__.lower():
+        from core.ml_enhanced_backtesting import MLEnhancedBacktester
+        backtester = MLEnhancedBacktester(settings, strategy_class)
+        param_grid = param_grid_ml
+        logger.info(f"Using MLEnhancedBacktester for optimization with {strategy_class.__name__}")
+    else:
+        from core.enhanced_backtesting import EnhancedBacktester
+        backtester = EnhancedBacktester(settings, strategy_class)
+        param_grid = param_grid_base
+        logger.info(f"Using EnhancedBacktester for optimization with {strategy_class.__name__}")
+
+    optimization_results = backtester.optimize_parameters(
+        strategy_class,
+        symbol,
+        param_grid=param_grid,
+        start_date=start_date,
+        end_date=end_date
+    )
 
     return optimization_results
 
 
 def main():
     """Ultimate main function with intelligence"""
-    # Print ultimate banner
     print_ultimate_banner()
-
-    # Parse arguments
     args = parse_arguments()
 
-    # Auto-strategy selection
-    if args.auto_strategy:
-        args.strategy = auto_select_strategy(args.symbol)
-
-    # Status-only mode
-    if args.status_only:
-        print("\n📊 Bot Status Check:")
-        print("💡 Status monitoring not fully implemented yet")
-        print("🔧 Use --mode=paper --debug for live monitoring")
-        sys.exit(0)
-
-    # Setup logging
     log_level = 'DEBUG' if args.debug else 'INFO'
     logger = setup_logger(name='trading_bot', level=log_level)
 
-    print(f"\n🚀 Starting Ultimate Trading Bot...")
-    print(f"⚙️  Mode: {args.mode.upper()}")
-    print(f"🧠 Strategy: {args.strategy.upper()}")
-    print(f"📋 Config: {args.config}")
+    print(f"\n🚀 Ultimate Trading Bot wird gestartet...")
+    print(f"⚙️  Modus: {args.mode.upper()}")
+    print(f"🧠 Strategie: {args.strategy.upper()}")
+    print(f"📋 Konfiguration: {args.config}")
 
     if args.dry_run:
-        print("🔍 DRY RUN MODE - Configuration preview only")
+        print("🔍 DRY RUN MODUS - Nur Konfigurationsvorschau")
 
     try:
-        # Load configuration
-        print("📂 Loading configuration...")
+        print("📂 Konfiguration wird geladen...")
         settings = Settings()
         settings.load_profile(args.config)
 
-        # Apply intelligent overrides
         apply_intelligent_overrides(settings, args)
 
-        # Validate configuration
+        data_manager = DataManager(settings)
+
+        if args.auto_strategy:
+            args.strategy = auto_select_strategy(settings, data_manager)
+            settings.set('strategy_router.active_strategy', args.strategy)
+
+        if args.status_only:
+            bot_instance = TradingBot(
+                mode=args.mode,
+                strategy_name=args.strategy,
+                settings=settings,
+                data_manager=data_manager
+            )
+            status = bot_instance.get_status()
+            print("\n📊 Aktueller Bot-Status:")
+            print(json.dumps(status, indent=2, default=str))
+            sys.exit(0)
+
         if args.validate_config:
             is_valid = validate_configuration(settings, args.strategy)
             sys.exit(0 if is_valid else 1)
 
-        # Quick validation
         if not validate_configuration(settings, args.strategy):
-            print("\n💥 Configuration validation failed!")
+            print("\n💥 Konfigurationsvalidierung fehlgeschlagen!")
             return 1
 
-        # Show strategy info
         print_strategy_info(settings, args.strategy)
 
-        # Dry run mode
         if args.dry_run:
-            print("\n✅ Configuration validated successfully!")
-            print("🔍 DRY RUN completed - no bot started")
+            print("\n✅ Konfiguration erfolgreich validiert!")
+            print("🔍 DRY RUN abgeschlossen - kein Bot gestartet")
             return 0
 
-        # Initialize bot
-        print("\n🤖 Initializing Ultimate Trading Bot...")
+        print("\n🤖 Ultimate Trading Bot wird initialisiert...")
         bot = TradingBot(
             mode=args.mode,
             strategy_name=args.strategy,
-            settings=settings
+            settings=settings,
+            data_manager=data_manager
         )
 
-        print("✅ Bot initialized successfully!")
+        print("✅ Bot erfolgreich initialisiert!")
 
-        # Run optimization if requested
         if args.optimize:
-            optimize_parameters(bot, args)
+            strategy_class = STRATEGIES.get(args.strategy.lower())
+            if not strategy_class:
+                logger.error(f"Strategie {args.strategy} nicht zur Optimierung gefunden.")
+                return 1
 
-        # Start trading
+            optimization_results = optimize_parameters(
+                settings,
+                strategy_class,
+                settings.get('trading_pairs', ['BTC/USDT'])[0],
+                datetime.strptime(settings.get('backtest.start_date'), '%Y-%m-%d'),
+                datetime.strptime(settings.get('backtest.end_date'), '%Y-%m-%d')
+            )
+            logger.info("📈 Optimierungsergebnisse:")
+            logger.info(f"  Beste Parameter: {optimization_results.get('best_params')}")
+            logger.info(
+                f"  Bester Metrikwert ({optimization_results.get('optimization_metric')}): {optimization_results.get('best_metric_value'):.2f}")
+
+            if args.mode == 'backtest':
+                return 0
+
         if args.mode == 'backtest':
-            print("\n📊 Starting backtest...")
+            print("\n📊 Backtest wird gestartet...")
             start_time = time.time()
 
-            results = bot.run_backtest()
+            if settings.get('ml.enabled', False) and args.strategy.lower() == 'ml':
+                from core.ml_enhanced_backtesting import MLEnhancedBacktester
+                backtester = MLEnhancedBacktester(settings, bot.strategy)
+                results = backtester.run_with_ml(
+                    symbols=settings.get('trading_pairs'),
+                    source=settings.get('data.source', 'binance'),
+                    timeframe=settings.get('timeframes.analysis', '1h'),
+                    use_cache=settings.get('data.use_cache', True)
+                )
+                if 'ml_comparison' in results:
+                    backtester.plot_ml_comparison(
+                        os.path.join("data/backtest_results", settings.get('backtest.output_dir', 'latest')))
+            else:
+                from core.enhanced_backtesting import EnhancedBacktester
+                backtester = EnhancedBacktester(settings, bot.strategy)
+                results = backtester.run(
+                    symbols=settings.get('trading_pairs'),
+                    source=settings.get('data.source', 'binance'),
+                    timeframe=settings.get('timeframes.analysis', '1h'),
+                    use_cache=settings.get('data.use_cache', True)
+                )
+
             duration = time.time() - start_time
 
-            # Enhanced backtest results
             print("\n" + "=" * 80)
-            print("📈 BACKTEST RESULTS - ULTIMATE EDITION")
+            print("📈 BACKTEST-ERGEBNISSE - ULTIMATE EDITION")
             print("=" * 80)
-            print(f"⏱️  Duration: {duration:.1f}s")
-            print(f"📈 Total Return: {results.get('total_return', 0):.2f}%")
-            print(f"🔢 Total Trades: {results.get('total_trades', 0)}")
-            print(f"🎯 Win Rate: {results.get('win_rate', 0):.2f}%")
-            print(f"📊 Sharpe Ratio: {results.get('sharpe_ratio', 0):.2f}")
-            print(f"💰 Max Drawdown: {results.get('max_drawdown', 0):.2f}%")
+            print(f"⏱️  Dauer: {duration:.1f}s")
+            print(f"📈 Gesamt-Return: {results.get('total_return', 0):.2f}%")
+            print(f"🔢 Gesamtzahl Trades: {results.get('total_trades', 0)}")
+            print(f"🎯 Gewinnrate: {results.get('statistics', {}).get('win_rate', 0):.2f}%")
+            print(f"📊 Sharpe Ratio: {results.get('statistics', {}).get('sharpe_ratio', 0):.2f}")
+            print(f"💰 Maximaler Drawdown: {abs(results.get('statistics', {}).get('max_drawdown', 0)):.2f}%")
 
             if results.get('total_trades', 0) > 0:
-                print(f"💵 Avg Profit/Trade: {results.get('avg_profit_per_trade', 0):.2f}%")
+                print(f"💵 Durchschnittlicher Gewinn/Trade: {results.get('statistics', {}).get('avg_profit', 0):.2f}%")
 
-            # Strategy-specific metrics
             if args.strategy == 'grid_trading' and 'grid_status' in results:
                 grid_stats = results['grid_status']
-                print(f"📊 Grid Efficiency: {grid_stats.get('grid_efficiency', 0):.1f}%")
+                print(f"📊 Grid-Effizienz: {grid_stats.get('grid_efficiency', 0):.1f}%")
+
+            if 'ml_comparison' in results:
+                comp = results['ml_comparison']
+                print("\n=== ML-VERBESSERT vs. BASELINE ===")
+                print(f"  Return-Verbesserung: {comp.get('return_improvement', 0):.2f}%")
+                print(f"  Sharpe-Verbesserung: {comp.get('sharpe_improvement', 0):.2f}")
+                print(f"  Drawdown-Reduzierung: {comp.get('drawdown_improvement', 0):.2f}%")
+                print("===============================")
 
             print("=" * 80)
 
         else:
-            print(f"\n🏃 Starting {args.mode} trading...")
+            print(f"\n🏃 {args.mode} Handel wird gestartet...")
 
-            # Strategy-specific startup messages
             if args.strategy == 'grid_trading':
-                print("💰 Grid Trading active - earning on every price movement!")
+                print("💰 Grid Trading aktiv - Gewinne bei jeder Preisbewegung!")
             elif args.strategy == 'arbitrage':
-                print("🔍 Arbitrage Bot active - hunting riskfree profits!")
+                print("🔍 Arbitrage Bot aktiv - Risikofreie Gewinne jagen!")
             elif args.strategy == 'autopilot':
-                print("🤖 AutoPilot Stack active - multiple income streams running!")
-                print("📊 Grid Trading + Arbitrage + Smart Rebalancing = Maximum Profit!")
+                print("🤖 AutoPilot Stack aktiv - Mehrere Einkommensströme laufen!")
+                print("📊 Grid Trading + Arbitrage + Smart Rebalancing = Maximaler Gewinn!")
+            else:
+                print(f"🧠 {args.strategy.upper()} Strategie aktiv und überwacht Marktbedingungen.")
 
-            print("\n⚠️  Press Ctrl+C to stop the bot")
-            print("📊 Monitor logs for real-time trading updates")
+            print("\n⚠️  Drücken Sie Strg+C, um den Bot zu stoppen")
+            print("📊 Überwachen Sie die Logs für Echtzeit-Handelsupdates")
+
+            ml_components_instance = get_ml_components()
+            if ml_components_instance is None:
+                ml_components_instance = initialize_ml(settings=settings)
+
+            safety_manager = SafetyManager(settings, bot)
+            bot.set_safety_manager(safety_manager)
 
             bot.run()
 
     except KeyboardInterrupt:
-        print("\n\n⏹️  Ultimate Trading Bot stopped by user")
-        print("💰 Check your profits in the logs!")
+        print("\n\n⏹️  Ultimate Trading Bot vom Benutzer gestoppt")
+        print("💰 Überprüfen Sie Ihre Gewinne in den Logs!")
 
     except ImportError as e:
-        print(f"\n❌ Import Error: {e}")
-        print("\n🔧 Missing files:")
+        print(f"\n❌ Importfehler: {e}")
+        print("\n🔧 Fehlende Dateien:")
         if 'grid_trading' in str(e):
             print("  ❌ strategies/grid_trading.py")
         if 'arbitrage' in str(e):
             print("  ❌ strategies/arbitrage.py")
         if 'autopilot' in str(e):
             print("  ❌ strategies/autopilot.py")
+        if 'market_regime' in str(e):
+            print("  ❌ ml_components/market_regime.py")
+        if 'strategy_router' in str(e):
+            print("  ❌ core/strategy_router.py")
+        if 'safety_manager' in str(e):
+            print("  ❌ core/safety_manager.py")
         return 1
 
     except Exception as e:
-        print(f"\n💥 Error: {e}")
+        print(f"\n💥 Fehler: {e}")
         if args.debug:
             import traceback
             traceback.print_exc()
         else:
-            print("💡 Use --debug for detailed error info")
+            print("💡 Verwenden Sie --debug für detaillierte Fehlerinformationen")
         return 1
 
-    print("\n✅ Ultimate Trading Bot session completed!")
-    print("🚀 Ready for the next money-making session!")
+    print("\n✅ Ultimate Trading Bot Sitzung abgeschlossen!")
+    print("🚀 Bereit für die nächste Geld-verdienen-Sitzung!")
     return 0
 
 
