@@ -1,923 +1,335 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""
-AssetClusterAnalyzer für den Trading Bot und Backtest-Modul.
-Identifiziert Gruppen von Assets mit ähnlichem Verhalten und analysiert ihre Performance.
-"""
-
 import logging
 import os
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Tuple, Union
-from sklearn.cluster import KMeans, DBSCAN
+import pickle
+import json
+from typing import Dict, Any, List, Optional
+from datetime import datetime
 from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import MiniBatchKMeans
 from sklearn.manifold import MDS
-from sklearn.metrics import silhouette_score
+from sklearn.metrics import silhouette_score, davies_bouldin_score
+from scipy.spatial.distance import pdist, squareform
+from sklearn.impute import SimpleImputer
+
+from ml_components.feature_extraction import FeatureExtractor  # Import the new class
+from data_sources.data_manager import DataManager
+from config.settings import Settings
+
+logger = logging.getLogger(__name__)
 
 
 class AssetClusterAnalyzer:
     """
-    Clustering-Analyse für Kryptowährungen.
-    Identifiziert Gruppen von Assets mit ähnlichem Verhalten.
+    Analyzes asset clusters based on their correlation and features.
     """
 
-    def __init__(self, data_dir: str = "data/market_data"):
-        """
-        Initialisiert den Asset-Cluster-Analyzer.
+    def __init__(self, settings: Settings, data_cache_dir: str, models_dir: str, output_dir: str,
+                 core_symbols: List[str], min_data_points_required: int):
+        self.settings = settings
+        self.data_cache_dir = data_cache_dir
+        self.models_dir = models_dir
+        self.output_dir = output_dir
+        self.cluster_model_path = os.path.join(self.models_dir, "asset_cluster_model.pkl")
+        self.scaler_path = os.path.join(self.models_dir, "asset_cluster_scaler.pkl")
+        self.mds_path = os.path.join(self.models_dir, "asset_mds.pkl")
+        self.imputer_path = os.path.join(self.models_dir, "asset_imputer.pkl")
 
-        Args:
-            data_dir: Verzeichnis mit historischen Marktdaten
-        """
-        self.data_dir = data_dir
-        self.market_data = {}
-        self.correlation_matrix = None
-        self.clusters = None
-        self.cluster_model = None
-        self.feature_data = None
-        self.scaler = StandardScaler()
-        self.cluster_performances = None
-        self.logger = logging.getLogger(__name__)
+        self.core_symbols = core_symbols
+        self.min_data_points_required = min_data_points_required
 
-    # Update für ml_components/asset_clusters.py
+        self.cluster_model: Optional[MiniBatchKMeans] = None
+        self.scaler: Optional[StandardScaler] = None
+        self.mds: Optional[MDS] = None
+        self.imputer: Optional[SimpleImputer] = None
+        self.feature_extractor = FeatureExtractor(self.settings)  # Instantiate FeatureExtractor
+        self.model_trained = False
 
-    def load_market_data(self, symbols: List[str] = None,
-                         data_manager=None,  # DataManager-Objekt
-                         timeframe: str = "1d",
-                         start_date: str = None,
-                         end_date: str = None) -> bool:
-        """
-        Lädt Marktdaten für die angegebenen Symbole.
+        self.last_clusters: Dict[str, Any] = {"status": "not_available", "clusters": {}, "performance": {}}
 
-        Args:
-            symbols: Liste der zu ladenden Symbole (oder None für alle)
-            data_manager: Optionaler DataManager zur Datenabfrage
-            timeframe: Zeitrahmen der Daten
-            start_date: Startdatum im Format 'YYYY-MM-DD'
-            end_date: Enddatum im Format 'YYYY-MM-DD'
+        logger.info(
+            f"AssetClusterAnalyzer initialized with {len(self.core_symbols)} core symbols and min_data_points_required={self.min_data_points_required}.")
 
-        Returns:
-            True, wenn Daten erfolgreich geladen wurden
-        """
+    def load_model(self) -> bool:
+        """Loads the pre-trained clustering model, scaler, MDS, and imputer."""
         try:
-            # Wenn kein Startdatum angegeben, letzten Monat verwenden
-            if not start_date:
-                start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+            with open(self.cluster_model_path, 'rb') as f:
+                self.cluster_model = pickle.load(f)
+            with open(self.scaler_path, 'rb') as f:
+                self.scaler = pickle.load(f)
+            with open(self.mds_path, 'rb') as f:
+                self.mds = pickle.load(f)
+            with open(self.imputer_path, 'rb') as f:
+                self.imputer = pickle.load(f)
 
-            # Wenn kein Enddatum angegeben, aktuelles Datum verwenden
-            if not end_date:
-                end_date = datetime.now().strftime('%Y-%m-%d')
-
-            # Wenn DataManager bereitgestellt wurde, diesen für das Laden verwenden
-            if data_manager:
-                for symbol in symbols:
-                    df = data_manager.get_historical_data(
-                        symbol=symbol,
-                        source="binance",  # Könnte aus Einstellungen kommen
-                        timeframe=timeframe,
-                        start_date=datetime.strptime(start_date, '%Y-%m-%d'),
-                        end_date=datetime.strptime(end_date, '%Y-%m-%d'),
-                        use_cache=True
-                    )
-
-                    if not df.empty:
-                        self.market_data[symbol] = df
-                        self.logger.info(f"Daten für {symbol} geladen: {len(df)} Einträge")
-
-                if not self.market_data:
-                    self.logger.error("Keine Marktdaten geladen")
-                    return False
-
-                self.logger.info(f"Marktdaten für {len(self.market_data)} Symbole geladen")
-                return True
-
-            # Alternativ: Direkt aus dem Verzeichnis laden
-            binance_dir = os.path.join(self.data_dir, "binance")
-
-            # Wenn keine Symbole angegeben, alle verfügbaren laden
-            if not symbols:
-                symbols = []
-                for filename in os.listdir(binance_dir):
-                    if filename.endswith(f"_{timeframe}.csv") or filename.endswith(f"_{timeframe}_20230101.csv"):
-                        symbol = filename.split("_")[0]
-                        quote = filename.split("_")[1]
-                        symbols.append(f"{symbol}/{quote}")
-
-            # Daten für jedes Symbol laden
-            for symbol in symbols:
-                base, quote = symbol.split("/")
-                filename_pattern = f"{base}_{quote}_{timeframe}"
-
-                # Datei suchen
-                csv_path = None
-                for f in os.listdir(binance_dir):
-                    if f.startswith(filename_pattern):
-                        csv_path = os.path.join(binance_dir, f)
-                        break
-
-                if not csv_path:
-                    self.logger.warning(f"Keine Daten gefunden für {symbol} mit Timeframe {timeframe}")
-                    continue
-
-                # Daten laden
-                df = pd.read_csv(csv_path)
-
-                # Datum als Index setzen mit verbesserter Fehlerbehandlung
-                if 'timestamp' in df.columns:
-                    try:
-                        # Versuchen als String-Datum zu parsen, wenn es kein numerischer Wert ist
-                        if pd.api.types.is_string_dtype(df['timestamp']):
-                            df['date'] = pd.to_datetime(df['timestamp'], errors='coerce')
-                        else:
-                            # Versuchen als ms-Timestamp zu parsen
-                            df['date'] = pd.to_datetime(df['timestamp'], unit='ms', errors='coerce')
-
-                        # Fallback-Strategie, wenn 'date' NaT-Werte enthält
-                        if df['date'].isna().any():
-                            # Für ISO-Datumsformate wie '2022-01-01'
-                            if pd.api.types.is_string_dtype(df['timestamp']):
-                                df['date'] = pd.to_datetime(df['timestamp'], format='%Y-%m-%d', errors='coerce')
-
-                        df.set_index('date', inplace=True)
-
-                    except Exception as e:
-                        self.logger.warning(
-                            f"Fehler bei der Datumskonvertierung für {symbol}: {e}, versuche alternative Methode")
-                        # Alternative Methode: Direktes Parsen ohne unit-Parameter
-                        try:
-                            df['date'] = pd.to_datetime(df['timestamp'])
-                            df.set_index('date', inplace=True)
-                        except Exception as e2:
-                            self.logger.error(f"Auch alternative Datumskonvertierung fehlgeschlagen: {e2}")
-                            continue
-
-                elif 'date' in df.columns:
-                    df['date'] = pd.to_datetime(df['date'])
-                    df.set_index('date', inplace=True)
-                elif 'time' in df.columns:
-                    df['date'] = pd.to_datetime(df['time'])
-                    df.set_index('date', inplace=True)
-                else:
-                    self.logger.warning(f"Keine Datum-/Zeitspalte in {csv_path} gefunden")
-                    continue
-
-                # Datum filtern, falls angegeben
-                if start_date and end_date:
-                    df = df[(df.index >= start_date) & (df.index <= end_date)]
-
-                # Daten speichern
-                self.market_data[symbol] = df
-                self.logger.info(f"Daten für {symbol} geladen: {len(df)} Einträge")
-
-            if not self.market_data:
-                self.logger.error("Keine Marktdaten geladen")
-                return False
-
-            self.logger.info(f"Marktdaten für {len(self.market_data)} Symbole geladen")
+            self.model_trained = True
+            logger.info(f"Asset-Cluster-Modell geladen von {self.cluster_model_path}")
             return True
-
+        except (FileNotFoundError, EOFError, pickle.UnpicklingError) as e:
+            logger.warning(
+                f"Konnte Asset-Cluster-Modell nicht laden: {e}. Modell muss möglicherweise trainiert werden.")
+            self.model_trained = False
+            return False
         except Exception as e:
-            self.logger.error(f"Fehler beim Laden der Marktdaten: {e}")
+            logger.error(f"Unerwarteter Fehler beim Laden des Asset-Cluster-Modells: {e}")
+            self.model_trained = False
             return False
 
-    def calculate_correlation_matrix(self) -> pd.DataFrame:
-        """
-        Berechnet die Korrelationsmatrix zwischen allen Assets.
+    def save_model(self) -> None:
+        """Saves the trained clustering model, scaler, MDS, and imputer."""
+        if self.cluster_model and self.scaler and self.mds and self.imputer:
+            with open(self.cluster_model_path, 'wb') as f:
+                pickle.dump(self.cluster_model, f)
+            with open(self.scaler_path, 'wb') as f:
+                pickle.dump(self.scaler, f)
+            with open(self.mds_path, 'wb') as f:
+                pickle.dump(self.mds, f)
+            with open(self.imputer_path, 'wb') as f:
+                pickle.dump(self.imputer, f)
+            logger.info(f"Asset-Cluster-Modell gespeichert unter {self.cluster_model_path}")
+        else:
+            logger.warning("Kein Asset-Cluster-Modell zum Speichern vorhanden. Bitte zuerst trainieren.")
 
-        Returns:
-            Korrelationsmatrix als DataFrame
-        """
-        if not self.market_data:
-            self.logger.error("Keine Marktdaten vorhanden")
-            return pd.DataFrame()
-
-        try:
-            # DataFrame für Returns
-            returns_df = pd.DataFrame()
-
-            # Returns für jedes Symbol extrahieren
-            for symbol, df in self.market_data.items():
-                short_name = symbol.split('/')[0]
-                returns_df[short_name] = df['close'].pct_change()
-
-            # NaN-Werte entfernen
-            returns_df = returns_df.dropna()
-
-            # Korrelationsmatrix berechnen
-            correlation_matrix = returns_df.corr()
-
-            self.correlation_matrix = correlation_matrix
-
-            self.logger.info(f"Korrelationsmatrix berechnet für {len(correlation_matrix)} Assets")
-            return correlation_matrix
-
-        except Exception as e:
-            self.logger.error(f"Fehler bei der Berechnung der Korrelationsmatrix: {e}")
-            return pd.DataFrame()
-
-    def extract_asset_features(self) -> pd.DataFrame:
-        """
-        Extrahiert Features für das Asset-Clustering.
-
-        Returns:
-            DataFrame mit Features für jedes Asset
-        """
-        if not self.market_data:
-            self.logger.error("Keine Marktdaten vorhanden")
-            return pd.DataFrame()
-
-        try:
-            # Features für jedes Asset
-            asset_features = []
-
-            for symbol, df in self.market_data.items():
-                # Basiswährung
-                base = symbol.split('/')[0]
-
-                # Preis- und Return-Daten
-                price_data = df['close']
-                returns = price_data.pct_change().dropna()
-
-                if len(returns) < 20:
-                    self.logger.warning(f"Nicht genügend Daten für {symbol}, überspringe")
-                    continue
-
-                # Return-Features
-                mean_return = returns.mean()
-                std_return = returns.std()
-                skew_return = returns.skew()
-                kurt_return = returns.kurt()
-
-                # Volatilität
-                volatility_20d = returns.rolling(20).std().mean()
-
-                # Trend-Features
-                if len(price_data) >= 50:
-                    ma_20 = price_data.rolling(20).mean()
-                    ma_50 = price_data.rolling(50).mean()
-
-                    # Average Ratio zum MA
-                    avg_dist_ma20 = ((price_data / ma_20) - 1).mean()
-                    avg_dist_ma50 = ((price_data / ma_50) - 1).mean()
-
-                    # Verhältnis MA20 zu MA50
-                    ma_ratio = (ma_20 / ma_50).mean()
-                else:
-                    avg_dist_ma20 = 0
-                    avg_dist_ma50 = 0
-                    ma_ratio = 1
-
-                # Volumen-Features (falls vorhanden)
-                if 'volume' in df.columns:
-                    vol_data = df['volume']
-                    vol_change = vol_data.pct_change().dropna()
-                    mean_vol_change = vol_change.mean()
-                    std_vol_change = vol_change.std()
-
-                    # Volumen/Preis-Korrelation
-                    vol_price_corr = vol_data.corr(price_data)
-                else:
-                    mean_vol_change = 0
-                    std_vol_change = 0
-                    vol_price_corr = 0
-
-                # Features für dieses Asset
-                asset_feature = {
-                    'symbol': base,
-                    'mean_return': mean_return,
-                    'volatility': std_return,
-                    'skewness': skew_return,
-                    'kurtosis': kurt_return,
-                    'volatility_20d': volatility_20d,
-                    'avg_dist_ma20': avg_dist_ma20,
-                    'avg_dist_ma50': avg_dist_ma50,
-                    'ma_ratio': ma_ratio,
-                    'mean_vol_change': mean_vol_change,
-                    'std_vol_change': std_vol_change,
-                    'vol_price_corr': vol_price_corr
-                }
-
-                asset_features.append(asset_feature)
-
-            # In DataFrame umwandeln
-            feature_df = pd.DataFrame(asset_features)
-
-            if feature_df.empty:
-                self.logger.error("Keine Features extrahiert")
-                return pd.DataFrame()
-
-            # Symbol als Index
-            feature_df.set_index('symbol', inplace=True)
-
-            # NaN-Werte durch 0 ersetzen
-            feature_df = feature_df.fillna(0)
-
-            self.feature_data = feature_df
-
-            self.logger.info(f"Features für {len(feature_df)} Assets extrahiert")
-            return feature_df
-
-        except Exception as e:
-            self.logger.error(f"Fehler bei der Extraktion der Asset-Features: {e}")
-            return pd.DataFrame()
-
-    def run_clustering(self, n_clusters: int = None, method: str = 'kmeans',
-                       correlation_based: bool = True) -> pd.DataFrame:
-        """
-        Führt das Clustering der Assets durch.
-
-        Args:
-            n_clusters: Anzahl der Cluster (oder None für automatische Bestimmung)
-            method: Clustering-Methode ('kmeans' oder 'dbscan')
-            correlation_based: Ob auf Korrelationen oder Features basiert werden soll
-
-        Returns:
-            DataFrame mit Cluster-Zuordnungen
-        """
-        try:
-            if correlation_based:
-                # Falls noch nicht berechnet
-                if self.correlation_matrix is None:
-                    self.calculate_correlation_matrix()
-
-                if self.correlation_matrix.empty:
-                    self.logger.error("Korrelationsmatrix ist leer")
-                    return pd.DataFrame()
-
-                # 1 - Korrelation als Distanzmaß
-                distance_matrix = 1 - self.correlation_matrix
-
-                # In Feature-Array umwandeln mit MDS
-                mds = MDS(n_components=2, dissimilarity='precomputed', random_state=42)
-                features = mds.fit_transform(distance_matrix)
-
-                # DataFrame erstellen
-                asset_features = pd.DataFrame(
-                    features,
-                    columns=['dim1', 'dim2'],
-                    index=self.correlation_matrix.index
+    def _get_data_for_features(self, data_manager: DataManager, symbols: List[str]) -> Dict[str, pd.DataFrame]:
+        """Fetches historical data for feature extraction."""
+        market_data: Dict[str, pd.DataFrame] = {}
+        for symbol in symbols:
+            try:
+                # Use daily data for asset clustering features (correlations, longer-term stats)
+                df = data_manager.get_data(
+                    symbol=symbol,
+                    timeframe=self.settings.get('timeframes.secondary', '1d'),  # Use secondary/daily timeframe
+                    limit=self.min_data_points_required
                 )
-            else:
-                # Basierend auf statistischen Features
-                if self.feature_data is None:
-                    self.extract_asset_features()
-
-                if self.feature_data.empty:
-                    self.logger.error("Keine Feature-Daten vorhanden")
-                    return pd.DataFrame()
-
-                asset_features = self.feature_data.copy()
-
-            # Daten für Clustering vorbereiten
-            X = self.scaler.fit_transform(asset_features)
-
-            # Optimale Anzahl an Clustern bestimmen (wenn nicht angegeben)
-            if method == 'kmeans' and n_clusters is None:
-                max_clusters = min(10, len(X) // 2)  # Maximal 10 Cluster oder Hälfte der Daten
-                scores = []
-
-                for k in range(2, max_clusters + 1):
-                    kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
-                    labels = kmeans.fit_predict(X)
-
-                    if len(set(labels)) > 1:  # Mindestens 2 unterschiedliche Cluster
-                        score = silhouette_score(X, labels)
-                        scores.append((k, score))
-
-                # Beste Anzahl Cluster auswählen
-                n_clusters = max(scores, key=lambda x: x[1])[0]
-                self.logger.info(f"Optimale Anzahl an Clustern: {n_clusters}")
-
-            # Clustering durchführen
-            if method == 'kmeans':
-                self.cluster_model = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-                cluster_labels = self.cluster_model.fit_predict(X)
-                self.cluster_centers = self.cluster_model.cluster_centers_
-            elif method == 'dbscan':
-                from sklearn.neighbors import NearestNeighbors
-
-                # Optimalen eps-Parameter bestimmen
-                neigh = NearestNeighbors(n_neighbors=2)
-                nbrs = neigh.fit(X)
-                distances, indices = nbrs.kneighbors(X)
-                distances = np.sort(distances[:, 1])
-
-                # Knick in der Kurve finden
-                from scipy.signal import argrelextrema
-                n = len(distances)
-                indices = argrelextrema(np.diff(distances), np.greater)[0]
-                if len(indices) > 0:
-                    eps = distances[indices[0]]
+                if df is not None and not df.empty and len(df) >= self.min_data_points_required:
+                    market_data[symbol] = df
+                    logger.debug(f"Daten für {symbol} geladen: {len(df)} Einträge")
                 else:
-                    eps = np.percentile(distances, 90)
+                    logger.warning(
+                        f"Unzureichende Daten für {symbol} ({len(df) if df is not None else 0} Einträge). Benötigt: {self.min_data_points_required}.")
+            except Exception as e:
+                logger.error(f"Fehler beim Laden der Daten für {symbol}: {e}")
 
-                self.cluster_model = DBSCAN(eps=eps, min_samples=2)
-                cluster_labels = self.cluster_model.fit_predict(X)
-            else:
-                self.logger.error(f"Unbekannte Clustering-Methode: {method}")
-                return pd.DataFrame()
+        if not market_data:
+            raise ValueError("Keine ausreichenden Marktdaten für die Feature-Extraktion verfügbar.")
 
-            # Ergebnisse in DataFrame
-            if correlation_based:
-                result_df = pd.DataFrame(
-                    {'cluster': cluster_labels},
-                    index=self.correlation_matrix.index
-                )
-            else:
-                result_df = pd.DataFrame(
-                    {'cluster': cluster_labels},
-                    index=self.feature_data.index
-                )
+        logger.info(f"Marktdaten für {len(market_data)} Symbole geladen")
+        return market_data
 
-            # Cluster-Zentren speichern (für KMeans)
-            if method == 'kmeans':
-                self.cluster_centers = self.cluster_model.cluster_centers_
-
-            self.clusters = result_df
-
-            # Cluster-Performance berechnen
-            self.analyze_cluster_performance(result_df)
-
-            self.logger.info(
-                f"Clustering abgeschlossen: {len(result_df)} Assets in {len(set(cluster_labels))} Clustern")
-            return result_df
-
-        except Exception as e:
-            self.logger.error(f"Fehler beim Clustering: {e}")
-            return pd.DataFrame()
-
-    def analyze_cluster_performance(self, cluster_assignments: pd.DataFrame) -> Dict[int, Dict]:
+    def _extract_asset_features_for_clustering(self, market_data: Dict[str, pd.DataFrame]) -> Optional[pd.DataFrame]:
         """
-        Analysiert die Performance der verschiedenen Asset-Cluster.
-
-        Args:
-            cluster_assignments: DataFrame mit Cluster-Zuordnungen
-
-        Returns:
-            Dictionary mit Performance-Statistiken pro Cluster
+        Extracts features for each individual asset for clustering purposes.
+        This produces a DataFrame where each row is an asset and columns are its features.
         """
-        if cluster_assignments.empty or not self.market_data:
-            self.logger.error("Keine Cluster-Zuweisungen oder Marktdaten vorhanden")
-            return {}
+        asset_features_list = []
+        feature_names_template = self.feature_extractor.get_expected_feature_names_for_asset_clustering()  # New method on FeatureExtractor
 
-        try:
-            # Cluster-Performance
-            cluster_stats = {}
+        for symbol in self.core_symbols:
+            if symbol in market_data and not market_data[symbol].empty:
+                df = market_data[symbol]
+                if len(df) >= self.min_data_points_required:
+                    # Extract features for this asset.
+                    # This should return a single row of features specific to this asset for clustering.
+                    # FeatureExtractor.extract_features can be adapted or a new method added for this.
+                    # For now, let's just use `extract_features` but expect single row features.
+                    # `extract_features` is already designed to output features for a single timestamp.
+                    # We need features representative of the asset's behavior over the `min_data_points_required` window.
 
-            # Für jeden Cluster
-            for cluster in sorted(cluster_assignments['cluster'].unique()):
-                # Assets in diesem Cluster
-                cluster_assets = cluster_assignments[cluster_assignments['cluster'] == cluster].index
+                    # The original `extract_asset_clustering_features` function calculated aggregate stats (mean_return, volatility etc.)
+                    # over the entire DataFrame. This is what we need.
+                    # So, FeatureExtractor should have a method like `extract_asset_summary_features`.
 
-                # Performance-Daten sammeln
-                returns_data = []
+                    # For now, let's directly call the internal function for asset clustering features
+                    # This implies FeatureExtractor needs to expose/adapt this.
+                    # Let's add a method `extract_asset_summary_features` to FeatureExtractor.
 
-                for asset in cluster_assets:
-                    # Vollständiges Symbol rekonstruieren
-                    asset_symbols = [s for s in self.market_data.keys() if s.startswith(asset)]
+                    # Temporarily, use the old function if it's available and modify FeatureExtractor to include it.
+                    # Assuming `extract_asset_clustering_features` will be a method of FeatureExtractor.
+                    asset_summary_features_dict = self.feature_extractor.extract_asset_summary_features(df)
 
-                    if not asset_symbols:
-                        continue
-
-                    asset_symbol = asset_symbols[0]
-
-                    # Returns berechnen
-                    df = self.market_data[asset_symbol]
-                    returns = df['close'].pct_change().dropna()
-
-                    returns_data.append((asset, returns))
-
-                if not returns_data:
-                    continue
-
-                # Durchschnittliche tägliche Performance des Clusters
-                all_returns = pd.DataFrame({asset: returns for asset, returns in returns_data})
-                avg_returns = all_returns.mean(axis=1)
-
-                # Performance-Statistiken
-                mean_return = avg_returns.mean()
-                volatility = avg_returns.std()
-                sharpe = mean_return / volatility if volatility > 0 else 0
-                max_drawdown = (avg_returns.cumsum() - avg_returns.cumsum().cummax()).min()
-                win_rate = (avg_returns > 0).mean()
-
-                # Korrelationen innerhalb des Clusters
-                intra_corr = all_returns.corr().values.mean()
-
-                # Repräsentatives Asset (am nächsten zum Clusterzentrum)
-                if hasattr(self, 'cluster_centers') and cluster >= 0:
-                    # Skalierte Feature-Werte
-                    if self.feature_data is not None and not self.feature_data.empty:
-                        X = self.scaler.transform(self.feature_data)
-
-                        # Indizes der Assets in diesem Cluster
-                        cluster_indices = []
-                        for idx, (asset, row) in enumerate(self.feature_data.iterrows()):
-                            if asset in cluster_assets:
-                                cluster_indices.append(idx)
-
-                        if cluster_indices:
-                            # Distanzen zum Clusterzentrum
-                            center = self.cluster_centers[cluster]
-                            distances = np.linalg.norm(X[cluster_indices] - center, axis=1)
-
-                            # Asset mit minimaler Distanz
-                            rep_idx = cluster_indices[np.argmin(distances)]
-                            representative = self.feature_data.index[rep_idx]
-                        else:
-                            representative = cluster_assets[0] if cluster_assets else "Unknown"
+                    if asset_summary_features_dict and asset_summary_features_dict.get("status", "error") != "error":
+                        features = asset_summary_features_dict.get("features", {})
+                        # Convert to Series and add symbol as index
+                        asset_features_series = pd.Series(features, name=symbol)
+                        asset_features_list.append(asset_features_series)
                     else:
-                        representative = cluster_assets[0] if cluster_assets else "Unknown"
+                        logger.warning(
+                            f"Konnte keine Asset-Features für {symbol} extrahieren: {asset_summary_features_dict.get('message', 'Unbekannter Fehler')}")
                 else:
-                    representative = cluster_assets[0] if cluster_assets else "Unknown"
+                    logger.warning(f"Nicht genügend Daten für Asset-Features für {symbol}.")
+            else:
+                logger.warning(f"Keine Marktdaten für Kernsymbol {symbol} zur Asset-Feature-Extraktion vorhanden.")
 
-                # Cluster-Statistik speichern
-                cluster_stats[cluster] = {
-                    "assets": list(cluster_assets),
-                    "count": len(cluster_assets),
-                    "mean_return": mean_return,
-                    "volatility": volatility,
-                    "sharpe_ratio": sharpe,
-                    "max_drawdown": max_drawdown,
-                    "win_rate": win_rate,
-                    "intra_correlation": intra_corr,
-                    "representative_asset": representative
-                }
+        if not asset_features_list:
+            logger.error(
+                "Keine Asset-Features extrahiert. Überprüfen Sie die Datenverfügbarkeit und min_data_points_required.")
+            return None
 
-            self.cluster_performances = cluster_stats
+        # Combine all asset feature series into a single DataFrame (assets as rows, features as columns)
+        asset_features_df = pd.DataFrame(asset_features_list)
 
-            self.logger.info(f"Cluster-Performance-Analyse abgeschlossen für {len(cluster_stats)} Cluster")
-            return cluster_stats
+        # Ensure all expected feature columns are present, filling missing with NaN
+        # `feature_names_template` should list all possible feature columns *for a single asset*
+        for col in feature_names_template:
+            if col not in asset_features_df.columns:
+                asset_features_df[col] = np.nan
 
-        except Exception as e:
-            self.logger.error(f"Fehler bei der Analyse der Cluster-Performance: {e}")
-            return {}
+        asset_features_df = asset_features_df[feature_names_template]  # Reorder columns
 
-    def recommend_portfolio(self, n_assets: int = 5, regime_id: int = None,
-                            regime_detector=None) -> Dict[str, Any]:
+        # Impute missing values
+        if self.imputer is None:
+            self.imputer = SimpleImputer(strategy='mean')
+            self.imputer.fit(asset_features_df)
+
+        asset_features_df_imputed = pd.DataFrame(self.imputer.transform(asset_features_df),
+                                                 columns=asset_features_df.columns,
+                                                 index=asset_features_df.index)
+
+        logger.info(f"Features für {len(asset_features_df_imputed)} Assets extrahiert.")
+        return asset_features_df_imputed
+
+    def train_model(self, symbols: List[str]) -> None:
         """
-        Empfiehlt ein diversifiziertes Portfolio basierend auf dem Clustering.
-        Optional kann ein Marktregime angegeben werden, um regime-spezifische Empfehlungen zu erhalten.
-
-        Args:
-            n_assets: Anzahl der zu empfehlenden Assets
-            regime_id: Optionale ID des aktuellen Marktregimes
-            regime_detector: Optionaler MarketRegimeDetector für regime-spezifische Empfehlungen
-
-        Returns:
-            Dictionary mit Portfolioempfehlungen
+        Trains the asset clustering model (K-Means) and related components.
+        Uses `self.core_symbols` for consistency.
         """
-        if self.clusters is None or self.cluster_performances is None:
-            self.logger.error("Keine Cluster-Daten oder Performance-Analyse vorhanden")
-            return {}
-
+        logger.info("Starte das Training des Asset-Cluster-Analysators...")
         try:
-            recommendations = {}
+            market_data = self._get_data_for_features(DataManager(self.settings), self.core_symbols)
+            features_df = self._extract_asset_features_for_clustering(market_data)
 
-            # Cluster nach Sharpe Ratio sortieren
-            sorted_clusters = sorted(
-                self.cluster_performances.items(),
-                key=lambda x: x[1]['sharpe_ratio'],
-                reverse=True
+            if features_df is None or features_df.empty:
+                raise ValueError("Nicht genügend Features zum Trainieren des Asset-Cluster-Modells verfügbar.")
+
+            # Imputer is fitted in _extract_asset_features_for_clustering or here if needed
+            if self.imputer is None or not hasattr(self.imputer, 'statistics_'):
+                self.imputer = SimpleImputer(strategy='mean')
+                self.imputer.fit(features_df)
+            features_imputed = pd.DataFrame(self.imputer.transform(features_df), columns=features_df.columns,
+                                            index=features_df.index)
+
+            self.scaler = StandardScaler()
+            features_scaled = self.scaler.fit_transform(features_imputed)
+
+            n_clusters = self.settings.get('ml.n_regimes', 3)
+            if n_clusters < 2: n_clusters = 2
+
+            self.cluster_model = MiniBatchKMeans(
+                n_clusters=n_clusters,
+                random_state=42,
+                n_init='auto',
+                batch_size=256
             )
+            self.cluster_model.fit(features_scaled)
 
-            # Regime-spezifische Anpassung, falls verfügbar
-            regime_strategy = "Diversifizierte Allokation"
-            regime_bias = {}
+            # Fit MDS on the scaled features for visualization
+            self.mds = MDS(n_components=2, random_state=42, normalized_stress='auto', metric=True)
+            # MDS needs distance matrix on samples
+            distances = pdist(features_scaled, 'euclidean')
+            self.mds.fit(distances)  # Fit MDS with the distance matrix
 
-            if regime_id is not None and regime_detector is not None and regime_detector.model_trained:
-                # Trading-Regeln für dieses Regime abrufen
-                trading_rules = regime_detector.extract_trading_rules()
-
-                if regime_id in trading_rules:
-                    rule = trading_rules[regime_id]
-                    regime_label = rule.get('label', f"Regime {regime_id}")
-
-                    # Strategie-Empfehlung
-                    regime_strategy = rule.get('recommended_strategy', "Diversifizierte Allokation")
-
-                    # Top-Performer in diesem Regime
-                    top_performers = rule.get('top_performers', {})
-
-                    # Bias für Assets, die in diesem Regime gut performen
-                    for asset, perf in top_performers.items():
-                        # Kurznamen extrahieren
-                        short_name = asset.split('/')[0]
-                        regime_bias[short_name] = max(1.0, 1.0 + perf * 100)  # Bonus basierend auf Performance
-
-                    self.logger.info(f"Berücksichtige Regime {regime_id} ({regime_label}) für Portfolio-Empfehlung")
-
-            # Positiv performende Cluster auswählen
-            positive_clusters = [c for c in sorted_clusters if c[1]['mean_return'] > 0]
-
-            if not positive_clusters:
-                self.logger.warning("Keine positiv performenden Cluster gefunden")
-                recommendations['strategy'] = "Defensive Strategie - nur Stablecoins empfohlen"
-                recommendations['assets'] = []
-                return recommendations
-
-            # Maximale Anzahl Assets pro Cluster
-            assets_per_cluster = max(1, n_assets // len(positive_clusters))
-
-            # Empfohlene Assets sammeln
-            recommended_assets = []
-            allocation = {}
-
-            for cluster_id, stats in positive_clusters:
-                # Assets in diesem Cluster nach Performance sortieren
-                cluster_assets = stats['assets']
-
-                # Performance-Daten für Assets in diesem Cluster
-                asset_performance = {}
-
-                for asset in cluster_assets:
-                    # Vollständiges Symbol rekonstruieren
-                    asset_symbols = [s for s in self.market_data.keys() if s.startswith(asset)]
-
-                    if not asset_symbols:
-                        continue
-
-                    asset_symbol = asset_symbols[0]
-
-                    # Performance-Metrik: Sharpe Ratio
-                    df = self.market_data[asset_symbol]
-                    returns = df['close'].pct_change().dropna()
-
-                    mean_return = returns.mean()
-                    volatility = returns.std()
-                    sharpe = mean_return / volatility if volatility > 0 else 0
-
-                    # Regime-Bias anwenden
-                    bias = regime_bias.get(asset, 1.0)
-                    asset_performance[asset] = sharpe * bias
-
-                # Top-Assets aus diesem Cluster auswählen
-                top_assets = sorted(
-                    asset_performance.items(),
-                    key=lambda x: x[1],
-                    reverse=True
-                )[:assets_per_cluster]
-
-                if top_assets:
-                    for asset, _ in top_assets:
-                        recommended_assets.append(asset)
-                else:
-                    # Falls keine Performance-Daten, repräsentatives Asset verwenden
-                    rep_asset = stats.get('representative_asset')
-                    if rep_asset and rep_asset != "Unknown":
-                        recommended_assets.append(rep_asset)
-
-            # Auf die gewünschte Anzahl begrenzen
-            recommended_assets = recommended_assets[:n_assets]
-
-            # Einfache Allokation basierend auf Sharpe Ratio
-            if recommended_assets:
-                asset_sharpes = {}
-
-                for asset in recommended_assets:
-                    # Vollständiges Symbol rekonstruieren
-                    asset_symbols = [s for s in self.market_data.keys() if s.startswith(asset)]
-
-                    if not asset_symbols:
-                        continue
-
-                    asset_symbol = asset_symbols[0]
-
-                    # Sharpe berechnen
-                    df = self.market_data[asset_symbol]
-                    returns = df['close'].pct_change().dropna()
-
-                    mean_return = returns.mean()
-                    volatility = returns.std()
-                    sharpe = mean_return / volatility if volatility > 0 else 0
-
-                    # Regime-Bias anwenden
-                    bias = regime_bias.get(asset, 1.0)
-                    asset_sharpes[asset] = max(0.01, sharpe * bias)
-
-                # Proportional zum Sharpe Ratio allokieren
-                total_sharpe = sum(asset_sharpes.values())
-
-                for asset, sharpe in asset_sharpes.items():
-                    allocation[asset] = sharpe / total_sharpe
-
-            # Portfolio-Empfehlung
-            recommendations = {
-                'assets': recommended_assets,
-                'allocation': allocation,
-                'strategy': regime_strategy + " über performante Cluster",
-                'regime_adjusted': regime_id is not None
-            }
-
-            self.logger.info(f"Portfolio mit {len(recommended_assets)} Assets empfohlen")
-            return recommendations
+            self.model_trained = True
+            logger.info("Asset-Cluster-Analysator erfolgreich trainiert.")
 
         except Exception as e:
-            self.logger.error(f"Fehler bei der Portfolio-Empfehlung: {e}")
-            return {}
+            self.model_trained = False
+            logger.error(f"Fehler beim Training des Asset-Cluster-Analysators: {e}")
+            raise
 
-    def analyze_new_coin(self, coin_symbol: str, coin_data: pd.DataFrame, min_days: int = 3) -> Dict[str, Any]:
+    def analyze_clusters(self, data_manager: DataManager) -> Dict[str, Any]:
         """
-        Analysiert einen neuen Coin und weist ihn einem Cluster zu.
-
-        Args:
-            coin_symbol: Symbol des Coins (z.B. 'BTC/USDT')
-            coin_data: DataFrame mit Kursdaten des Coins
-            min_days: Minimale Anzahl an Tagen für die Analyse
-
-        Returns:
-            Analyse-Ergebnisse oder leeres Dictionary bei Fehler
+        Analyzes and predicts asset clusters based on current data.
+        Uses `self.core_symbols` for data consistency.
         """
+        if not self.model_trained:
+            logger.warning("Asset-Cluster-Modell ist nicht trainiert. Kann Cluster nicht analysieren.")
+            return {"status": "error", "error": "Model not trained."}
+
         try:
-            # Prüfen, ob genügend Daten vorhanden sind
-            if len(coin_data) < min_days:
-                self.logger.warning(f"Nicht genügend Daten für {coin_symbol}: {len(coin_data)} Tage")
-                return {"status": "insufficient_data", "days_available": len(coin_data)}
+            # Use core symbols for prediction consistency
+            market_data = self._get_data_for_features(data_manager, self.core_symbols)
+            features_df = self._extract_asset_features_for_clustering(market_data)
 
-            # Features für diesen Coin extrahieren
-            features = self._extract_coin_features(coin_data, coin_symbol)
+            if features_df is None or features_df.empty:
+                return {"status": "error", "error": "Nicht genügend aktuelle Daten für Cluster-Analyse."}
 
-            # Ähnliche Coins finden
-            similar_coins = []
+            # Ensure features have correct columns and order for prediction
+            expected_cols = self.imputer.feature_names_in_ if self.imputer else features_df.columns
+            for col in expected_cols:
+                if col not in features_df.columns:
+                    features_df[col] = np.nan
+            features_df = features_df[expected_cols]
 
-            if self.clusters is not None:
-                # Vorheriges Clustering laden
-                if self.feature_data is not None:
-                    # Feature-Matrix
-                    X = self.feature_data.copy()
+            features_imputed = pd.DataFrame(self.imputer.transform(features_df),
+                                            columns=features_df.columns,
+                                            index=features_df.index)
 
-                    if not X.empty:
-                        # Neue Features normalisieren
-                        X_scaled = self.scaler.transform(X)
+            features_scaled = self.scaler.transform(features_imputed)
 
-                        # Feature-Vektor für den neuen Coin
-                        if all(f in X.columns for f in features.keys()):
-                            coin_features = pd.DataFrame([list(features.values())], columns=list(features.keys()))
-                            coin_features_scaled = self.scaler.transform(coin_features)
+            # Predict clusters for each asset
+            cluster_labels = self.cluster_model.predict(features_scaled)
 
-                            # Ähnlichkeit berechnen (euklidische Distanz)
-                            distances = np.sqrt(((X_scaled - coin_features_scaled) ** 2).sum(axis=1))
+            # Organize assets by cluster
+            clusters: Dict[int, List[str]] = {i: [] for i in range(self.cluster_model.n_clusters)}
+            for i, symbol in enumerate(features_df.index):  # Use index as symbol names
+                clusters[cluster_labels[i]].append(symbol)
 
-                            # Top-5 ähnlichste Coins
-                            top_indices = np.argsort(distances)[:5]
-                            similar_coins = [X.index[i] for i in top_indices]
+            organized_clusters = {str(k): v for k, v in clusters.items() if v}
 
-                # Cluster vorhersagen
-                predicted_cluster = -1  # Ausreißer als Standard
+            # Calculate performance metrics using the new features_scaled and predicted labels
+            performance_metrics = self._analyze_cluster_performance(features_scaled, cluster_labels)
 
-                if hasattr(self, 'cluster_model') and self.cluster_model is not None:
-                    # Feature-Vektor für den neuen Coin
-                    if all(f in self.feature_data.columns for f in features.keys()):
-                        coin_features = pd.DataFrame([list(features.values())], columns=list(features.keys()))
-                        coin_features_scaled = self.scaler.transform(coin_features)
-
-                        # Cluster vorhersagen
-                        predicted_cluster = self.cluster_model.predict(coin_features_scaled)[0]
-
-            # Empfohlene Strategie für diesen Coin basierend auf Cluster
-            if self.clusters is not None and predicted_cluster >= 0:
-                # Assets im gleichen Cluster
-                cluster_assets = self.clusters[self.clusters['cluster'] == predicted_cluster].index.tolist()
-
-                # Performance-Daten aus dem Cluster-Analyzer
-                cluster_performance = self.cluster_performances.get(predicted_cluster, {})
-
-                recommended_strategy = "Neutral - Beobachten"
-
-                # Basierend auf Cluster-Performance
-                if cluster_performance:
-                    mean_return = cluster_performance.get('mean_return', 0)
-                    sharpe_ratio = cluster_performance.get('sharpe_ratio', 0)
-
-                    if mean_return > 0.01 and sharpe_ratio > 0.5:
-                        recommended_strategy = "Opportunistisches Long - Positive Cluster-Performance"
-                    elif mean_return > 0:
-                        recommended_strategy = "Vorsichtiges Long - Leicht positive Cluster-Performance"
-                    elif mean_return < -0.01:
-                        recommended_strategy = "Vermeiden - Negative Cluster-Performance"
-            else:
-                cluster_assets = []
-                recommended_strategy = "Neutral - Neue Coin ohne Clusterzuordnung"
-                predicted_cluster = -1
-
-            # Analyseergebnis
-            analysis_result = {
-                "status": "analyzed",
-                "coin": coin_symbol,
-                "predicted_cluster": predicted_cluster,
-                "similar_coins": similar_coins,
-                "recommended_strategy": recommended_strategy,
-                "cluster_assets": cluster_assets,
-                "features": features
+            self.last_clusters = {
+                "status": "available",
+                "timestamp": datetime.now().isoformat(),
+                # Use current time, as features_df index might not be single point
+                "clusters": organized_clusters,
+                "performance": performance_metrics
             }
-
-            self.logger.info(
-                f"Analyse für {coin_symbol} abgeschlossen: Cluster {predicted_cluster}, Strategie: {recommended_strategy}")
-            return analysis_result
+            logger.info(
+                f"Asset-Clustering abgeschlossen: {len(self.core_symbols)} Assets in {self.cluster_model.n_clusters} Clustern.")
+            logger.info(f"Aktuelle Asset-Cluster: {organized_clusters}")
+            return self.last_clusters
 
         except Exception as e:
-            self.logger.error(f"Fehler bei der Analyse des neuen Coins {coin_symbol}: {e}")
-            return {"status": "error", "message": str(e)}
+            logger.error(f"Fehler bei der Asset-Cluster-Analyse: {e}")
+            logger.error(traceback.format_exc())
+            return {"status": "error", "error": str(e)}
 
-    def _extract_coin_features(self, df: pd.DataFrame, coin_symbol: str) -> Dict[str, float]:
+    def _analyze_cluster_performance(self, features_scaled: np.ndarray, labels: np.ndarray) -> Dict[str, float]:
         """
-        Extrahiert Features für einen Coin aus dessen Marktdaten.
-
-        Args:
-            df: DataFrame mit historischen Daten
-            coin_symbol: Symbol des Coins
-
-        Returns:
-            Dictionary mit Feature-Namen und -Werten
+        Calculates and returns clustering performance metrics.
         """
+        performance_metrics = {}
+        n_clusters = self.cluster_model.n_clusters
+
+        if n_clusters < 2 or len(np.unique(labels)) < 2:
+            logger.warning(
+                "Nicht genügend Cluster oder Datenpunkte für Silhouette-Score oder Davies-Bouldin-Score (min. 2 Cluster benötigt).")
+            performance_metrics['silhouette_score'] = np.nan
+            performance_metrics['davies_bouldin_index'] = np.nan
+            return performance_metrics
+
         try:
-            # Sicherstellen, dass wichtige Spalten vorhanden sind
-            required_columns = ['close', 'high', 'low', 'volume']
-            missing_columns = [col for col in required_columns if col not in df.columns]
-
-            if missing_columns:
-                self.logger.warning(f"Fehlende Spalten für {coin_symbol}: {missing_columns}")
-                for col in missing_columns:
-                    df[col] = 0
-
-            # Returns berechnen
-            df['return'] = df['close'].pct_change()
-
-            # Basisfeatures
-            features = {}
-
-            # 1. Rendite-Statistiken
-            features['mean_return'] = df['return'].mean()
-            features['volatility'] = df['return'].std()
-            features['skewness'] = df['return'].skew() if len(df) > 3 else 0
-            features['kurtosis'] = df['return'].kurtosis() if len(df) > 3 else 0
-
-            # 2. Volatilität
-            features['volatility_20d'] = df['return'].rolling(min(10, len(df))).std().mean()
-
-            # 3. True Range
-            df['true_range'] = np.maximum(
-                df['high'] - df['low'],
-                np.maximum(
-                    abs(df['high'] - df['close'].shift(1)),
-                    abs(df['low'] - df['close'].shift(1))
-                )
-            )
-            features['avg_true_range'] = df['true_range'].mean() / df['close'].mean()
-
-            # 4. Volumen-Statistiken (wenn verfügbar)
-            if 'volume' in df.columns:
-                df['volume_change'] = df['volume'].pct_change()
-                features['volume_mean'] = df['volume'].mean()
-                features['volume_std'] = df['volume'].std()
-                features['volume_change_mean'] = df['volume_change'].mean()
+            if features_scaled.shape[0] >= 2 and len(np.unique(labels)) >= 2:
+                performance_metrics['silhouette_score'] = silhouette_score(features_scaled, labels)
             else:
-                features['volume_mean'] = 0
-                features['volume_std'] = 0
-                features['volume_change_mean'] = 0
+                performance_metrics['silhouette_score'] = np.nan
 
-            # 5. Trendstärke
-            if len(df) >= 5:
-                df['ema_5'] = df['close'].ewm(span=5, adjust=False).mean()
-                features['trend_strength'] = (df['close'].iloc[-1] / df['ema_5'].iloc[-1] - 1)
+            if features_scaled.shape[0] >= 2 and len(np.unique(labels)) >= 2:
+                performance_metrics['davies_bouldin_index'] = davies_bouldin_score(features_scaled, labels)
             else:
-                features['trend_strength'] = 0
-
-            if len(df) >= 10:
-                df['ema_10'] = df['close'].ewm(span=10, adjust=False).mean()
-                features['ema_ratio'] = df['ema_5'].iloc[-1] / df['ema_10'].iloc[-1]
-            else:
-                features['ema_ratio'] = 1
-
-            # 6. RSI
-            if len(df) >= 14:
-                delta = df['close'].diff()
-                gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-                loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-                rs = gain / loss
-                df['rsi'] = 100 - (100 / (1 + rs))
-                features['rsi'] = df['rsi'].iloc[-1]
-            else:
-                features['rsi'] = 50  # Neutral
-
-            # 7. Drawdown
-            if len(df) >= 5:
-                rolling_max = df['close'].rolling(min(len(df), 30)).max()
-                drawdown = (df['close'] / rolling_max - 1) * 100
-                features['max_drawdown'] = drawdown.min()
-            else:
-                features['max_drawdown'] = 0
-
-            # 8. Return-to-Volatility Ratio (Sharpe-ähnlich)
-            if features['volatility'] > 0:
-                features['return_to_vol_ratio'] = features['mean_return'] / features['volatility']
-            else:
-                features['return_to_vol_ratio'] = 0
-
-            return features
+                performance_metrics['davies_bouldin_index'] = np.nan
 
         except Exception as e:
-            self.logger.error(f"Fehler bei der Feature-Extraktion für {coin_symbol}: {e}")
-            return {}
+            logger.error(f"Fehler bei der Analyse der Cluster-Performance: {e}")
+            logger.error(traceback.format_exc())
+            performance_metrics['silhouette_score'] = np.nan
+            performance_metrics['davies_bouldin_index'] = np.nan
+
+        return performance_metrics
+
+    def get_current_clusters(self) -> Dict[str, Any]:
+        """Returns the most recently analyzed cluster information."""
+        return self.last_clusters

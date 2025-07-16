@@ -216,14 +216,12 @@ class TradingBot:
         """
         timeframe = self.settings.get('timeframes.analysis', '1h')
         min_candles = self.settings.get('data.min_candles', 50)
+        min_data_for_ml = self.settings.get('ml.min_data_points_for_ml', 200)
 
         try:
-            required_candles = min_candles + 50
+            required_candles = max(min_candles + 50, min_data_for_ml)
             if self.strategy and hasattr(self.strategy, 'lookback_period'):
                 required_candles = max(required_candles, self.strategy.lookback_period + 50)
-            if self.ml_components and self.ml_components.market_regime_detector:
-                required_candles = max(required_candles,
-                                       self.ml_components.market_regime_detector.min_data_points_required)
 
             df = self.data_manager.get_data(
                 symbol=symbol,
@@ -511,7 +509,7 @@ class TradingBot:
                                      current_regime: Optional[int] = None,
                                      current_position: Optional[Position] = None) -> Tuple[str, Dict[str, Any]]:
         """
-        Generates an ML-enhanced trading signal. This logic will be largely similar to 
+        Generates an ML-enhanced trading signal. This logic will be largely similar to
         MLEnhancedBacktester's _generate_ml_enhanced_signal, but adapted for real-time.
         """
         if not self.ml_components:
@@ -580,7 +578,7 @@ class TradingBot:
                                                self.settings.get('ml.output_dir', 'data/ml_analysis'))
             if not self.ml_components.load_models():
                 self.logger.warning("ML models not loaded. Attempting to train new models.")
-                self.ml_components.train_ml_models(self.trading_pairs)
+                self.ml_components.train_ml_models(self.settings.get('ml.regime_core_symbols'))
                 self.ml_components.save_models()
 
         if self.settings.get('strategy_router.enabled', False) and self.ml_components:
@@ -598,7 +596,6 @@ class TradingBot:
                     for pos in self.position_manager.get_all_positions():
                         if pos.symbol in self.data_cache and not self.data_cache[pos.symbol].empty:
                             current_price = self.data_cache[pos.symbol]['close'].iloc[-1]
-                            # Assuming long position for simplicity, adjust for short if applicable
                             unrealized_pnl += (current_price - pos.entry_price) * pos.amount
                         else:
                             self.logger.warning(f"No current data for {pos.symbol} to calculate unrealized PnL.")

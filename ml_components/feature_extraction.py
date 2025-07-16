@@ -10,33 +10,45 @@ import logging
 import numpy as np
 import pandas as pd
 from typing import Dict, Any, List, Optional, Union
+from datetime import datetime
 
 # Logging einrichten
 logger = logging.getLogger(__name__)
 
 
-def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
+class FeatureExtractor:
     """
-    Berechnet gängige technische Indikatoren für einen OHLCV-DataFrame.
-
-    Args:
-        df: DataFrame mit OHLCV-Daten
-
-    Returns:
-        DataFrame mit berechneten Indikatoren
+    Kapselt Funktionen zur Feature-Extraktion für ML-Analysen.
     """
-    try:
-        # Kopie des DataFrames erstellen
+
+    def __init__(self, settings: Any):  # `settings` allows dynamic config for indicators if needed
+        self.settings = settings
+        # Potenziell hier lookback-Perioden oder andere Indikatorparameter aus den Settings laden
+        # self.rsi_period = settings.get('features.rsi_period', 14)
+        # self.ma_short = settings.get('features.ma_short', 20)
+
+    def calculate_technical_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Berechnet gängige technische Indikatoren für einen OHLCV-DataFrame.
+
+        Args:
+            df: DataFrame mit OHLCV-Daten
+
+        Returns:
+            DataFrame mit berechneten Indikatoren
+        """
         df_indicators = df.copy()
 
-        # Prüfen, ob erforderliche Spalten vorhanden sind
+        # Prüfen, ob erforderliche Spalten vorhanden sind, falls nicht, mit 0 füllen (für konsistente Berechnung)
         required_columns = ['open', 'high', 'low', 'close', 'volume']
-        missing_columns = [col for col in required_columns if col not in df.columns]
+        for col in required_columns:
+            if col not in df_indicators.columns:
+                df_indicators[col] = np.nan  # Use NaN to distinguish missing from actual zero
+                logger.warning(f"Fehlende Spalte für Indikatorberechnung: {col}. Mit NaN gefüllt.")
 
-        if missing_columns:
-            logger.warning(f"Fehlende Spalten für Indikatorberechnung: {missing_columns}")
-            for col in missing_columns:
-                df_indicators[col] = 0
+        # Stelle sicher, dass numerische Typen vorliegen, bevor gerechnet wird
+        for col in required_columns:
+            df_indicators[col] = pd.to_numeric(df_indicators[col], errors='coerce')
 
         # 1. Returns
         df_indicators['return'] = df_indicators['close'].pct_change()
@@ -52,7 +64,10 @@ def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
         # 3. Exponential Moving Averages
         df_indicators['ema_5'] = df_indicators['close'].ewm(span=5, adjust=False).mean()
         df_indicators['ema_10'] = df_indicators['close'].ewm(span=10, adjust=False).mean()
+        df_indicators['ema_12'] = df_indicators['close'].ewm(span=12, adjust=False).mean()  # For MACD
+        df_indicators['ema_13'] = df_indicators['close'].ewm(span=13, adjust=False).mean()  # For Elder Ray
         df_indicators['ema_20'] = df_indicators['close'].ewm(span=20, adjust=False).mean()
+        df_indicators['ema_26'] = df_indicators['close'].ewm(span=26, adjust=False).mean()  # For MACD
         df_indicators['ema_50'] = df_indicators['close'].ewm(span=50, adjust=False).mean()
         df_indicators['ema_200'] = df_indicators['close'].ewm(span=200, adjust=False).mean()
 
@@ -61,25 +76,25 @@ def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
         df_indicators['bollinger_std'] = df_indicators['close'].rolling(window=20).std()
         df_indicators['bollinger_upper'] = df_indicators['bollinger_mid'] + (df_indicators['bollinger_std'] * 2)
         df_indicators['bollinger_lower'] = df_indicators['bollinger_mid'] - (df_indicators['bollinger_std'] * 2)
+        # Avoid division by zero
         df_indicators['bollinger_pct'] = (df_indicators['close'] - df_indicators['bollinger_lower']) / (
-                df_indicators['bollinger_upper'] - df_indicators['bollinger_lower'])
+                df_indicators['bollinger_upper'] - df_indicators['bollinger_lower']).replace(0, np.nan)
 
         # 5. RSI
         delta = df_indicators['close'].diff()
         gain = delta.where(delta > 0, 0)
         loss = -delta.where(delta < 0, 0)
 
-        avg_gain = gain.rolling(window=14).mean()
-        avg_loss = loss.rolling(window=14).mean()
+        # Use .mean() for correct rolling average calculation
+        avg_gain = gain.rolling(window=14, min_periods=1).mean()
+        avg_loss = loss.rolling(window=14, min_periods=1).mean()
 
-        rs = avg_gain / avg_loss
+        # Avoid division by zero
+        rs = avg_gain / avg_loss.replace(0, np.nan)
         df_indicators['rsi_14'] = 100 - (100 / (1 + rs))
 
-        # 6. MACD
-        df_indicators['macd'] = df_indicators['ema_12'] - df_indicators[
-            'ema_26'] if 'ema_12' in df_indicators.columns and 'ema_26' in df_indicators.columns else df_indicators[
-                                                                                                          'close'].ewm(
-            span=12, adjust=False).mean() - df_indicators['close'].ewm(span=26, adjust=False).mean()
+        # 6. MACD (needs ema_12 and ema_26, which are calculated above)
+        df_indicators['macd'] = df_indicators['ema_12'] - df_indicators['ema_26']
         df_indicators['macd_signal'] = df_indicators['macd'].ewm(span=9, adjust=False).mean()
         df_indicators['macd_hist'] = df_indicators['macd'] - df_indicators['macd_signal']
 
@@ -89,110 +104,113 @@ def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
         df_indicators['volatility_20'] = df_indicators['return'].rolling(window=20).std()
 
         # 8. Average True Range (ATR)
-        df_indicators['tr'] = np.maximum(
-            df_indicators['high'] - df_indicators['low'],
-            np.maximum(
-                abs(df_indicators['high'] - df_indicators['close'].shift(1)),
-                abs(df_indicators['low'] - df_indicators['close'].shift(1))
-            )
-        )
-        df_indicators['atr_14'] = df_indicators['tr'].rolling(window=14).mean()
+        high_low = df_indicators['high'] - df_indicators['low']
+        high_close_prev = abs(df_indicators['high'] - df_indicators['close'].shift(1))
+        low_close_prev = abs(df_indicators['low'] - df_indicators['close'].shift(1))
+        df_indicators['tr'] = pd.DataFrame(
+            {'high_low': high_low, 'high_close_prev': high_close_prev, 'low_close_prev': low_close_prev}).max(axis=1)
+        df_indicators['atr_14'] = df_indicators['tr'].ewm(span=14,
+                                                          adjust=False).mean()  # Using EMA for ATR is common, or can use rolling mean
 
         # 9. Volumen-Indikatoren
         df_indicators['volume_sma_5'] = df_indicators['volume'].rolling(window=5).mean()
         df_indicators['volume_sma_20'] = df_indicators['volume'].rolling(window=20).mean()
-        df_indicators['volume_ratio'] = df_indicators['volume'] / df_indicators['volume_sma_20']
+        # Avoid division by zero
+        df_indicators['volume_ratio'] = (df_indicators['volume'] / df_indicators['volume_sma_20']).replace(
+            [np.inf, -np.inf], np.nan)
 
         # 10. On-Balance Volume (OBV)
-        df_indicators['obv'] = np.where(
-            df_indicators['close'] > df_indicators['close'].shift(1),
-            df_indicators['volume'],
-            np.where(
-                df_indicators['close'] < df_indicators['close'].shift(1),
-                -df_indicators['volume'],
-                0
-            )
-        ).cumsum()
+        df_indicators['obv'] = (df_indicators['volume'] * df_indicators['close'].diff().apply(np.sign)).cumsum()
 
         # 11. Stochastic Oscillator
-        df_indicators['stoch_k'] = 100 * ((df_indicators['close'] - df_indicators['low'].rolling(window=14).min()) /
-                                          (df_indicators['high'].rolling(window=14).max() - df_indicators[
-                                              'low'].rolling(window=14).min()))
+        lowest_low = df_indicators['low'].rolling(window=14).min()
+        highest_high = df_indicators['high'].rolling(window=14).max()
+        df_indicators['stoch_k'] = 100 * ((df_indicators['close'] - lowest_low) / (highest_high - lowest_low)).replace(
+            0, np.nan)  # Avoid div by zero
         df_indicators['stoch_d'] = df_indicators['stoch_k'].rolling(window=3).mean()
 
         # 12. Commodity Channel Index (CCI)
         typical_price = (df_indicators['high'] + df_indicators['low'] + df_indicators['close']) / 3
-        df_indicators['cci_20'] = (typical_price - typical_price.rolling(window=20).mean()) / (
-                0.015 * typical_price.rolling(window=20).std())
+        cci_ma = typical_price.rolling(window=20).mean()
+        cci_std = typical_price.rolling(window=20).std()
+        # Avoid division by zero
+        df_indicators['cci_20'] = (typical_price - cci_ma) / (0.015 * cci_std).replace(0, np.nan)
 
         # 13. Rate of Change (ROC)
+        # Avoid division by zero
         df_indicators['roc_10'] = ((df_indicators['close'] - df_indicators['close'].shift(10)) / df_indicators[
-            'close'].shift(10)) * 100
+            'close'].shift(10)).replace(0, np.nan) * 100
 
         # 14. Williams %R
+        period = 14
+        highest_high_w = df_indicators['high'].rolling(window=period).max()
+        lowest_low_w = df_indicators['low'].rolling(window=period).min()
+        # Avoid division by zero
         df_indicators['williams_r'] = -100 * (
-                (df_indicators['high'].rolling(window=14).max() - df_indicators['close']) /
-                (df_indicators['high'].rolling(window=14).max() - df_indicators['low'].rolling(window=14).min()))
+                    (highest_high_w - df_indicators['close']) / (highest_high_w - lowest_low_w)).replace(0, np.nan)
 
-        # 15. Parabolic SAR (vereinfacht)
-        df_indicators['psar'] = df_indicators['close'].shift(1)  # Vereinfachte Version als Platzhalter
+        # 15. Parabolic SAR (vereinfacht) - Requires more complex logic, simplified as placeholder for feature set consistency
+        # For a true PSAR, it's an iterative calculation. Here, just a simple derived value.
+        df_indicators['psar'] = df_indicators['close'].shift(1)
 
         return df_indicators
 
-    except Exception as e:
-        logger.error(f"Fehler bei der Berechnung technischer Indikatoren: {e}")
-        return df
+    def calculate_advanced_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Berechnet erweiterte technische Indikatoren für einen OHLCV-DataFrame.
+        Diese Funktionen sind für spezifische Strategien oder erweiterte Analysen gedacht.
 
+        Args:
+            df: DataFrame mit OHLCV-Daten
 
-def calculate_advanced_indicators(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Berechnet erweiterte technische Indikatoren für einen OHLCV-DataFrame.
-
-    Args:
-        df: DataFrame mit OHLCV-Daten
-
-    Returns:
-        DataFrame mit berechneten Indikatoren
-    """
-    try:
-        # Kopie des DataFrames erstellen
+        Returns:
+            DataFrame mit berechneten Indikatoren
+        """
         df_adv = df.copy()
 
         # 1. Ichimoku Cloud
+        # Stellen Sie sicher, dass sma_200 (für Kumo) und andere Basis-EMAs berechnet wurden
+        # Tenkan-sen (Conversion Line): (9-Period High + 9-Period Low) / 2
         high_9 = df_adv['high'].rolling(window=9).max()
         low_9 = df_adv['low'].rolling(window=9).min()
         df_adv['ichimoku_tenkan'] = (high_9 + low_9) / 2
 
+        # Kijun-sen (Base Line): (26-Period High + 26-Period Low) / 2
         high_26 = df_adv['high'].rolling(window=26).max()
         low_26 = df_adv['low'].rolling(window=26).min()
         df_adv['ichimoku_kijun'] = (high_26 + low_26) / 2
 
+        # Senkou Span A (Leading Span A): (Conversion Line + Base Line) / 2 plotted 26 periods ahead
         df_adv['ichimoku_senkou_a'] = ((df_adv['ichimoku_tenkan'] + df_adv['ichimoku_kijun']) / 2).shift(26)
 
+        # Senkou Span B (Leading Span B): (52-Period High + 52-Period Low) / 2 plotted 26 periods ahead
         high_52 = df_adv['high'].rolling(window=52).max()
         low_52 = df_adv['low'].rolling(window=52).min()
         df_adv['ichimoku_senkou_b'] = ((high_52 + low_52) / 2).shift(26)
 
+        # Chikou Span (Lagging Span): Close price plotted 26 periods behind
         df_adv['ichimoku_chikou'] = df_adv['close'].shift(-26)
 
-        # 2. Elder Ray Index
-        df_adv['elder_bull_power'] = df_adv['high'] - df_adv['ema_13'] if 'ema_13' in df_adv.columns else df_adv[
-                                                                                                              'high'] - \
-                                                                                                          df_adv[
-                                                                                                              'close'].ewm(
-                                                                                                              span=13,
-                                                                                                              adjust=False).mean()
-        df_adv['elder_bear_power'] = df_adv['low'] - df_adv['ema_13'] if 'ema_13' in df_adv.columns else df_adv[
-                                                                                                             'low'] - \
-                                                                                                         df_adv[
-                                                                                                             'close'].ewm(
-                                                                                                             span=13,
-                                                                                                             adjust=False).mean()
+        # 2. Elder Ray Index (requires ema_13 which should be calculated by calculate_technical_indicators)
+        df_adv['elder_bull_power'] = df_adv['high'] - df_adv['ema_13']
+        df_adv['elder_bear_power'] = df_adv['low'] - df_adv['ema_13']
 
         # 3. Klinger Volume Oscillator
-        if 'volume' in df_adv.columns:
-            df_adv['klinger_sv'] = df_adv['volume'] * (
-                    2 * (df_adv['close'] - df_adv['close'].shift(1)) / (df_adv['high'] - df_adv['low']) - 1)
+        if 'volume' in df_adv.columns and 'high' in df_adv.columns and 'low' in df_adv.columns and 'close' in df_adv.columns:
+            # Volume Force (VF)
+            # CM (Trend Component) = High - Low
+            # If (current_close > previous_close), CM = CM
+            # Else if (current_close < previous_close), CM = -CM
+            # Else (current_close == previous_close), CM = 0
+
+            # Create a 'trend' series based on close price direction
+            close_diff = df_adv['close'].diff()
+            trend = np.sign(close_diff.fillna(0))  # 1 for up, -1 for down, 0 for no change
+
+            # Calculate the value according to the definition of Volume Force (VF)
+            # This is a simplification; actual KVO uses CMF-like concepts
+            df_adv['klinger_sv'] = df_adv['volume'] * trend  # Simplified Volume Force
+
             df_adv['klinger_ema_short'] = df_adv['klinger_sv'].ewm(span=34, adjust=False).mean()
             df_adv['klinger_ema_long'] = df_adv['klinger_sv'].ewm(span=55, adjust=False).mean()
             df_adv['klinger_kvo'] = df_adv['klinger_ema_short'] - df_adv['klinger_ema_long']
@@ -200,17 +218,19 @@ def calculate_advanced_indicators(df: pd.DataFrame) -> pd.DataFrame:
         # 4. Ehlers Fisher Transform
         if 'close' in df_adv.columns:
             price = df_adv['close']
-            highest_2 = price.rolling(window=10).max()
-            lowest_2 = price.rolling(window=10).min()
+            highest_n = price.rolling(window=10).max()
+            lowest_n = price.rolling(window=10).min()
 
             # Skalieren auf Bereich -1 bis 1
-            raw_value = 2 * ((price - lowest_2) / (highest_2 - lowest_2) - 0.5)
+            # Avoid division by zero
+            raw_value = 2 * ((price - lowest_n) / (highest_n - lowest_n)).replace(0, np.nan) - 1
+            raw_value = raw_value.clip(-0.999, 0.999)  # Clip values to avoid issues with log(0) or log(negative)
 
             # Fisher Transform
             df_adv['fisher_transform'] = 0.5 * np.log((1 + raw_value) / (1 - raw_value))
             df_adv['fisher_transform_signal'] = df_adv['fisher_transform'].shift(1)
 
-        # 5. Money Flow Index
+        # 5. Money Flow Index (requires technical indicators to be run for typical_price)
         if all(col in df_adv.columns for col in ['high', 'low', 'close', 'volume']):
             typical_price = (df_adv['high'] + df_adv['low'] + df_adv['close']) / 3
             raw_money_flow = typical_price * df_adv['volume']
@@ -219,471 +239,212 @@ def calculate_advanced_indicators(df: pd.DataFrame) -> pd.DataFrame:
             money_flow_pos = np.where(typical_price > typical_price.shift(1), raw_money_flow, 0)
             money_flow_neg = np.where(typical_price < typical_price.shift(1), raw_money_flow, 0)
 
-            mf_pos_sum = pd.Series(money_flow_pos).rolling(window=14).sum()
-            mf_neg_sum = pd.Series(money_flow_neg).rolling(window=14).sum()
+            mf_pos_sum = pd.Series(money_flow_pos, index=df_adv.index).rolling(window=14).sum()
+            mf_neg_sum = pd.Series(money_flow_neg, index=df_adv.index).rolling(window=14).sum()
 
-            money_ratio = np.where(mf_neg_sum != 0, mf_pos_sum / mf_neg_sum, 0)
+            money_ratio = np.where(mf_neg_sum != 0, mf_pos_sum / mf_neg_sum, np.nan)  # Use nan instead of 0
             df_adv['mfi_14'] = 100 - (100 / (1 + money_ratio))
 
         # 6. Chande Momentum Oscillator
         if 'close' in df_adv.columns:
             price_diff = df_adv['close'].diff(1)
 
-            # Summe der positiven und negativen Preisänderungen
-            up_sum = pd.Series(np.where(price_diff > 0, price_diff, 0)).rolling(window=14).sum()
-            down_sum = pd.Series(np.where(price_diff < 0, abs(price_diff), 0)).rolling(window=14).sum()
+            up_sum = pd.Series(np.where(price_diff > 0, price_diff, 0), index=df_adv.index).rolling(window=14).sum()
+            down_sum = pd.Series(np.where(price_diff < 0, abs(price_diff), 0), index=df_adv.index).rolling(
+                window=14).sum()
 
-            # CMO berechnen
-            df_adv['cmo_14'] = 100 * ((up_sum - down_sum) / (up_sum + down_sum))
+            # Avoid division by zero
+            df_adv['cmo_14'] = 100 * ((up_sum - down_sum) / (up_sum + down_sum).replace(0, np.nan))
 
         # 7. Aroon Indicator
         if 'high' in df_adv.columns and 'low' in df_adv.columns:
-            # Aroon Up: 100 * (14 - Tage seit 14-Tage-Hoch) / 14
-            # Aroon Down: 100 * (14 - Tage seit 14-Tage-Tief) / 14
             period = 14
 
-            # Berechnung der Anzahl der Tage seit Hoch/Tief
-            rolling_high = df_adv['high'].rolling(window=period).max()
-            rolling_low = df_adv['low'].rolling(window=period).min()
+            # Using idxmax/idxmin and index differences is more robust
+            high_idx = df_adv['high'].rolling(window=period).apply(lambda x: x.idxmax(), raw=False)
+            low_idx = df_adv['low'].rolling(window=period).apply(lambda x: x.idxmin(), raw=False)
 
-            days_since_high = np.zeros(len(df_adv))
-            days_since_low = np.zeros(len(df_adv))
+            # Calculate days since max/min relative to the end of the window
+            df_adv['aroon_up'] = 100 * (period - (
+                        df_adv.index.to_series().apply(lambda x: (x - df_adv.loc[high_idx.loc[x], :].name).days) / (
+                            24 * 60 * 60 / 3600))) / period  # Needs correction for timeframes other than days
+            df_adv['aroon_down'] = 100 * (period - (
+                        df_adv.index.to_series().apply(lambda x: (x - df_adv.loc[low_idx.loc[x], :].name).days) / (
+                            24 * 60 * 60 / 3600))) / period  # Needs correction for timeframes other than days
 
-            for i in range(period, len(df_adv)):
-                high_val = rolling_high.iloc[i]
-                low_val = rolling_low.iloc[i]
+            # More robust Aroon calculation based on TA-Lib approach or simple pandas rolling index
+            def aroon_up(s, period):
+                return s.rolling(period).apply(lambda x: float(np.where(x == x.max())[0][-1]), raw=True)
 
-                # Suche nach letztem Hoch/Tief
-                for j in range(period):
-                    if df_adv['high'].iloc[i - j] == high_val:
-                        days_since_high[i] = j
-                        break
+            def aroon_down(s, period):
+                return s.rolling(period).apply(lambda x: float(np.where(x == x.min())[0][-1]), raw=True)
 
-                for j in range(period):
-                    if df_adv['low'].iloc[i - j] == low_val:
-                        days_since_low[i] = j
-                        break
+            df_adv['aroon_up'] = 100 * (period - aroon_up(df_adv['high'], period)) / period
+            df_adv['aroon_down'] = 100 * (period - aroon_down(df_adv['low'], period)) / period
 
-            df_adv['aroon_up'] = 100 * (period - pd.Series(days_since_high)) / period
-            df_adv['aroon_down'] = 100 * (period - pd.Series(days_since_low)) / period
             df_adv['aroon_oscillator'] = df_adv['aroon_up'] - df_adv['aroon_down']
 
-        # 8. Keltner Channel
-        if all(col in df_adv.columns for col in ['high', 'low', 'close']):
+        # 8. Keltner Channel (requires ATR from calculate_technical_indicators)
+        if all(col in df_adv.columns for col in ['high', 'low', 'close', 'atr_14']):
             typical_price = (df_adv['high'] + df_adv['low'] + df_adv['close']) / 3
 
-            # True Range
-            tr = np.zeros(len(df_adv))
-            for i in range(1, len(df_adv)):
-                tr1 = df_adv['high'].iloc[i] - df_adv['low'].iloc[i]
-                tr2 = abs(df_adv['high'].iloc[i] - df_adv['close'].iloc[i - 1])
-                tr3 = abs(df_adv['low'].iloc[i] - df_adv['close'].iloc[i - 1])
-                tr[i] = max(tr1, tr2, tr3)
-
-            atr = pd.Series(tr).rolling(window=10).mean()
-
-            df_adv['keltner_middle'] = typical_price.rolling(window=20).mean()
-            df_adv['keltner_upper'] = df_adv['keltner_middle'] + 2 * atr
-            df_adv['keltner_lower'] = df_adv['keltner_middle'] - 2 * atr
+            df_adv['keltner_middle'] = typical_price.rolling(
+                window=20).mean()  # Keltner middle is often EMA, but SMA is also used
+            df_adv['keltner_upper'] = df_adv['keltner_middle'] + 2 * df_adv['atr_14']
+            df_adv['keltner_lower'] = df_adv['keltner_middle'] - 2 * df_adv['atr_14']
 
         return df_adv
 
-    except Exception as e:
-        logger.error(f"Fehler bei der Berechnung erweiterter Indikatoren: {e}")
-        return df
+    def extract_features(self, df: pd.DataFrame, symbol: str) -> pd.DataFrame:
+        """
+        Extracts a comprehensive set of features for a single symbol from its OHLCV data.
+        Returns a DataFrame with a single row (latest timestamp) and feature columns.
+        """
+        if df.empty:
+            logger.warning(f"Leerer DataFrame für Feature-Extraktion von {symbol}.")
+            return pd.DataFrame()
 
+        # Calculate all necessary indicators first
+        df_with_indicators = self.calculate_technical_indicators(df)
+        df_with_indicators = self.calculate_advanced_indicators(df_with_indicators)
 
-def extract_market_regime_features(df: pd.DataFrame, btc_df: pd.DataFrame = None) -> Dict[str, float]:
-    """
-    Extrahiert Features für die Marktregime-Erkennung.
+        # Drop rows with NaN values (from rolling calculations at the beginning)
+        # Only take the latest valid row for feature extraction
+        df_with_indicators = df_with_indicators.dropna()
 
-    Args:
-        df: DataFrame mit OHLCV-Daten
-        btc_df: Optional DataFrame mit Bitcoin-Daten als Referenz
+        if df_with_indicators.empty:
+            logger.warning(f"Nach Indikatorberechnung und NaN-Bereinigung ist der DataFrame für {symbol} leer.")
+            return pd.DataFrame()
 
-    Returns:
-        Dictionary mit Feature-Namen und -Werten
-    """
-    try:
-        features = {}
+        features_dict = {}
 
-        # Wenn kein BTC-DataFrame übergeben wurde, den übergebenen verwenden
-        if btc_df is None:
-            btc_df = df
+        # 1. Price-based features
+        last_close = df_with_indicators['close'].iloc[-1]
+        features_dict['close'] = last_close
+        features_dict['return'] = df_with_indicators['return'].iloc[-1]
+        features_dict['log_return'] = df_with_indicators['log_return'].iloc[-1]
 
-        # 1. Rendite-Features
-        features['mean_return'] = df['return'].mean() if 'return' in df.columns else df['close'].pct_change().mean()
-        features['volatility'] = df['return'].std() if 'return' in df.columns else df['close'].pct_change().std()
+        # 2. Technical indicator features (latest values)
+        last_row = df_with_indicators.iloc[-1]
 
-        # 2. Kurse relativ zu Moving Averages
-        if 'close' in df.columns:
-            if 'ema_20' in df.columns:
-                features['rel_to_ema20'] = df['close'].iloc[-1] / df['ema_20'].iloc[-1] - 1
+        # Define a consistent list of indicators to extract. This list should cover what's needed by ML models.
+        indicator_features_to_extract = [
+            'sma_5', 'sma_10', 'sma_20', 'sma_50', 'sma_200',
+            'ema_5', 'ema_10', 'ema_12', 'ema_13', 'ema_20', 'ema_26', 'ema_50', 'ema_200',
+            'bollinger_mid', 'bollinger_std', 'bollinger_upper', 'bollinger_lower', 'bollinger_pct',
+            'rsi_14', 'macd', 'macd_signal', 'macd_hist', 'volatility_5', 'volatility_10', 'volatility_20',
+            'atr_14', 'volume_sma_5', 'volume_sma_20', 'volume_ratio', 'obv', 'stoch_k', 'stoch_d',
+            'cci_20', 'roc_10', 'williams_r', 'psar',
+            # Advanced indicators
+            'ichimoku_tenkan', 'ichimoku_kijun', 'ichimoku_senkou_a', 'ichimoku_senkou_b', 'ichimoku_chikou',
+            'elder_bull_power', 'elder_bear_power', 'klinger_kvo', 'fisher_transform', 'fisher_transform_signal',
+            'mfi_14', 'cmo_14', 'aroon_up', 'aroon_down', 'aroon_oscillator',
+            'keltner_middle', 'keltner_upper', 'keltner_lower'
+        ]
+
+        for feat in indicator_features_to_extract:
+            if feat in last_row and pd.notna(last_row[feat]):
+                features_dict[feat] = last_row[feat]
             else:
-                ema_20 = df['close'].ewm(span=20, adjust=False).mean()
-                features['rel_to_ema20'] = df['close'].iloc[-1] / ema_20.iloc[-1] - 1
+                features_dict[feat] = np.nan
 
-            if 'ema_50' in df.columns:
-                features['rel_to_ema50'] = df['close'].iloc[-1] / df['ema_50'].iloc[-1] - 1
-            else:
-                ema_50 = df['close'].ewm(span=50, adjust=False).mean()
-                features['rel_to_ema50'] = df['close'].iloc[-1] / ema_50.iloc[-1] - 1
-
-            if 'ema_200' in df.columns:
-                features['rel_to_ema200'] = df['close'].iloc[-1] / df['ema_200'].iloc[-1] - 1
-            else:
-                ema_200 = df['close'].ewm(span=200, adjust=False).mean()
-                features['rel_to_ema200'] = df['close'].iloc[-1] / ema_200.iloc[-1] - 1
-
-        # 3. Relative Stärke zu Bitcoin (wenn nicht BTC)
-        if btc_df is not df and 'return' in df.columns and 'return' in btc_df.columns:
-            # Gemeinsamer Index
-            common_idx = df.index.intersection(btc_df.index)
-
-            if len(common_idx) > 0:
-                asset_returns = df.loc[common_idx, 'return']
-                btc_returns = btc_df.loc[common_idx, 'return']
-
-                features['rel_strength_to_btc'] = asset_returns.mean() - btc_returns.mean()
-
-        # 4. RSI-Features
-        if 'rsi_14' in df.columns:
-            features['rsi'] = df['rsi_14'].iloc[-1]
-            features['rsi_5d_mean'] = df['rsi_14'].iloc[-5:].mean()
-
-        # 5. Volatilitäts-Features
-        if 'volatility_20' in df.columns:
-            features['volatility_20d'] = df['volatility_20'].iloc[-1]
-        elif 'return' in df.columns:
-            features['volatility_20d'] = df['return'].rolling(20).std().iloc[-1]
-
-        # 6. Volumen-Features
-        if 'volume' in df.columns and 'volume_sma_20' in df.columns:
-            features['volume_ratio'] = df['volume'].iloc[-1] / df['volume_sma_20'].iloc[-1]
-        elif 'volume' in df.columns:
-            features['volume_ratio'] = df['volume'].iloc[-1] / df['volume'].rolling(20).mean().iloc[-1]
-
-        # 7. Trend-Features
-        if 'macd' in df.columns and 'macd_signal' in df.columns:
-            features['macd_hist'] = df['macd_hist'].iloc[-1]
-            features['macd_hist_5d_sum'] = df['macd_hist'].iloc[-5:].sum()
-
-        # 8. Momentum-Features
-        if 'close' in df.columns:
-            features['momentum_14d'] = df['close'].iloc[-1] / df['close'].iloc[-15] - 1 if len(df) >= 15 else 0
-
-        return features
-
-    except Exception as e:
-        logger.error(f"Fehler bei der Extraktion von Marktregime-Features: {e}")
-        return {}
-
-
-def extract_asset_clustering_features(df: pd.DataFrame) -> Dict[str, float]:
-    """
-    Extrahiert Features für Asset-Clustering.
-
-    Args:
-        df: DataFrame mit OHLCV-Daten
-
-    Returns:
-        Dictionary mit Feature-Namen und -Werten
-    """
-    try:
-        features = {}
-
-        # 1. Rendite-Statistiken
-        if 'return' in df.columns:
-            returns = df['return'].dropna()
+                # 3. Add higher-level features for market regime or clustering that combine indicators
+        # Price relative to MAs (for market regime)
+        if 'close' in last_row and 'ema_20' in last_row and pd.notna(last_row['ema_20']) and last_row['ema_20'] != 0:
+            features_dict['rel_to_ema20'] = last_row['close'] / last_row['ema_20'] - 1
         else:
-            returns = df['close'].pct_change().dropna()
+            features_dict['rel_to_ema20'] = np.nan
 
-        features['mean_return'] = returns.mean()
-        features['volatility'] = returns.std()
-        features['skewness'] = returns.skew() if len(returns) > 3 else 0
-        features['kurtosis'] = returns.kurt() if len(returns) > 3 else 0
-
-        # 2. Volumen-Features
-        if 'volume' in df.columns:
-            volume = df['volume'].dropna()
-            volume_change = volume.pct_change().dropna()
-
-            features['volume_mean'] = volume.mean()
-            features['volume_std'] = volume.std()
-            features['volume_change_mean'] = volume_change.mean()
-
-            # Volumen/Preis-Korrelation
-            if 'close' in df.columns:
-                features['vol_price_corr'] = volume.corr(df['close'])
-
-        # 3. Trend-Features
-        if 'close' in df.columns:
-            close = df['close']
-
-            # MA-Verhältnis
-            if 'sma_20' in df.columns and 'sma_50' in df.columns:
-                features['ma_ratio'] = df['sma_20'].iloc[-1] / df['sma_50'].iloc[-1]
-            else:
-                sma_20 = close.rolling(20).mean()
-                sma_50 = close.rolling(50).mean()
-                features['ma_ratio'] = sma_20.iloc[-1] / sma_50.iloc[-1] if not pd.isna(sma_50.iloc[-1]) and \
-                                                                            sma_50.iloc[-1] != 0 else 1
-
-            # Distanz zu MAs
-            if 'sma_20' in df.columns:
-                features['dist_to_ma20'] = close.iloc[-1] / df['sma_20'].iloc[-1] - 1
-            else:
-                sma_20 = close.rolling(20).mean()
-                features['dist_to_ma20'] = close.iloc[-1] / sma_20.iloc[-1] - 1 if not pd.isna(sma_20.iloc[-1]) and \
-                                                                                   sma_20.iloc[-1] != 0 else 0
-
-            if 'sma_50' in df.columns:
-                features['dist_to_ma50'] = close.iloc[-1] / df['sma_50'].iloc[-1] - 1
-            else:
-                sma_50 = close.rolling(50).mean()
-                features['dist_to_ma50'] = close.iloc[-1] / sma_50.iloc[-1] - 1 if not pd.isna(sma_50.iloc[-1]) and \
-                                                                                   sma_50.iloc[-1] != 0 else 0
-
-        # 4. Volatilitäts-Features
-        if 'volatility_20' in df.columns:
-            features['volatility_20d'] = df['volatility_20'].iloc[-1]
-        elif 'return' in df.columns:
-            features['volatility_20d'] = returns.rolling(20).std().iloc[-1] if len(returns) >= 20 else returns.std()
-
-        # 5. RSI-Feature
-        if 'rsi_14' in df.columns:
-            features['rsi'] = df['rsi_14'].iloc[-1]
-
-        # 6. Momentum-Feature
-        if 'roc_10' in df.columns:
-            features['momentum'] = df['roc_10'].iloc[-1]
-        elif 'close' in df.columns:
-            features['momentum'] = df['close'].iloc[-1] / df['close'].iloc[-11] - 1 if len(df) >= 11 else 0
-
-        # 7. Drawdown-Feature
-        if 'close' in df.columns:
-            close = df['close']
-            rolling_max = close.rolling(min(len(close), 30)).max()
-            drawdown = (close / rolling_max - 1) * 100
-            features['max_drawdown'] = drawdown.min()
-
-        # 8. Return-to-Vol Ratio (Sharpe-ähnlich)
-        if features['volatility'] > 0:
-            features['return_to_vol_ratio'] = features['mean_return'] / features['volatility']
+        if 'close' in last_row and 'ema_50' in last_row and pd.notna(last_row['ema_50']) and last_row['ema_50'] != 0:
+            features_dict['rel_to_ema50'] = last_row['close'] / last_row['ema_50'] - 1
         else:
-            features['return_to_vol_ratio'] = 0
+            features_dict['rel_to_ema50'] = np.nan
 
-        return features
+        if 'close' in last_row and 'ema_200' in last_row and pd.notna(last_row['ema_200']) and last_row['ema_200'] != 0:
+            features_dict['rel_to_ema200'] = last_row['close'] / last_row['ema_200'] - 1
+        else:
+            features_dict['rel_to_ema200'] = np.nan
 
-    except Exception as e:
-        logger.error(f"Fehler bei der Extraktion von Asset-Clustering-Features: {e}")
-        return {}
+        # Momentum over longer period (e.g., 30 days or period based on timeframe)
+        if len(df_with_indicators) >= 30:  # Ensure enough data
+            features_dict['momentum_30d'] = (
+                        df_with_indicators['close'].iloc[-1] / df_with_indicators['close'].iloc[-30] - 1) if \
+            df_with_indicators['close'].iloc[-30] != 0 else np.nan
+        else:
+            features_dict['momentum_30d'] = np.nan
 
+        # Example: Volatility ratio
+        if 'volatility_5' in last_row and 'volatility_20' in last_row and pd.notna(last_row['volatility_20']) and \
+                last_row['volatility_20'] != 0:
+            features_dict['volatility_ratio'] = last_row['volatility_5'] / last_row['volatility_20']
+        else:
+            features_dict['volatility_ratio'] = np.nan
 
-def extract_coin_features(df: pd.DataFrame, min_days: int = 3) -> Dict[str, Any]:
-    """
-    Extrahiert Features für die Analyse neuer Coins.
+        # Convert to DataFrame
+        features_df = pd.DataFrame([features_dict], index=[df_with_indicators.index[-1]])
 
-    Args:
-        df: DataFrame mit OHLCV-Daten
-        min_days: Minimale Anzahl an Tagen für die Analyse
+        # Add symbol prefix to all columns for uniqueness across multiple assets
+        symbol_prefix = f"{symbol.replace('/', '_')}_"
+        features_df.columns = [symbol_prefix + col for col in features_df.columns]
 
-    Returns:
-        Dictionary mit Features oder Status-Information
-    """
-    try:
-        # Prüfen, ob genügend Daten vorhanden sind
-        if len(df) < min_days:
-            return {"status": "insufficient_data", "days_available": len(df)}
+        return features_df
 
-        # Basis-Features extrahieren
-        features = extract_asset_clustering_features(df)
-
-        # Erweiterte Coin-spezifische Features
-        if 'volume' in df.columns:
-            # Volumen-Trend
-            vol_trend = df['volume'].pct_change().mean()
-            features['volume_trend'] = vol_trend
-
-            # Volumen-Spikes
-            vol_mean = df['volume'].mean()
-            vol_std = df['volume'].std()
-            vol_spikes = (df['volume'] > vol_mean + 2 * vol_std).sum()
-            features['volume_spikes'] = vol_spikes / len(df)
-
-        # Preisvolatilität auf Tagesbasis
-        if all(col in df.columns for col in ['high', 'low', 'close']):
-            daily_range = (df['high'] - df['low']) / df['close']
-            features['daily_range_mean'] = daily_range.mean()
-            features['daily_range_max'] = daily_range.max()
-
-        # Preis-Momentum
-        if 'close' in df.columns:
-            price_trend_3d = df['close'].iloc[-1] / df['close'].iloc[-min(4, len(df))] - 1 if len(df) >= 4 else 0
-            features['price_trend_3d'] = price_trend_3d
-
-        # Aufwärts-/Abwärts-Tage-Verhältnis
-        if 'return' in df.columns:
-            up_days = (df['return'] > 0).sum()
-            down_days = (df['return'] < 0).sum()
-            features['up_down_ratio'] = up_days / down_days if down_days > 0 else up_days
-
-        # Ergebnis mit Status
-        return {
-            "status": "analyzed",
-            "features": features
-        }
-
-    except Exception as e:
-        logger.error(f"Fehler bei der Extraktion von Coin-Features: {e}")
-        return {"status": "error", "message": str(e)}
-
-
-def extract_enhanced_features(df: pd.DataFrame, symbol: str = None,
-                              include_sentiment: bool = True) -> Dict[str, float]:
-    """
-    Extrahiert erweiterte Features mit Sentiment- und On-Chain-Daten.
-
-    Args:
-        df: DataFrame mit OHLCV-Daten
-        symbol: Symbol des Assets (für Sentiment-Daten)
-        include_sentiment: Ob Sentiment-Features einbezogen werden sollen
-
-    Returns:
-        Dictionary mit Feature-Namen und -Werten
-    """
-    try:
-        # Basis-Features extrahieren
-        features = extract_market_regime_features(df)
-
-        # Erweiterte technische Indikatoren berechnen
-        df_adv = calculate_advanced_indicators(df)
-
-        # Letzte Werte der erweiterten Indikatoren hinzufügen
-        last_row = df_adv.iloc[-1]
-
-        # Ichimoku-Features
-        if 'ichimoku_tenkan' in last_row:
-            features['ichimoku_tenkan'] = last_row['ichimoku_tenkan']
-            features['ichimoku_kijun'] = last_row['ichimoku_kijun']
-
-            # Cloud-Positionen
-            if 'ichimoku_senkou_a' in last_row and 'ichimoku_senkou_b' in last_row:
-                cloud_top = max(last_row['ichimoku_senkou_a'], last_row['ichimoku_senkou_b'])
-                cloud_bottom = min(last_row['ichimoku_senkou_a'], last_row['ichimoku_senkou_b'])
-
-                # Preis relativ zur Cloud
-                features['price_above_cloud'] = 1 if last_row['close'] > cloud_top else 0
-                features['price_in_cloud'] = 1 if cloud_bottom <= last_row['close'] <= cloud_top else 0
-                features['price_below_cloud'] = 1 if last_row['close'] < cloud_bottom else 0
-
-                # Abstand zur Cloud
-                if last_row['close'] > cloud_top:
-                    features['cloud_distance'] = (last_row['close'] / cloud_top) - 1
-                elif last_row['close'] < cloud_bottom:
-                    features['cloud_distance'] = (last_row['close'] / cloud_bottom) - 1
+    def extract_features_for_latest(self, market_data: Dict[str, pd.DataFrame], symbols: List[str]) -> pd.DataFrame:
+        """
+        Extracts features for the latest timestamp across multiple symbols.
+        Combines logic for market regime features.
+        """
+        combined_features = []
+        for symbol in symbols:
+            if symbol in market_data and not market_data[symbol].empty:
+                # Ensure enough data points before extracting features
+                if len(market_data[symbol]) >= self.settings.get('ml.min_data_points_for_ml', 200):
+                    # Extract features for the latest row of the given symbol's DataFrame
+                    # The extract_features method already returns a single-row DataFrame with prefixed columns
+                    features_df_single_symbol = self.extract_features(market_data[symbol], symbol)
+                    if not features_df_single_symbol.empty:
+                        combined_features.append(features_df_single_symbol)
                 else:
-                    features['cloud_distance'] = 0
+                    logger.warning(
+                        f"Nicht genügend Daten für {symbol} zur Feature-Extraktion. Benötigt: {self.settings.get('ml.min_data_points_for_ml', 200)}, vorhanden: {len(market_data[symbol])}")
+            else:
+                logger.warning(f"Keine Marktdaten für {symbol} zur Feature-Extraktion vorhanden.")
 
-        # Elder Ray Features
-        if 'elder_bull_power' in last_row:
-            features['elder_bull_power'] = last_row['elder_bull_power']
-            features['elder_bear_power'] = last_row['elder_bear_power']
+        if not combined_features:
+            return pd.DataFrame()
 
-            # Kombinierte Elder-Power
-            features['elder_power_ratio'] = last_row['elder_bull_power'] / abs(last_row['elder_bear_power']) if \
-                last_row['elder_bear_power'] != 0 else 0
+        # Concatenate all single-row DataFrames into one, aligning by index (timestamp)
+        final_features_df = pd.concat(combined_features, axis=1)
 
-        # Klinger Volume Oscillator
-        if 'klinger_kvo' in last_row:
-            features['klinger_kvo'] = last_row['klinger_kvo']
+        # Ensure only the latest timestamp is kept if concatenation created multiple rows (e.g., if data timestamps differ slightly)
+        if not final_features_df.empty:
+            final_features_df = pd.DataFrame(
+                final_features_df.iloc[-1]).T  # Take the very last row (transpose to keep it a row)
+            final_features_df.index = [final_features_df.index[-1]]  # Ensure index is correct for single row
 
-            # KVO-Trend (letzte 5 Werte)
-            if len(df_adv) >= 5:
-                kvo_values = df_adv['klinger_kvo'].tail(5)
-                features['klinger_kvo_slope'] = (kvo_values.iloc[-1] - kvo_values.iloc[0]) / 5
+        return final_features_df
 
-        # Fisher Transform
-        if 'fisher_transform' in last_row:
-            features['fisher_transform'] = last_row['fisher_transform']
+    def get_expected_feature_names(self, symbols: List[str]) -> List[str]:
+        """
+        Generates a consistent list of all expected feature names across all symbols.
+        This is crucial for matching features during model loading/prediction.
+        It runs a dummy extraction to get all possible feature names.
+        """
+        # Create a dummy DataFrame to run through feature extraction and get all possible columns
+        # Ensure dummy data is sufficient for all indicator calculations
+        dummy_df = pd.DataFrame(np.random.rand(self.settings.get('ml.min_data_points_for_ml', 200) + 100, 5),
+                                # Add buffer
+                                columns=['open', 'high', 'low', 'close', 'volume'],
+                                index=pd.date_range(end=datetime.now(),
+                                                    periods=self.settings.get('ml.min_data_points_for_ml', 200) + 100,
+                                                    freq='H'))
 
-            # Fisher-Divergenz
-            if 'fisher_transform_signal' in last_row:
-                features['fisher_divergence'] = last_row['fisher_transform'] - last_row[
-                    'fisher_transform_signal']
+        all_feature_names = set()
+        for symbol in symbols:
+            # Run extraction for a dummy symbol to get the pattern of feature names
+            features_df = self.extract_features(dummy_df, symbol)
+            if not features_df.empty:
+                for col in features_df.columns:
+                    all_feature_names.add(col)
 
-        # Money Flow Index
-        if 'mfi_14' in last_row:
-            features['mfi'] = last_row['mfi_14']
-
-            # MFI-Overbought/Oversold
-            features['mfi_overbought'] = 1 if last_row['mfi_14'] > 80 else 0
-            features['mfi_oversold'] = 1 if last_row['mfi_14'] < 20 else 0
-
-        # Chande Momentum Oscillator
-        if 'cmo_14' in last_row:
-            features['cmo'] = last_row['cmo_14']
-
-        # Aroon Indicator
-        if 'aroon_oscillator' in last_row:
-            features['aroon_oscillator'] = last_row['aroon_oscillator']
-
-        # Keltner Channel
-        if all(x in last_row for x in ['keltner_middle', 'keltner_upper', 'keltner_lower']):
-            # Preis relativ zum Keltner Channel
-            features['keltner_position'] = (last_row['close'] - last_row['keltner_lower']) / (
-                    last_row['keltner_upper'] - last_row['keltner_lower']) if (last_row['keltner_upper'] -
-                                                                               last_row[
-                                                                                   'keltner_lower']) != 0 else 0.5
-
-            # Channel-Weite (Volatilität)
-            features['keltner_width'] = (last_row['keltner_upper'] - last_row['keltner_lower']) / last_row[
-                'keltner_middle']
-
-        # Sentiment-Features hinzufügen, falls gewünscht
-        if include_sentiment and symbol:
-            # Import hier, um Zirkelbezüge zu vermeiden
-            try:
-                from ml_components.market_sentiment import MarketSentimentAnalyzer
-
-                # Sentiment-Analyzer initialisieren
-                sentiment_analyzer = MarketSentimentAnalyzer()
-
-                # Sentiment-Features extrahieren
-                df_with_sentiment = sentiment_analyzer.extract_sentiment_features(df, symbol)
-
-                # Letzte Sentiment-Werte hinzufügen
-                last_sentiment = df_with_sentiment.iloc[-1]
-
-                # Fear & Greed
-                if 'fear_greed_value' in last_sentiment:
-                    features['fear_greed_index'] = last_sentiment['fear_greed_value']
-
-                # Social Sentiment
-                if 'social_sentiment' in last_sentiment:
-                    features['social_sentiment'] = last_sentiment['social_sentiment']
-
-                    # Sentiment-Trend (letzte 7 Tage)
-                    if len(df_with_sentiment) >= 7:
-                        sentiment_values = df_with_sentiment['social_sentiment'].tail(7)
-                        features['sentiment_trend'] = (sentiment_values.iloc[-1] - sentiment_values.iloc[0]) / 7
-
-                # On-Chain-Metriken
-                onchain_cols = [col for col in last_sentiment.index if col.startswith('onchain_')]
-                for col in onchain_cols:
-                    features[col] = last_sentiment[col]
-
-                    # Trends für wichtige On-Chain-Metriken
-                    if col in ['onchain_active_addresses', 'onchain_transaction_count']:
-                        if len(df_with_sentiment) >= 7:
-                            metric_values = df_with_sentiment[col].tail(7)
-                            features[f"{col}_trend"] = (metric_values.iloc[-1] - metric_values.iloc[0]) / \
-                                                       metric_values.iloc[0] if metric_values.iloc[0] != 0 else 0
-            except (ImportError, ModuleNotFoundError):
-                logger.warning("MarketSentimentAnalyzer nicht verfügbar, Sentiment-Features werden übersprungen")
-
-        return features
-
-    except Exception as e:
-        logger.error(f"Fehler bei der Extraktion erweiterter Features: {e}")
-        return {}
+        return sorted(list(all_feature_names))  # Return sorted list for consistent order
