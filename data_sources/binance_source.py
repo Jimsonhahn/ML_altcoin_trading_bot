@@ -16,6 +16,7 @@ import time
 import ccxt
 
 from data_sources.base import DataSourceBase, DataSourceException
+from utils.secure_http import create_secure_session
 
 
 class BinanceDataSource(DataSourceBase):
@@ -33,10 +34,11 @@ class BinanceDataSource(DataSourceBase):
         self.rate_limit_delay = 0.5  # Binance erlaubt 1200 Anfragen pro Minute (60/1200 = 0.05, mit Puffer)
         self.logger = logging.getLogger(__name__)
 
-        # CCXT-Exchange-Instanz erstellen
+        # CCXT-Exchange-Instanz erstellen mit sicherer Session
         self.exchange = ccxt.binance({
             'enableRateLimit': True,
-            'options': {'defaultType': 'spot'}
+            'options': {'defaultType': 'spot'},
+            'session': create_secure_session()
         })
 
     def _throttle(self):
@@ -485,3 +487,32 @@ class BinanceDataSource(DataSourceBase):
         except Exception as e:
             self.logger.error(f"Error fetching recent trades for {symbol}: {e}")
             raise DataSourceException(f"Could not fetch recent trades: {e}")
+
+    def fetch_ohlcv(self, symbol: str, timeframe: str = '1h', limit: int = 100) -> List[List]:
+        """
+        Alias für get_historical_prices - DataManager Kompatibilität
+        
+        Args:
+            symbol: Handelssymbol (z.B. 'BTC/USDT')
+            timeframe: Zeitrahmen ('1m', '5m', '1h', '1d', etc.)
+            limit: Maximale Anzahl der Datenpunkte
+            
+        Returns:
+            Liste von OHLCV-Listen im ccxt-Format
+        """
+        self._throttle()
+        
+        try:
+            # Verwende ccxt exchange direkt für Kompatibilität
+            ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            return ohlcv
+        except Exception as e:
+            self.logger.error(f"Error fetching OHLCV for {symbol}: {e}")
+            # Fallback auf Demo-Daten
+            df = self._generate_demo_data(symbol, timeframe)
+            # Konvertiere DataFrame zurück zu ccxt-Format
+            ohlcv_list = []
+            for _, row in df.tail(limit).iterrows():
+                timestamp = int(row.name.timestamp() * 1000)
+                ohlcv_list.append([timestamp, row['open'], row['high'], row['low'], row['close'], row['volume']])
+            return ohlcv_list

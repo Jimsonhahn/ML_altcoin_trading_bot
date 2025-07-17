@@ -10,12 +10,12 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
-import requests
 import logging
 import time
 from requests.exceptions import RequestException
 
 from data_sources.base import DataSourceBase, DataSourceException
+from utils.secure_http import SecureHTTPClient
 
 
 class CoinGeckoDataSource(DataSourceBase):
@@ -31,11 +31,23 @@ class CoinGeckoDataSource(DataSourceBase):
         """
         super().__init__(settings)
         self.name = "coingecko"
-        self.api_key = api_key
+        
+        # Get API key from SecretManager if not provided
+        if api_key:
+            self.api_key = api_key
+        else:
+            try:
+                from utils.secret_manager import SecretManager
+                sm = SecretManager()
+                self.api_key = sm.get_secret('coingecko_api_key')
+            except Exception as e:
+                self.logger.warning(f"Could not get CoinGecko API key from SecretManager: {e}")
+                self.api_key = None
+        
         self.logger = logging.getLogger(__name__)
 
         # Mit API-Schlüssel andere URL und Rate-Limit verwenden
-        if api_key:
+        if self.api_key:
             self.base_url = "https://pro-api.coingecko.com/api/v3"
             self.rate_limit_delay = 0.1  # Pro API hat höhere Limits
         else:
@@ -44,6 +56,18 @@ class CoinGeckoDataSource(DataSourceBase):
 
         # Coins-Cache für ID-Mapping
         self.coins_cache = {}
+        
+        # Initialize secure HTTP client
+        self.http_client = SecureHTTPClient(
+            timeout=(5, 30),
+            max_retries=3,
+            user_agent="TradingBot-CoinGecko/1.0"
+        )
+    
+    def __del__(self):
+        """Cleanup when object is destroyed"""
+        if hasattr(self, 'http_client'):
+            self.http_client.close()
 
     def _throttle(self):
         """Rate limiting to avoid hitting API limits."""
@@ -202,7 +226,7 @@ class CoinGeckoDataSource(DataSourceBase):
 
         try:
             # Coins-Liste abrufen
-            response = requests.get(f"{self.base_url}/coins/list", params=params)
+            response = self.http_client.get(f"{self.base_url}/coins/list", params=params)
             response.raise_for_status()
 
             # Nach Symbol suchen
@@ -270,7 +294,7 @@ class CoinGeckoDataSource(DataSourceBase):
                 endpoint = f"coins/{coin_id}/market_chart/range"
 
             # Daten abrufen
-            response = requests.get(f"{self.base_url}/{endpoint}", params=params)
+            response = self.http_client.get(f"{self.base_url}/{endpoint}", params=params)
             response.raise_for_status()
 
             data = response.json()
@@ -385,7 +409,7 @@ class CoinGeckoDataSource(DataSourceBase):
                 params['ids'] = ','.join(coin_ids)
 
             # Daten abrufen
-            response = requests.get(f"{self.base_url}/coins/markets", params=params)
+            response = self.http_client.get(f"{self.base_url}/coins/markets", params=params)
             response.raise_for_status()
 
             data = response.json()
@@ -437,7 +461,7 @@ class CoinGeckoDataSource(DataSourceBase):
                 params['x_cg_pro_api_key'] = self.api_key
 
             # Daten abrufen
-            response = requests.get(f"{self.base_url}/coins/{coin_id}", params=params)
+            response = self.http_client.get(f"{self.base_url}/coins/{coin_id}", params=params)
             response.raise_for_status()
 
             return response.json()

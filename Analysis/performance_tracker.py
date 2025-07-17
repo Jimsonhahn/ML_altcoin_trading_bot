@@ -1,4 +1,4 @@
-python  # analysis/performance_tracker.py
+# analysis/performance_tracker.py
 """
 Performance Tracker für Trading Bot Reports
 """

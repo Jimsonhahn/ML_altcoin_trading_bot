@@ -1,832 +1,884 @@
+# core/trading_bot.py
 import logging
-import time
 import threading
+import time
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, Callable, List, Tuple
-import os
-import json
+from typing import Dict, Any, Optional, Type, List
+from pydantic import validate_arguments, Field
 import pandas as pd
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import traceback
 
 from config.settings import Settings
 from core.exchange import ExchangeManager
-from core.position import Position, PositionManager
-from strategies.strategy_base import Strategy
-from strategies import STRATEGIES
+from core.order_manager import OrderManager
+from core.position import PositionManager
+from core.risk_manager import RiskManager
+from core.safety_manager import SafetyManager  # Assuming SafetyManager is in core
+from data_sources.data_manager import DataManager
+from ml_components import MLComponents  # Assuming MLComponents is in ml_components/__init__.py
+from core.strategy_router import StrategyRouter  # Assuming StrategyRouter is in core
+from strategies import STRATEGIES, Strategy  # Assuming STRATEGIES is dict and Strategy is base class
 from utils.logger import setup_logger
-from data_sources import DataManager
+from Analysis.performance_tracker import PerformanceTracker
 
-# New imports
-from ml_components import initialize_ml, get_ml_components, MLComponents
-from core.strategy_router import StrategyRouter
-from core.safety_manager import SafetyManager
+# Import validation framework
+from utils.validators import (
+    validate_trading_symbol, validate_amount, validate_config,
+    TradingMode, ValidationError
+)
+from utils.error_handler import (
+    handle_errors, ErrorCategory, ValidationTradingError,
+    secure_error_handler, SecureErrorResponse, SecureErrorHandler
+)
+from pydantic import ValidationError as PydanticValidationError
+
+logger = logging.getLogger(__name__)
 
 
 class TradingBot:
-    """
-    Main class for the Trading Bot.
-    Coordinates all trading activities and is the central interface for bot execution.
-    """
+    def __init__(self, mode: str, strategy_name: str, settings: Settings,
+                 data_manager: DataManager,
+                 ml_components: Optional[MLComponents] = None,
+                 strategy_router: Optional[StrategyRouter] = None,
+                 safety_manager: Optional[SafetyManager] = None):
 
-    def __init__(self, mode: str = "paper", strategy_name: str = "default",
-                 settings: Optional[Settings] = None, data_manager: Optional[DataManager] = None):
-        """
-        Initializes the Trading Bot.
-        """
-        self.settings = settings or Settings()
-
-        log_level_str = self.settings.get('logging.level', 'INFO')
-        self.logger = setup_logger(name='trading_bot', level=log_level_str)
-
+        # Initialize secure error handler
+        self.error_handler = secure_error_handler
+        
+        # Validate configuration before initialization
+        self._validate_bot_configuration(mode, strategy_name, settings)
+        
         self.mode = mode
+        self.settings = settings
+        self.data_manager = data_manager
         self.running = False
-        self.check_interval = self.settings.get('timeframes.check_interval', 300)
+        self.trade_thread: Optional[threading.Thread] = None
+        self.check_interval = self.settings.get('timeframes.check_interval', 300)  # Default 5 mins
 
-        self.trading_pairs = self.settings.get('trading_pairs', ['BTC/USDT', 'ETH/USDT'])
-        if isinstance(self.trading_pairs, str):
-            self.trading_pairs = [self.trading_pairs]
+        self.exchange = ExchangeManager('binance', mode)
+        self.order_manager = OrderManager(self.exchange, settings)
+        self.position_manager = PositionManager(settings)
+        self.risk_manager = RiskManager(settings, self.position_manager)
+        self.performance_tracker = PerformanceTracker(settings)  # Initialize PerformanceTracker
 
-        self.data_manager = data_manager or DataManager(self.settings)
-        self.exchange = ExchangeManager(self.settings, mode)
-        self.position_manager = PositionManager()
-
-        self.data_cache = {}
-        self.data_cache_lock = threading.Lock()
-        self.max_workers = self.settings.get('system.max_workers', 4)
-
-        self.on_trade_callbacks = []
-        self.on_error_callbacks = []
-        self.on_status_update_callbacks = []
-
-        self.start_time = None
-        self.start_balance = 0
-        self.last_status = {}
-        self.status_update_interval = 60
-
-        self.api_error_count = 0
-        self.last_api_error_time = None
-        self.max_api_errors = self.settings.get('system.max_api_errors', 10)
-        self.api_error_window = self.settings.get('system.api_error_window', 300)
-
-        self.trading_thread = None
-        self.monitor_thread = None
-
-        self.ml_components: Optional[MLComponents] = None
-        self.strategy_router: Optional[StrategyRouter] = None
-
-        self.strategy_name = strategy_name
-        if self.settings.get('strategy_router.enabled', False) or self.settings.get('auto_strategy', False):
-            self.strategy_router = StrategyRouter(self.settings)
-            self.strategy = None
-        else:
-            self.strategy = self._initialize_strategy(strategy_name)
-
-        self.safety_manager: Optional[SafetyManager] = None
-        self._peak_equity: float = 0.0
-
-        self.logger.info(f"TradingBot initialized - Mode: {mode}, Strategy: {strategy_name}")
-        self.logger.info(f"Trading pairs: {self.trading_pairs}")
-
-    def set_safety_manager(self, manager: SafetyManager):
-        """Sets the safety manager for the bot."""
-        self.safety_manager = manager
-        self.logger.info("Safety Manager set.")
-
-    def _initialize_strategy(self, strategy_name: str) -> Strategy:
-        """
-        Initializes the trading strategy.
-        """
-        try:
-            strategy_name_lower = strategy_name.lower()
-            if strategy_name_lower == "default":
-                strategy_name_lower = "momentum"
-
-            strategy_class = STRATEGIES.get(strategy_name_lower)
-            if strategy_class:
-                self.logger.info(f"Successfully loaded strategy: {strategy_name} ({strategy_class.__name__})")
-                return strategy_class(self.settings)
-            else:
-                available = list(STRATEGIES.keys())
-                self.logger.warning(f"Strategy '{strategy_name}' not found. Available: {available}")
-                return self._load_fallback_strategy()
-        except Exception as e:
-            self.logger.error(f"Error loading strategy {strategy_name}: {e}")
-            return self._load_fallback_strategy()
-
-    def _load_fallback_strategy(self):
-        from strategies.momentum import MomentumStrategy
-        strategy = MomentumStrategy(self.settings)
-        self.logger.info("Loaded fallback momentum strategy")
-        return strategy
-
-    def connect(self) -> bool:
-        """Establishes connection to the exchange."""
-        self.logger.info("Connecting to exchange...")
-        try:
-            self.exchange.connect()
-            self.logger.info("Successfully connected to exchange.")
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to connect to exchange: {e}")
-            self._notify_error("connection_error", str(e))
-            return False
-
-    def add_trade_callback(self, callback: Callable[[Position], None]) -> None:
-        """Adds a callback function for trade events."""
-        self.on_trade_callbacks.append(callback)
-
-    def add_error_callback(self, callback: Callable[[str, str], None]) -> None:
-        """Adds a callback function for error events."""
-        self.on_error_callbacks.append(callback)
-
-    def add_status_update_callback(self, callback: Callable[[Dict[str, Any]], None]) -> None:
-        """Adds a callback function for status updates."""
-        self.on_status_update_callbacks.append(callback)
-
-    def _notify_error(self, error_type: str, error_message: str) -> None:
-        """
-        Notifies all registered callbacks about an error.
-        Enhanced to integrate with SafetyManager.
-        """
-        if error_type.startswith("api_") or error_type == "connection_error":
-            current_time = time.time()
-            if (self.last_api_error_time is None or
-                    current_time - self.last_api_error_time > self.api_error_window):
-                self.api_error_count = 1
-            else:
-                self.api_error_count += 1
-            self.last_api_error_time = current_time
-
-            if self.api_error_count >= self.max_api_errors:
-                self.logger.critical(
-                    f"Too many API errors ({self.api_error_count}) within {self.api_error_window} seconds. "
-                    f"Shutting down for safety."
-                )
-                self.stop()
-                error_message = f"Bot stopped due to excessive API errors: {error_message}"
-                error_type = "critical_api_failure"
-
+        self.safety_manager: Optional[SafetyManager] = safety_manager
         if self.safety_manager:
-            self.logger.debug(f"Notifying SafetyManager about error: {error_type}")
+            self.safety_manager.set_trading_bot(self)  # Ensure SafetyManager has bot reference
 
-        for callback in self.on_error_callbacks:
-            try:
-                callback(error_type, error_message)
-            except Exception as e:
-                self.logger.error(f"Error in error callback: {e}")
+        self.ml_components = ml_components
+        self.strategy_router = strategy_router
 
-    def _notify_trade(self, position: Position) -> None:
-        """Notifies all registered callbacks about a trade event."""
-        for callback in self.on_trade_callbacks:
-            try:
-                callback(position)
-            except Exception as e:
-                self.logger.error(f"Error in trade callback: {e}")
+        self.current_active_strategy: Optional[Strategy] = None
+        self.strategy_name = strategy_name  # Keep track of requested strategy, can be 'auto_routed'
 
-    def _notify_status_update(self, status: Dict[str, Any]) -> None:
-        """Notifies all registered callbacks about a status update."""
-        for callback in self.on_status_update_callbacks:
-            try:
-                callback(status)
-            except Exception as e:
-                self.logger.error(f"Error in status update callback: {e}")
+        # Initialize strategy based on mode or router
+        self._initialize_strategy()
 
-    def _is_significant_status_change(self, old_status: Dict[str, Any], new_status: Dict[str, Any]) -> bool:
-        """Checks if there's a significant change in status to warrant a notification."""
-        if not old_status:
-            return True
+        self.last_market_regime_check_time: datetime = datetime.min
+        self.regime_check_interval = self.settings.get('ml.regime_check_interval', 1800)  # Default 30 mins
 
-        if new_status.get('current_balance', 0) != old_status.get('current_balance', 0):
-            return True
-        if len(new_status.get('open_positions', [])) != len(old_status.get('open_positions', [])):
-            return True
-        if new_status.get('strategy_name') != old_status.get('strategy_name'):
-            return True
-        if new_status.get('killswitch_active') != old_status.get('killswitch_active'):
-            return True
-        if new_status.get('ml_status', {}).get('regime') != old_status.get('ml_status', {}).get('regime'):
-            return True
-        return False
+        logger.info(f"TradingBot initialized in {self.mode} mode with strategy: {self.strategy_name}")
+        if self.ml_components and self.strategy_router:
+            logger.info("ML-powered Strategy Routing is enabled.")
+        elif self.strategy_name == "auto_routed":
+            logger.warning(
+                "Automatic strategy routing requested, but ML components or Strategy Router are not fully initialized.")
 
-    def _update_data_cache(self, symbol: str) -> pd.DataFrame:
+    def _validate_bot_configuration(self, mode: str, strategy_name: str, settings: Settings):
         """
-        Updates the data cache for a symbol.
-        Leverages DataManager.
+        Validates bot configuration at initialization
         """
-        timeframe = self.settings.get('timeframes.analysis', '1h')
-        min_candles = self.settings.get('data.min_candles', 50)
-        min_data_for_ml = self.settings.get('ml.min_data_points_for_ml', 200)
-
         try:
-            required_candles = max(min_candles + 50, min_data_for_ml)
-            if self.strategy and hasattr(self.strategy, 'lookback_period'):
-                required_candles = max(required_candles, self.strategy.lookback_period + 50)
-
-            df = self.data_manager.get_data(
-                symbol=symbol,
-                timeframe=timeframe,
-                limit=required_candles
+            # Validate mode
+            valid_modes = ['live', 'paper', 'backtest']
+            if mode.lower() not in valid_modes:
+                raise ValidationTradingError(
+                    f"Invalid trading mode '{mode}'. Must be one of: {valid_modes}",
+                    field="mode",
+                    value=mode
+                )
+            
+            # Validate strategy name
+            if not strategy_name or not isinstance(strategy_name, str):
+                raise ValidationTradingError(
+                    "Strategy name must be a non-empty string",
+                    field="strategy_name",
+                    value=strategy_name
+                )
+            
+            # Validate strategy exists (unless auto_routed)
+            if strategy_name != "auto_routed" and strategy_name not in STRATEGIES:
+                available_strategies = list(STRATEGIES.keys()) + ["auto_routed"]
+                raise ValidationTradingError(
+                    f"Unknown strategy '{strategy_name}'. Available strategies: {available_strategies}",
+                    field="strategy_name",
+                    value=strategy_name
+                )
+            
+            # Convert settings to dict for validation
+            config_dict = self._extract_config_from_settings(settings)
+            
+            # Validate core configuration parameters
+            validated_config = validate_config(config_dict)
+            
+            logger.info("✅ Bot configuration validation passed")
+            
+        except (ValidationError, PydanticValidationError) as e:
+            error_response = self.error_handler.handle_trading_error(
+                error=e,
+                context={
+                    "operation": "bot_configuration_validation",
+                    "mode": mode,
+                    "strategy_name": strategy_name
+                }
             )
-
-            if df is None or df.empty:
-                self.logger.warning(f"No data available for {symbol}")
-                with self.data_cache_lock:
-                    return self.data_cache.get(symbol, pd.DataFrame())
-
-            if len(df) < min_candles:
-                self.logger.warning(
-                    f"Insufficient data for {symbol}, got {len(df)} candles, "
-                    f"need at least {min_candles}"
-                )
-
-            with self.data_cache_lock:
-                self.data_cache[symbol] = df
-
-            return df
+            logger.error(f"Bot configuration validation failed - ID: {error_response.error_id}")
+            raise ValidationTradingError(f"Bot configuration validation failed: {str(e)}", field="configuration")
         except Exception as e:
-            error_msg = f"Error updating data cache for {symbol}: {e}"
-            self.logger.error(error_msg)
-            self._notify_error("data_error", error_msg)
-            with self.data_cache_lock:
-                return self.data_cache.get(symbol, pd.DataFrame())
+            error_response = self.error_handler.handle_critical_error(
+                error=e,
+                context={
+                    "operation": "bot_configuration_validation",
+                    "mode": mode,
+                    "strategy_name": strategy_name
+                }
+            )
+            logger.error(f"Critical error during configuration validation - ID: {error_response.error_id}")
+            raise ValidationTradingError(f"Unexpected error during configuration validation: {str(e)}", field="configuration")
 
-    def _update_all_data_parallel(self) -> Dict[str, pd.DataFrame]:
-        """Updates data for all trading pairs in parallel."""
-        self.logger.info("Updating market data for all pairs...")
-        updated_data = {}
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            future_to_symbol = {executor.submit(self._update_data_cache, symbol): symbol for symbol in
-                                self.trading_pairs}
-            for future in as_completed(future_to_symbol):
-                symbol = future_to_symbol[future]
-                try:
-                    df = future.result()
+    def _extract_config_from_settings(self, settings: Settings) -> Dict[str, Any]:
+        """
+        Extract relevant configuration parameters from Settings object for validation
+        """
+        return {
+            "trading_mode": TradingMode.PAPER if self.mode == "paper" else TradingMode.LIVE,
+            "max_position_size": settings.get('trading.max_position_size', 1000.0),
+            "max_positions": settings.get('trading.max_positions', 5),
+            "max_drawdown": settings.get('risk.max_drawdown', 0.20),
+            "stop_loss_percentage": settings.get('risk.stop_loss_percentage', 0.02),
+            "take_profit_percentage": settings.get('risk.take_profit_percentage', 0.05),
+            "risk_per_trade": settings.get('risk.risk_per_trade', 0.02),
+            "exchange_name": settings.get('exchange.name', 'binance'),
+            "api_rate_limit": settings.get('exchange.rate_limit', 1200),
+        }
+
+    def _initialize_strategy(self):
+        """
+        Initializes the trading strategy based on self.strategy_name.
+        If "auto_routed", defers to strategy_router to set the initial strategy.
+        """
+        if self.strategy_name == "auto_routed":
+            if self.strategy_router and self.ml_components:
+                # Attempt to detect initial regime and set strategy
+                logger.info("Attempting initial market regime detection for auto-routing.")
+                # Fetch recent data to detect initial regime
+                # This needs actual data fetching for core symbols
+                initial_market_data = {}
+                for symbol in self.settings.get('ml.regime_core_symbols', ["BTC/USDT"]):
+                    df = self.data_manager.get_historical_data(symbol, self.settings.get('timeframes.analysis', '1h'),
+                                                               (datetime.now() - timedelta(
+                                                                   days=self.settings.get('ml.min_data_points_for_ml',
+                                                                                          200) / 24)).strftime(
+                                                                   '%Y-%m-%d'),  # Approx data for period
+                                                               datetime.now().strftime('%Y-%m-%d'))
                     if not df.empty:
-                        updated_data[symbol] = df
-                except Exception as exc:
-                    self.logger.error(f'{symbol} data generation produced an exception: {exc}')
-                    self._notify_error("data_fetch_error", f"Failed to update data for {symbol}: {exc}")
-        self.logger.info(f"Data update complete for {len(updated_data)}/{len(self.trading_pairs)} pairs.")
-        return updated_data
+                        initial_market_data[symbol] = df
 
-    def _check_pair(self, symbol: str):
-        """
-        Check single trading pair for signals.
-        Enhanced to incorporate ML-based signals and regime adaptation.
-        """
-        if self.safety_manager and self.safety_manager.is_active():
-            self.logger.info(f"Bot is in killswitch mode. Skipping trade processing for {symbol}.")
-            return
-
-        try:
-            with self.data_cache_lock:
-                df = self.data_cache.get(symbol)
-
-            if df is None or df.empty:
-                self.logger.warning(f"No data available for {symbol}")
-                return
-
-            current_price = float(df['close'].iloc[-1])
-            current_position = self.position_manager.get_position_by_symbol(symbol)
-
-            market_regime_info = {}
-            if self.ml_components:
-                market_regime_info = self.ml_components.get_current_regime_info()
-
-            if self.strategy_router:
-                active_strategy = self.strategy_router.get_active_strategy()
-                if active_strategy:
-                    self.strategy = active_strategy
-                    self.strategy_name = self.strategy_router.get_current_strategy_name()
-                else:
-                    self.logger.warning("Strategy router has no active strategy set. Using fallback.")
-                    self.strategy = self._load_fallback_strategy()
-
-            signal, signal_data = self.strategy.calculate_signal(symbol, df, current_price, current_position)
-
-            if self.ml_components and market_regime_info and market_regime_info.get('status') == 'available':
-                ml_signal, ml_signal_data = self._generate_ml_enhanced_signal(
-                    signal, signal_data, symbol, df, market_regime_info.get('regime'), current_position
-                )
-                signal = ml_signal
-                signal_data = ml_signal_data
-                signal_data['ml_enhanced'] = True
-
-            if hasattr(signal, 'value'):
-                signal_str = signal.value
-            else:
-                signal_str = str(signal)
-
-            if signal_str != 'HOLD' or signal_data.get('confidence', 0) > self.settings.get('risk.min_confidence', 0.6):
-                self.logger.info(f"{symbol}: {signal_str} (confidence: {signal_data.get('confidence', 0):.2f})")
-
-            min_confidence = self.settings.get('risk.min_confidence', 0.6)
-            if signal_str in ['BUY', 'SELL'] and signal_data.get('confidence', 0) >= min_confidence:
-                self._process_signal(symbol, current_price, signal_data, current_position)
-
-        except Exception as e:
-            self.logger.error(f"Error checking {symbol}: {e}")
-            if self.settings.get('debug', False):
-                import traceback
-                traceback.print_exc()
-
-    def _process_signal(self, symbol: str, current_price: float, signal_data: Dict[str, Any],
-                        current_position: Optional[Position]) -> None:
-        """
-        Processes a trading signal.
-        Updated to set `ml_enhanced` flag on position.
-        """
-        signal = signal_data.get('signal', 'HOLD')
-        confidence = signal_data.get('confidence', 0.0)
-        strategy_type = signal_data.get('strategy', 'unknown')
-
-        if strategy_type == 'grid_trading':
-            self._process_grid_signal(symbol, current_price, signal_data, current_position)
-            return
-
-        position_size = self.settings.get('risk.position_size', 0.05)
-        stop_loss_pct = self.settings.get('risk.stop_loss', 0.03)
-        take_profit_pct = self.settings.get('risk.take_profit', 0.06)
-        max_positions = self.settings.get('risk.max_open_positions', 5)
-        min_confidence = self.settings.get('risk.min_confidence', 0.6)
-
-        if self.settings.get('risk.dynamic_position_sizing', False):
-            if 'volatility' in signal_data:
-                volatility = signal_data['volatility']
-                position_size = position_size * (1.0 - min(volatility * 2.0, 0.8))
-
-        stop_loss_pct = signal_data.get('stop_loss_pct', stop_loss_pct)
-        take_profit_pct = signal_data.get('take_profit_pct', take_profit_pct)
-
-        if signal == 'BUY' and not current_position:
-            if confidence < min_confidence:
-                self.logger.info(f"Buy signal for {symbol} ignored due to low confidence: {confidence:.2f}")
-                return
-            if len(self.position_manager.get_all_positions()) >= max_positions:
-                self.logger.info(f"Buy signal for {symbol} ignored due to max positions limit")
-                return
-
-            try:
-                balance_data = self.exchange.fetch_balance()
-                usdt_balance = balance_data.get('USDT', {}).get('free', 0)
-                if usdt_balance <= 0:
-                    self.logger.warning(f"Insufficient balance for {symbol}")
-                    return
-
-                trade_value = usdt_balance * position_size
-                trade_amount = trade_value / current_price
-
-                order = self.exchange.create_order(
-                    symbol=symbol,
-                    order_type='market',
-                    side='buy',
-                    amount=trade_amount
-                )
-
-                position = Position(
-                    symbol=symbol,
-                    entry_price=current_price,
-                    amount=trade_amount,
-                    side='buy',
-                    order_id=order.get('id'),
-                    entry_time=datetime.now()
-                )
-                position.ml_enhanced = signal_data.get('ml_enhanced', False)
-                position.set_stop_loss(percentage=stop_loss_pct)
-                position.set_take_profit(percentage=take_profit_pct)
-                if signal_data.get('use_trailing_stop', False):
-                    trailing_stop_pct = signal_data.get('trailing_stop_pct', stop_loss_pct)
-                    activation_pct = signal_data.get('trailing_activation_pct', 0.02)
-                    position.set_trailing_stop(trailing_stop_pct, activation_pct)
-
-                self.position_manager.add_position(position)
-                self._notify_trade(position)
-                self.logger.info(
-                    f"Opened position for {symbol}: {trade_amount} @ {current_price}. "
-                    f"Stop-loss: {position.stop_loss}, Take-profit: {position.take_profit}. ML-enhanced: {position.ml_enhanced}"
-                )
-
-            except Exception as e:
-                error_msg = f"Failed to place buy order for {symbol}: {e}"
-                self.logger.error(error_msg)
-                self._notify_error("order_error", error_msg)
-
-        elif signal == 'SELL' and current_position and current_position.side == 'buy':
-            try:
-                order = self.exchange.create_order(
-                    symbol=symbol,
-                    order_type='market',
-                    side='sell',
-                    amount=current_position.amount
-                )
-
-                closed_position = self.position_manager.close_position(
-                    current_position.id,
-                    current_price,
-                    signal_data.get('reason', "sell_signal")
-                )
-
-                if closed_position:
-                    closed_position.ml_enhanced = signal_data.get('ml_enhanced', False)
-                    self._notify_trade(closed_position)
-                    self.logger.info(
-                        f"Closed position for {symbol} at {current_price}. "
-                        f"P/L: {closed_position.profit_loss_percent:.2f}%. ML-enhanced: {closed_position.ml_enhanced}"
-                    )
-
-            except Exception as e:
-                error_msg = f"Failed to place sell order for {symbol}: {e}"
-                self.logger.error(error_msg)
-                self._notify_error("order_error", error_msg)
-
-        elif current_position:
-            current_prices = {symbol: current_price}
-
-            closed_positions = self.position_manager.update_positions(current_prices)
-
-            for position in closed_positions:
-                try:
-                    order = self.exchange.create_order(
-                        symbol=position.symbol,
-                        order_type='market',
-                        side='sell',
-                        amount=position.amount
-                    )
-                    position.ml_enhanced = signal_data.get('ml_enhanced', False)
-                    self._notify_trade(position)
-                    self.logger.info(
-                        f"Position closed automatically for {position.symbol} at {position.exit_price} "
-                        f"({position.exit_reason}). P/L: {position.profit_loss_percent:.2f}%. ML-enhanced: {position.ml_enhanced}"
-                    )
-                except Exception as e:
-                    error_msg = f"Failed to place sell order for automatically closed position {position.symbol}: {e}"
-                    self.logger.error(error_msg)
-                    self._notify_error("order_error", error_msg)
-
-    def _process_grid_signal(self, symbol: str, current_price: float, signal_data: Dict[str, Any],
-                             current_position: Optional[Position]) -> None:
-        """Processes a grid trading signal."""
-        grid_action = signal_data.get('grid_action')
-        buy_price = signal_data.get('buy_price')
-        sell_price = signal_data.get('sell_price')
-        amount = signal_data.get('amount')
-        grid_level = signal_data.get('grid_level')
-
-        self.logger.debug(f"Grid signal for {symbol}: {grid_action} at level {grid_level}")
-
-        if grid_action == 'buy_grid_level':
-            try:
-                order = self.exchange.create_order(
-                    symbol=symbol,
-                    order_type='limit',
-                    side='buy',
-                    amount=amount,
-                    price=buy_price
-                )
-                self.logger.info(
-                    f"Grid: Placed BUY order for {amount} {symbol} at {buy_price} (Level {grid_level}). Order ID: {order.get('id')}")
-            except Exception as e:
-                self.logger.error(f"Grid: Failed to place BUY order for {symbol} at {buy_price}: {e}")
-                self._notify_error("grid_order_error", str(e))
-        elif grid_action == 'sell_grid_level':
-            try:
-                order = self.exchange.create_order(
-                    symbol=symbol,
-                    order_type='limit',
-                    side='sell',
-                    amount=amount,
-                    price=sell_price
-                )
-                self.logger.info(
-                    f"Grid: Placed SELL order for {amount} {symbol} at {sell_price} (Level {grid_level}). Order ID: {order.get('id')}")
-            except Exception as e:
-                self.logger.error(f"Grid: Failed to place SELL order for {symbol} at {sell_price}: {e}")
-                self._notify_error("grid_order_error", str(e))
-
-    def _generate_ml_enhanced_signal(self, standard_signal: str, standard_signal_data: Dict[str, Any],
-                                     symbol: str, symbol_data: pd.DataFrame,
-                                     current_regime: Optional[int] = None,
-                                     current_position: Optional[Position] = None) -> Tuple[str, Dict[str, Any]]:
-        """
-        Generates an ML-enhanced trading signal. This logic will be largely similar to
-        MLEnhancedBacktester's _generate_ml_enhanced_signal, but adapted for real-time.
-        """
-        if not self.ml_components:
-            return standard_signal, standard_signal_data
-
-        ml_signal_data = standard_signal_data.copy()
-        ml_signal = standard_signal
-
-        if current_regime is not None and self.ml_components.market_regime_detector.model_trained:
-            regime_info = self.ml_components.market_regime_detector.get_regime_label(current_regime)
-
-            if 'bullish' in regime_info.lower() or 'aufwärtstrend' in regime_info.lower():
-                if standard_signal == "BUY":
-                    ml_signal_data['confidence'] = min(1.0, standard_signal_data.get('confidence', 0.5) * 1.2)
-                elif standard_signal == "SELL" and current_position:
-                    current_price = symbol_data.iloc[-1]['close']
-                    if current_position.stop_loss and current_price < current_position.stop_loss:
-                        ml_signal = "SELL"
+                if initial_market_data:
+                    regime_info = self.ml_components.market_regime_detector.predict_regime(initial_market_data)
+                    if regime_info["status"] == "success":
+                        initial_regime_label = regime_info["label"]
+                        # Call router to set initial strategy based on detected regime
+                        self.strategy_router.update_market_regime(initial_regime_label,
+                                                                  self.position_manager.get_total_capital())
+                        # The router will activate strategies. We need to get references to them.
+                        active_strategies = self.strategy_router.get_active_strategies()
+                        if active_strategies:
+                            # For simplicity, if multiple are active, take the first one or manage a list.
+                            # For now, let's assume the bot will manage these through the router.
+                            # The bot itself might not directly hold a single current_active_strategy,
+                            # but rather delegate to the router.
+                            # For this implementation, let's ensure the bot's logic works with the router
+                            # without needing a single `current_active_strategy` if multiple are managed.
+                            logger.info(
+                                f"Strategy Router set initial active strategies: {list(active_strategies.keys())}")
+                            self.current_active_strategy = list(active_strategies.values())[
+                                0] if active_strategies else None  # For simple direct use if only one
+                        else:
+                            logger.warning("Strategy Router could not set any initial strategies.")
+                            # Fallback to default strategy if auto-routing failed initially
+                            self._set_fallback_strategy(self.settings.get('trading.default_strategy', 'momentum'))
                     else:
-                        ml_signal = "HOLD"
-                        ml_signal_data['reason'] = 'bull_market_hold'
-            elif 'bearish' in regime_info.lower() or 'abwärtstrend' in regime_info.lower():
-                if standard_signal == "SELL":
-                    ml_signal_data['confidence'] = min(1.0, standard_signal_data.get('confidence', 0.5) * 1.2)
-                elif standard_signal == "BUY":
-                    if standard_signal_data.get('confidence', 0) < 0.8:
-                        ml_signal = "HOLD"
-                        ml_signal_data['reason'] = 'bear_market_caution'
-            elif 'sideways' in regime_info.lower() or 'niedrige-volatilität' in regime_info.lower():
-                if self.strategy_router and self.strategy_router.get_current_strategy_name() == 'grid_trading':
-                    ml_signal = standard_signal
+                        logger.warning(
+                            f"Initial market regime detection failed: {regime_info['reason']}. Setting fallback strategy.")
+                        self._set_fallback_strategy(self.settings.get('trading.default_strategy', 'momentum'))
                 else:
-                    ml_signal = "HOLD"
-                    ml_signal_data['reason'] = 'sideways_market_hold'
+                    logger.warning("No initial market data for regime detection. Setting fallback strategy.")
+                    self._set_fallback_strategy(self.settings.get('trading.default_strategy', 'momentum'))
 
-        ml_signal_data['ml_enhanced'] = True
-        return ml_signal, ml_signal_data
+            else:
+                logger.warning(
+                    "Strategy Router or ML Components not available for 'auto_routed' strategy. Setting fallback strategy.")
+                self._set_fallback_strategy(self.settings.get('trading.default_strategy', 'momentum'))
+        else:
+            # Initialize a single, fixed strategy
+            self._set_fixed_strategy(self.strategy_name)
 
-    def run(self) -> None:
-        """
-        Starts the Trading Bot in live or paper trading mode.
-        Enhanced to include market regime detection and dynamic strategy routing.
-        """
-        if not self.connect():
-            self.logger.error("Failed to connect to exchange. Bot stopped.")
+    def _set_fixed_strategy(self, strategy_name: str):
+        """Sets a fixed strategy."""
+        if strategy_name in STRATEGIES:
+            strategy_class = STRATEGIES[strategy_name]
+            strategy_params = self.settings.get(f'strategy_configs.{strategy_name}', {})
+            self.current_active_strategy = strategy_class(strategy_params)
+            logger.info(f"Fixed strategy '{strategy_name}' initialized.")
+        else:
+            logger.error(f"Strategy '{strategy_name}' not found. Bot cannot start without a valid strategy.")
+            self.running = False  # Prevent bot from starting
+
+    def _set_fallback_strategy(self, strategy_name: str):
+        """Sets a fallback strategy if auto-routing fails."""
+        logger.info(f"Setting fallback strategy: {strategy_name}")
+        self._set_fixed_strategy(strategy_name)
+
+    def start(self):
+        if self.running:
+            logger.info("Bot is already running.")
+            return
+
+        if not self.current_active_strategy and self.strategy_name != "auto_routed":
+            logger.error("No strategy initialized. Bot cannot start.")
             return
 
         self.running = True
-        self.start_time = datetime.now()
+        self.trade_thread = threading.Thread(target=self._run_trading_loop, daemon=True)
+        self.trade_thread.start()
+        logger.info("Trading bot started.")
 
-        try:
-            initial_balance_data = self.exchange.fetch_balance()
-            self.start_balance = initial_balance_data.get('USDT', {}).get('total', 0)
-            self._peak_equity = self.start_balance
-        except Exception as e:
-            self.logger.warning(f"Could not get initial balance: {e}")
-            self.start_balance = 10000
-            self._peak_equity = 10000
-
-        self.logger.info(f"Starting trading bot with {len(self.trading_pairs)} pairs")
-        self.logger.info(f"Initial balance: {self.start_balance}")
-
-        if self.settings.get('ml.enabled', False):
-            self.ml_components = initialize_ml(self.settings, self.data_manager.cache_dir,
-                                               self.settings.get('ml.models_dir', 'data/ml_models'),
-                                               self.settings.get('ml.output_dir', 'data/ml_analysis'))
-            if not self.ml_components.load_models():
-                self.logger.warning("ML models not loaded. Attempting to train new models.")
-                self.ml_components.train_ml_models(self.settings.get('ml.regime_core_symbols'))
-                self.ml_components.save_models()
-
-        if self.settings.get('strategy_router.enabled', False) and self.ml_components:
-            self.strategy_router = StrategyRouter(self.settings)
-
-        try:
-            last_regime_check_time = datetime.min
-
-            while self.running:
-                if self.safety_manager:
-                    current_balance_data = self.exchange.fetch_balance()
-                    current_usdt_balance = current_balance_data.get('USDT', {}).get('total', 0)
-
-                    unrealized_pnl = 0
-                    for pos in self.position_manager.get_all_positions():
-                        if pos.symbol in self.data_cache and not self.data_cache[pos.symbol].empty:
-                            current_price = self.data_cache[pos.symbol]['close'].iloc[-1]
-                            unrealized_pnl += (current_price - pos.entry_price) * pos.amount
-                        else:
-                            self.logger.warning(f"No current data for {pos.symbol} to calculate unrealized PnL.")
-
-                    current_total_equity = current_usdt_balance + unrealized_pnl
-
-                    self._peak_equity = max(self._peak_equity, current_total_equity)
-
-                    self.safety_manager.check_and_apply_killswitch(current_total_equity, self._peak_equity)
-
-                    if self.safety_manager.is_active():
-                        self.logger.info("Bot is in killswitch mode, pausing trading operations.")
-                        time.sleep(self.check_interval)
-                        continue
-
-                self._update_all_data_parallel()
-
-                if self.ml_components and self.strategy_router and (
-                        datetime.now() - last_regime_check_time).total_seconds() > self.settings.get(
-                        'ml.regime_check_interval', 3600):
-                    self.logger.info("Updating ML components and re-routing strategy...")
-                    update_status = self.ml_components.update_all_components(data_manager=self.data_manager,
-                                                                             symbols=self.trading_pairs)
-                    if update_status.get("regime_updated"):
-                        market_regime_info = self.ml_components.get_current_regime_info()
-                        self.strategy_router.route_strategy(market_regime_info, self.data_cache)
-                        self.strategy_router.adjust_capital_allocation(market_regime_info)
-                        self.strategy = self.strategy_router.get_active_strategy()
-                        self.strategy_name = self.strategy_router.get_current_strategy_name()
-                    last_regime_check_time = datetime.now()
-
-                if self.settings.get('system.parallel_signal_processing', True) and len(self.trading_pairs) > 1:
-                    with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                        list(executor.map(self._check_pair, self.trading_pairs))
-                else:
-                    for symbol in self.trading_pairs:
-                        if not self.running:
-                            break
-                        self._check_pair(symbol)
-                        time.sleep(1)
-
-                current_prices = {s: self.data_cache[s].iloc[-1]['close'] for s in self.data_cache if
-                                  not self.data_cache[s].empty}
-                self.position_manager.update_positions(current_prices)
-
-                self.logger.debug(f"Sleeping for {self.check_interval} seconds")
-                time.sleep(self.check_interval)
-
-        except KeyboardInterrupt:
-            self.logger.info("Bot stopped by user")
-        except Exception as e:
-            error_msg = f"Error in main loop: {str(e)}\n{traceback.format_exc()}"
-            self.logger.error(error_msg)
-            self._notify_error("system_error", error_msg)
-        finally:
-            self.stop()
-
-    def run_in_thread(self) -> threading.Thread:
-        """Runs the bot in a separate thread."""
-        self.logger.info("Starting bot in a new thread...")
-        self.trading_thread = threading.Thread(target=self.run)
-        self.trading_thread.start()
-        self.monitor_thread = threading.Thread(target=self._status_monitor)
-        self.monitor_thread.daemon = True
-        self.monitor_thread.start()
-        self.logger.info("Bot thread started.")
-        return self.trading_thread
-
-    def _status_monitor(self) -> None:
-        """Monitors bot status and sends updates periodically."""
-        last_update_time = time.time() - self.status_update_interval
-        self.last_status = self.get_status()
-
-        while self.running:
-            current_time = time.time()
-            if current_time - last_update_time >= self.status_update_interval:
-                new_status = self.get_status()
-                if self._is_significant_status_change(self.last_status, new_status):
-                    self.logger.info("\n📊 Bot Status Update:")
-                    self.logger.info(json.dumps(new_status, indent=2, default=str))
-                    self._notify_status_update(new_status)
-                    self.last_status = new_status
-                last_update_time = current_time
-            time.sleep(1)
-
-    def stop(self) -> None:
-        """
-        Stops the Trading Bot.
-        Enhanced to close all positions and save ML models.
-        """
+    def stop(self):
         if not self.running:
+            logger.info("Bot is not running.")
+            return
+        self.running = False
+        if self.trade_thread:
+            self.trade_thread.join(timeout=5)  # Give time for thread to finish
+            if self.trade_thread.is_alive():
+                logger.warning("Trade thread did not terminate gracefully.")
+        logger.info("Trading bot stopped.")
+
+    def _run_trading_loop(self):
+        logger.info("Trading loop started.")
+        while self.running:
+            try:
+                # Check killswitch first
+                if self.safety_manager and self.safety_manager.is_killswitch_active():
+                    logger.warning("Killswitch is active. Trading operations are paused.")
+                    time.sleep(self.check_interval)  # Wait before re-checking
+                    continue  # Skip trading logic
+
+                # Periodically check and update market regime and strategies
+                self._check_and_update_market_regime()
+
+                # Fetch latest market data for active strategies
+                # If using strategy router, get symbols from currently active strategies
+                symbols_to_fetch: List[str] = []
+                if self.strategy_router:
+                    for s in self.strategy_router.get_active_strategies().values():
+                        if s.trading_pair not in symbols_to_fetch:  # Assuming strategy has a trading_pair attribute
+                            symbols_to_fetch.append(s.trading_pair)
+                elif self.current_active_strategy:
+                    symbols_to_fetch.append(
+                        self.current_active_strategy.trading_pair)  # Assuming fixed strategy has one
+
+                if not symbols_to_fetch:
+                    logger.warning("No active strategies or symbols to fetch data for. Waiting...")
+                    time.sleep(self.check_interval)
+                    continue
+
+                for symbol in symbols_to_fetch:
+                    # Fetch latest candle data (e.g., 1-hour candle)
+                    ohlcv = self.exchange.fetch_ohlcv(symbol, self.settings.get('timeframes.analysis', '1h'),
+                                                      limit=self.settings.get('data.min_candles', 200))
+                    if ohlcv:
+                        df = self.data_manager.convert_ohlcv_to_dataframe(ohlcv)
+                        latest_candle = df.iloc[-1]
+
+                        # Execute strategy logic
+                        if self.strategy_router:
+                            active_strategies = self.strategy_router.get_active_strategies()
+                            for strategy_name, strategy_instance in active_strategies.items():
+                                if strategy_instance.trading_pair == symbol:  # Only run for relevant strategy
+                                    signal = strategy_instance.generate_signal(df, latest_candle)
+                                    if signal:
+                                        self._execute_signal(symbol, signal, strategy_instance)
+                        elif self.current_active_strategy and self.current_active_strategy.trading_pair == symbol:
+                            signal = self.current_active_strategy.generate_signal(df, latest_candle)
+                            if signal:
+                                self._execute_signal(symbol, signal, self.current_active_strategy)
+                    else:
+                        logger.warning(f"Could not fetch OHLCV data for {symbol}. Skipping this cycle.")
+
+                # Update portfolio and performance metrics
+                self.position_manager.update_portfolio_value(self.exchange.get_current_prices())
+                self.performance_tracker.track_performance(self.position_manager.get_total_capital())
+
+                time.sleep(self.check_interval)  # Wait for the next check cycle
+            except Exception as e:
+                # Use secure error handler for trading loop errors
+                error_response = self.error_handler.handle_critical_error(
+                    error=e,
+                    context={
+                        "operation": "trading_loop",
+                        "bot_mode": self.mode,
+                        "strategy": getattr(self.current_active_strategy, '__class__.__name__', 'unknown') if self.current_active_strategy else 'none',
+                        "symbols_count": len(symbols_to_fetch) if 'symbols_to_fetch' in locals() else 0
+                    }
+                )
+                logger.error(f"Critical error in trading loop - ID: {error_response.error_id}")
+                # Consider adding an error count or a circuit breaker here
+                time.sleep(self.check_interval * 2)  # Wait longer after an error
+
+        logger.info("Trading loop finished.")
+
+    def _check_and_update_market_regime(self):
+        """
+        Checks market regime periodically and updates strategies via StrategyRouter.
+        """
+        if not self.ml_components or not self.strategy_router:
             return
 
-        self.running = False
-        self.logger.info("Stopping bot...")
+        if datetime.now() - self.last_market_regime_check_time >= timedelta(seconds=self.regime_check_interval):
+            logger.info("Performing periodic market regime check...")
 
-        try:
-            current_prices = {s: self.data_cache[s].iloc[-1]['close'] for s in self.data_cache if
-                              not self.data_cache[s].empty}
-            closed_positions = self.position_manager.close_all_positions(current_prices, reason="bot_shutdown")
-            for pos in closed_positions:
-                self.logger.info(f"Closed on shutdown: {pos.symbol} P/L: {pos.profit_loss_percent:.2f}%")
-        except Exception as e:
-            self.logger.error(f"Error closing positions on shutdown: {e}")
+            # Fetch fresh data for core symbols for regime detection
+            current_market_data: Dict[str, pd.DataFrame] = {}
+            core_symbols = self.settings.get('ml.regime_core_symbols', ["BTC/USDT"])
+            timeframe = self.settings.get('timeframes.analysis', '1h')
+            # Fetch enough data for the feature extraction window
+            limit = self.settings.get('data.min_candles', 200)
 
-        try:
-            final_balance_data = self.exchange.fetch_balance()
-            final_balance = final_balance_data.get('USDT', {}).get('total', self.start_balance)
-        except Exception as e:
-            self.logger.error(f"Error getting final balance: {e}")
-            final_balance = self.start_balance
+            for symbol in core_symbols:
+                try:
+                    ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+                    if ohlcv:
+                        current_market_data[symbol] = self.data_manager.convert_ohlcv_to_dataframe(ohlcv)
+                except Exception as e:
+                    error_response = self.error_handler.handle_api_error(
+                        error=e,
+                        context={
+                            "operation": "regime_data_fetch",
+                            "symbol": symbol,
+                            "timeframe": timeframe
+                        }
+                    )
+                    logger.warning(f"Failed to fetch data for {symbol} for regime detection - ID: {error_response.error_id}")
 
-        if self.ml_components:
-            self.ml_components.save_models()
+            if current_market_data:
+                regime_info = self.ml_components.market_regime_detector.predict_regime(current_market_data)
+                if regime_info["status"] == "success":
+                    new_regime_label = regime_info["label"]
+                    # Update strategy router with the new regime
+                    self.strategy_router.update_market_regime(new_regime_label,
+                                                              self.position_manager.get_total_capital())
+                else:
+                    logger.warning(f"Market regime detection failed: {regime_info['reason']}")
+            else:
+                logger.warning("No market data available for regime detection.")
 
-        final_status = self.get_status()
-        final_status['final_result']['ml_status'] = "Models saved" if self.ml_components else "ML not enabled"
-        if self.safety_manager:
-            final_status['final_result']['killswitch_active_on_stop'] = self.safety_manager.is_active()
+            self.last_market_regime_check_time = datetime.now()
 
-        self._notify_status_update(final_status)
+    @handle_errors(category=ErrorCategory.TRADING, max_retries=2, retry_delay=1.0)
+    def _execute_signal(self, symbol: str, signal: Dict[str, Any], strategy: Strategy):
+        """Executes a trade signal with comprehensive validation."""
+        
+        # Validate signal before execution
+        validated_signal = self._validate_trading_signal(symbol, signal)
+        
+        if self.safety_manager and self.safety_manager.is_killswitch_active():
+            logger.warning(f"Killswitch active. Not executing signal for {symbol}.")
+            return
 
-    def get_status(self) -> Dict[str, Any]:
-        """
-        Retrieves the current status of the bot.
-        Enhanced to include ML and SafetyManager status.
-        """
-        open_positions_data = [pos.to_dict() for pos in self.position_manager.get_all_positions()]
-        position_stats = self.position_manager.get_position_stats()
+        trade_type = validated_signal['trade_type']
+        amount = validated_signal['amount']
+        price = validated_signal.get('price')  # Optional, for limit orders
 
-        status = {
-            "running": self.running,
-            "mode": self.mode,
-            "strategy_name": self.strategy_name,
-            "start_time": self.start_time.isoformat() if self.start_time else "N/A",
-            "current_time": datetime.now().isoformat(),
-            "initial_balance": self.start_balance,
-            "current_balance": self.exchange.fetch_balance().get('USDT', {}).get('total', 0),
-            "open_positions": open_positions_data,
-            "total_pnl_percent": position_stats.get('total_pnl_percent', 0.0),
-            "total_trades": position_stats.get('total_trades', 0),
-            "win_rate": position_stats.get('win_rate', 0.0),
-            "max_drawdown": position_stats.get('max_drawdown', 0.0),
-            "api_error_count": self.api_error_count,
-            "final_result": {}
-        }
+        # Basic risk management check before placing order
+        if not self.risk_manager.can_enter_position(symbol, amount, trade_type):
+            logger.warning(f"Risk manager prevented trade for {symbol} ({trade_type} {amount}).")
+            return
 
-        if self.ml_components:
-            regime_info = self.ml_components.get_current_regime_info()
-            status['ml_status'] = {
-                'regime': regime_info.get('label', 'unknown'),
-                'is_model_trained': self.ml_components.market_regime_detector.model_trained,
-                'last_update_success': not ('error' in regime_info)
-            }
-            if self.strategy_router:
-                status['strategy_router_active_strategy'] = self.strategy_router.get_current_strategy_name()
-                status['current_capital_allocation'] = self.settings.get('autopilot.capital_allocation', {})
+        order = None
+        if trade_type == 'buy':
+            order = self.order_manager.create_market_buy_order(symbol, amount)  # Or limit order if price provided
+        elif trade_type == 'sell':
+            order = self.order_manager.create_market_sell_order(symbol, amount)  # Or limit order if price provided
 
-        if self.safety_manager:
-            status['killswitch_active'] = self.safety_manager.is_active()
-            status['max_drawdown_limit'] = self.safety_manager.max_drawdown_percent
-            status[
-                'last_killswitch_activation'] = self.safety_manager.last_killswitch_activation_time.isoformat() if self.safety_manager and self.safety_manager.last_killswitch_activation_time else "N/A"
-
-        return status
-
-    def save_state(self, filepath: str) -> bool:
-        """Saves the current state of the bot to a JSON file."""
-        state_data = {
-            "mode": self.mode,
-            "strategy_name": self.strategy_name,
-            "start_time": self.start_time.isoformat() if self.start_time else None,
-            "start_balance": self.start_balance,
-            "open_positions": [pos.to_dict() for pos in self.position_manager.get_all_positions()],
-            "settings_config": self.settings.config,
-            "api_error_count": self.api_error_count,
-            "last_api_error_time": self.last_api_error_time.isoformat() if self.last_api_error_time else None,
-            "_peak_equity": self._peak_equity,
-            "killswitch_active": self.safety_manager.is_active() if self.safety_manager else False,
-            "last_killswitch_activation_time": self.safety_manager.last_killswitch_activation_time.isoformat() if self.safety_manager and self.safety_manager.last_killswitch_activation_time else None
-        }
-        try:
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
-            with open(filepath, 'w') as f:
-                json.dump(state_data, f, indent=4)
-            self.logger.info(f"Bot state saved to {filepath}")
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to save bot state to {filepath}: {e}")
-            return False
-
-    def generate_trading_report(self, days: int = 30, output_format: str = 'html') -> str:
-        """Generates a comprehensive trading report."""
-        from Analysis.performance_tracker import PerformanceTracker
-
-        self.logger.info(f"Generating {output_format} trading report for last {days} days...")
-
-        dummy_trades = [
-            {"entry_time": datetime.now() - timedelta(days=5), "exit_time": datetime.now() - timedelta(days=4),
-             "profit_loss_percent": 2.5, "symbol": "BTC/USDT"},
-            {"entry_time": datetime.now() - timedelta(days=10), "exit_time": datetime.now() - timedelta(days=8),
-             "profit_loss_percent": -1.2, "symbol": "ETH/USDT"},
-        ]
-
-        tracker = PerformanceTracker(self.settings)
-        report_path = tracker.generate_report(dummy_trades, output_format=output_format)
-
-        self.logger.info(f"Report generated at: {report_path}")
-        return report_path
-
-    def run_backtest(self) -> Dict[str, Any]:
-        """
-        Executes a backtest using the selected strategy and settings.
-        This method is primarily called from main.py if mode is 'backtest'.
-        """
-        self.logger.info("Running backtest...")
-
-        if self.settings.get('ml.enabled', False) and self.strategy_name.lower() == 'ml':
-            from core.ml_enhanced_backtesting import MLEnhancedBacktester
-            backtester = MLEnhancedBacktester(self.settings, self.strategy)
+        if order:
+            logger.info(f"Executed {trade_type.upper()} order for {amount} {symbol}. Order ID: {order['id']}")
+            # Update position manager and performance tracker
+            self.position_manager.update_position_from_order(order)
+            self.performance_tracker.record_trade(order)
         else:
-            from core.enhanced_backtesting import EnhancedBacktester
-            backtester = EnhancedBacktester(self.settings, self.strategy)
+            logger.error(f"Failed to execute {trade_type} order for {symbol}.")
 
-        results = backtester.run(
-            symbols=self.settings.get('trading_pairs'),
-            source=self.settings.get('data.source', 'binance'),
-            timeframe=self.settings.get('timeframes.analysis', '1h'),
-            use_cache=self.settings.get('data.use_cache', True),
-            start_date=self.settings.get('backtest.start_date'),
-            end_date=self.settings.get('backtest.end_date')
-        )
-        self.logger.info("Backtest completed.")
-        return results
+    def _validate_trading_signal(self, symbol: str, signal: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Validates a trading signal before execution
+        """
+        try:
+            # Validate symbol
+            symbol_validator = validate_trading_symbol(symbol)
+            
+            # Validate required signal fields
+            if not isinstance(signal, dict):
+                raise ValidationTradingError(
+                    "Trading signal must be a dictionary",
+                    field="signal",
+                    value=signal
+                )
+            
+            required_fields = ['trade_type', 'amount']
+            missing_fields = [field for field in required_fields if field not in signal]
+            if missing_fields:
+                raise ValidationTradingError(
+                    f"Trading signal missing required fields: {missing_fields}",
+                    field="signal",
+                    value=signal
+                )
+            
+            # Validate trade type
+            valid_trade_types = ['buy', 'sell']
+            trade_type = signal['trade_type'].lower()
+            if trade_type not in valid_trade_types:
+                raise ValidationTradingError(
+                    f"Invalid trade type '{signal['trade_type']}'. Must be one of: {valid_trade_types}",
+                    field="trade_type",
+                    value=signal['trade_type']
+                )
+            
+            # Validate amount
+            amount = signal['amount']
+            if not isinstance(amount, (int, float)) or amount <= 0:
+                raise ValidationTradingError(
+                    f"Invalid amount '{amount}'. Must be a positive number",
+                    field="amount",
+                    value=amount
+                )
+            
+            # Validate amount using our amount validator
+            quote_currency = symbol_validator.quote_currency
+            amount_validator = validate_amount(amount, quote_currency)
+            
+            # Validate price if provided
+            price = signal.get('price')
+            if price is not None:
+                if not isinstance(price, (int, float)) or price <= 0:
+                    raise ValidationTradingError(
+                        f"Invalid price '{price}'. Must be a positive number",
+                        field="price",
+                        value=price
+                    )
+                
+                # Validate price using amount validator with quote currency
+                validate_amount(price, quote_currency)
+            
+            # Create validated signal
+            validated_signal = {
+                'trade_type': trade_type,
+                'amount': amount_validator.amount,
+                'symbol': symbol_validator.symbol
+            }
+            
+            if price is not None:
+                validated_signal['price'] = price
+            
+            logger.debug(f"✅ Trading signal validation passed for {symbol}")
+            return validated_signal
+            
+        except (ValidationError, PydanticValidationError) as e:
+            error_response = self.error_handler.handle_trading_error(
+                error=e,
+                symbol=symbol,
+                context={
+                    "operation": "signal_validation",
+                    "signal": signal
+                }
+            )
+            logger.error(f"Trading signal validation failed for {symbol} - ID: {error_response.error_id}")
+            raise ValidationTradingError(f"Trading signal validation failed for {symbol}: {str(e)}", field="signal", value=signal)
+        except Exception as e:
+            error_response = self.error_handler.handle_critical_error(
+                error=e,
+                context={
+                    "operation": "signal_validation",
+                    "symbol": symbol,
+                    "signal": signal
+                }
+            )
+            logger.error(f"Critical error during signal validation for {symbol} - ID: {error_response.error_id}")
+            raise ValidationTradingError(f"Unexpected error during signal validation for {symbol}: {str(e)}", field="signal", value=signal)
+
+    def _validate_backtest_parameters(self, symbol: str, timeframe: str, start_date_str: str, end_date_str: str):
+        """
+        Validates backtest parameters
+        """
+        try:
+            # Validate symbol
+            symbol_validator = validate_trading_symbol(symbol)
+            
+            # Validate timeframe
+            valid_timeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w']
+            if timeframe not in valid_timeframes:
+                raise ValidationTradingError(
+                    f"Invalid timeframe '{timeframe}'. Must be one of: {valid_timeframes}",
+                    field="timeframe",
+                    value=timeframe
+                )
+            
+            # Validate date format and logic
+            try:
+                start_dt = datetime.strptime(start_date_str, '%Y-%m-%d')
+                end_dt = datetime.strptime(end_date_str, '%Y-%m-%d')
+            except ValueError as e:
+                raise ValidationTradingError(
+                    f"Invalid date format. Use YYYY-MM-DD format. Error: {str(e)}",
+                    field="date_format",
+                    value={"start_date": start_date_str, "end_date": end_date_str}
+                )
+            
+            # Validate date range
+            if start_dt >= end_dt:
+                raise ValidationTradingError(
+                    f"Start date ({start_date_str}) must be before end date ({end_date_str})",
+                    field="date_range",
+                    value={"start_date": start_date_str, "end_date": end_date_str}
+                )
+            
+            # Validate date range is not too far in the future
+            if start_dt > datetime.now():
+                raise ValidationTradingError(
+                    f"Start date ({start_date_str}) cannot be in the future",
+                    field="start_date",
+                    value=start_date_str
+                )
+            
+            # Validate date range is reasonable (not too long)
+            max_backtest_days = 365 * 2  # 2 years max
+            if (end_dt - start_dt).days > max_backtest_days:
+                raise ValidationTradingError(
+                    f"Backtest period too long ({(end_dt - start_dt).days} days). Maximum allowed: {max_backtest_days} days",
+                    field="date_range",
+                    value={"start_date": start_date_str, "end_date": end_date_str}
+                )
+            
+            logger.debug(f"✅ Backtest parameters validation passed for {symbol}")
+            
+        except (ValidationError, PydanticValidationError) as e:
+            error_response = self.error_handler.handle_trading_error(
+                error=e,
+                symbol=symbol,
+                context={
+                    "operation": "backtest_parameters_validation",
+                    "timeframe": timeframe,
+                    "start_date": start_date_str,
+                    "end_date": end_date_str
+                }
+            )
+            logger.error(f"Backtest parameters validation failed - ID: {error_response.error_id}")
+            raise ValidationTradingError(f"Backtest parameters validation failed: {str(e)}", field="backtest_parameters")
+        except Exception as e:
+            error_response = self.error_handler.handle_critical_error(
+                error=e,
+                context={
+                    "operation": "backtest_parameters_validation",
+                    "symbol": symbol,
+                    "timeframe": timeframe,
+                    "start_date": start_date_str,
+                    "end_date": end_date_str
+                }
+            )
+            logger.error(f"Critical error during backtest parameters validation - ID: {error_response.error_id}")
+            raise ValidationTradingError(f"Unexpected error during backtest parameters validation: {str(e)}", field="backtest_parameters")
+
+    @handle_errors(category=ErrorCategory.DATA, max_retries=1, retry_delay=2.0)
+    def run_backtest(self, symbol: str, timeframe: str, start_date_str: str, end_date_str: str):
+        """
+        Runs a backtest for a given symbol, timeframe, and date range.
+        This simplified version fetches all data first then iterates.
+        For ML-enhanced backtesting, you'd use core/ml_enhanced_backtesting.py
+        """
+        
+        # Validate backtest parameters
+        self._validate_backtest_parameters(symbol, timeframe, start_date_str, end_date_str)
+        
+        logger.info(f"Starting backtest for {symbol} on {timeframe} from {start_date_str} to {end_date_str}")
+        start_dt = datetime.strptime(start_date_str, '%Y-%m-%d')
+        end_dt = datetime.strptime(end_date_str, '%Y-%m-%d')
+
+        # Fetch all historical data for the backtest period
+        ohlcv_data = self.data_manager.get_historical_data(symbol, timeframe, start_date_str, end_date_str)
+        if ohlcv_data.empty:
+            logger.error(f"No historical data available for {symbol} from {start_date_str} to {end_date_str}.")
+            return
+
+        logger.info(f"Loaded {len(ohlcv_data)} candles for backtest.")
+
+        # Reset performance tracker for backtest
+        self.performance_tracker = PerformanceTracker(self.settings, is_backtest=True)
+        initial_capital = self.settings.get('trading.initial_capital', 10000)
+        self.performance_tracker.track_performance(initial_capital, ohlcv_data.index[0].isoformat())
+
+        # Initialize strategy for backtesting, potentially with the router
+        # If strategy_router is enabled, it should manage strategy selection during backtest
+        if self.strategy_router and self.strategy_name == "auto_routed":
+            logger.info("Backtesting with Strategy Router enabled.")
+            # This requires a more sophisticated backtest loop that simulates time and calls the router
+            # I will provide a basic loop here, but ideally you'd use `ml_enhanced_backtesting.py`
+            # For simplicity, we will simulate periodic regime checks during the backtest
+            last_simulated_regime_check = datetime.min
+
+            # The backtest should operate candle by candle
+            for i in range(self.settings.get('data.min_candles', 200), len(ohlcv_data)):
+                current_df = ohlcv_data.iloc[:i].copy()
+                current_candle = ohlcv_data.iloc[i - 1]  # Previous candle is the current data point
+
+                # Simulate time for regime check
+                current_time = current_candle.name  # Assuming index is datetime
+                if current_time - last_simulated_regime_check >= timedelta(seconds=self.regime_check_interval):
+                    logger.debug(f"Simulating market regime check at {current_time}")
+                    # Prepare mock live data for regime detection (last N candles for core symbols)
+                    simulated_market_data: Dict[str, pd.DataFrame] = {}
+                    core_symbols = self.settings.get('ml.regime_core_symbols', ["BTC/USDT"])
+                    limit = self.settings.get('data.min_candles', 200)  # Use same limit as live
+
+                    for core_sym in core_symbols:
+                        # For backtest, we need to fetch this from the full ohlcv_data
+                        # This assumes core_symbols also exist in the backtested symbol's data
+                        # In a real setup, you'd need multi-symbol OHLCV for backtesting
+                        if core_sym == symbol:  # Use the current symbol's data slice
+                            simulated_market_data[core_sym] = ohlcv_data.iloc[max(0, i - limit):i].copy()
+                        else:
+                            # Placeholder: in a real multi-symbol backtest, fetch data for other core_symbols
+                            # from a pre-loaded multi-symbol dataset. For this example, we skip if not main symbol
+                            pass
+
+                    if simulated_market_data.get(symbol):  # Ensure the main symbol's data is available for regime check
+                        regime_info = self.ml_components.market_regime_detector.predict_regime(simulated_market_data)
+                        if regime_info["status"] == "success":
+                            new_regime_label = regime_info["label"]
+                            self.strategy_router.update_market_regime(new_regime_label,
+                                                                      self.position_manager.get_total_capital())
+                        else:
+                            logger.warning(
+                                f"Backtest regime detection failed at {current_time}: {regime_info['reason']}")
+
+                    last_simulated_regime_check = current_time
+
+                # Get current active strategies from router
+                active_strategies = self.strategy_router.get_active_strategies()
+                if not active_strategies:
+                    logger.debug(f"No active strategies from router at {current_time}. Skipping trade logic.")
+                    continue
+
+                for strategy_name, strategy_instance in active_strategies.items():
+                    # Only execute if the strategy is meant for the current symbol being backtested
+                    # This implies strategies are single-symbol for this backtest logic
+                    if hasattr(strategy_instance, 'trading_pair') and strategy_instance.trading_pair == symbol:
+                        signal = strategy_instance.generate_signal(current_df, current_candle)
+                        if signal:
+                            # Simulate trade execution for backtest
+                            simulated_order = self._simulate_backtest_trade(symbol, signal, current_candle['close'])
+                            if simulated_order:
+                                self.position_manager.update_position_from_order(simulated_order)
+                                self.performance_tracker.record_trade(simulated_order)
+        else:  # Fixed strategy backtest
+            if not self.current_active_strategy:
+                logger.error("No strategy available for backtest.")
+                return
+
+            for i in range(self.settings.get('data.min_candles', 200), len(ohlcv_data)):
+                current_df = ohlcv_data.iloc[:i].copy()
+                current_candle = ohlcv_data.iloc[i - 1]  # Previous candle is the current data point
+
+                signal = self.current_active_strategy.generate_signal(current_df, current_candle)
+                if signal:
+                    simulated_order = self._simulate_backtest_trade(symbol, signal, current_candle['close'])
+                    if simulated_order:
+                        self.position_manager.update_position_from_order(simulated_order)
+                        self.performance_tracker.record_trade(simulated_order)
+
+        # Final performance calculation
+        final_capital = self.position_manager.get_total_capital(current_prices={symbol: ohlcv_data.iloc[-1]['close']})
+        self.performance_tracker.track_performance(final_capital, ohlcv_data.index[-1].isoformat())
+
+        summary = self.performance_tracker.get_performance_summary()
+        logger.info("Backtest completed. Performance Summary:")
+        for k, v in summary.items():
+            logger.info(f"  {k}: {v}")
+        self.performance_tracker.save_results(symbol, timeframe, start_date_str, end_date_str)
+
+    def _simulate_backtest_trade(self, symbol: str, signal: Dict[str, Any], current_price: float) -> Optional[
+        Dict[str, Any]]:
+        """Simulates a trade for backtesting with validation."""
+        
+        # Validate inputs
+        self._validate_simulate_trade_inputs(symbol, signal, current_price)
+        
+        trade_type = signal['trade_type']
+        amount = signal['amount']
+
+        # Simple simulation: assume market order fills at current_price
+        filled_price = current_price
+        cost_or_revenue = amount * filled_price
+
+        # Apply a small simulated fee
+        fee_rate = self.settings.get('exchange.maker_fee', 0.001)  # Use maker fee for simulation
+        fee = cost_or_revenue * fee_rate
+
+        order_id = f"simulated_{int(time.time() * 1000)}"
+        timestamp = datetime.now().timestamp() * 1000  # Milliseconds
+
+        order_info = {
+            'id': order_id,
+            'symbol': symbol,
+            'type': 'market',
+            'side': trade_type,
+            'amount': amount,
+            'price': filled_price,
+            'cost': cost_or_revenue,
+            'fee': {'cost': fee, 'currency': symbol.split('/')[1]},  # Assuming quote currency for fees
+            'datetime': datetime.fromtimestamp(timestamp / 1000).isoformat(),
+            'timestamp': int(timestamp),
+            'status': 'closed'  # Always closed for simulated market order
+        }
+        logger.info(f"Simulated {trade_type.upper()} order for {amount} {symbol} at {filled_price:.4f}. Fee: {fee:.4f}")
+        return order_info
+
+    def _validate_simulate_trade_inputs(self, symbol: str, signal: Dict[str, Any], current_price: float):
+        """
+        Validates inputs for simulated trade
+        """
+        try:
+            # Validate symbol
+            validate_trading_symbol(symbol)
+            
+            # Validate signal (reuse existing validation)
+            if not isinstance(signal, dict):
+                raise ValidationTradingError(
+                    "Signal must be a dictionary",
+                    field="signal",
+                    value=signal
+                )
+            
+            # Validate current price
+            if not isinstance(current_price, (int, float)) or current_price <= 0:
+                raise ValidationTradingError(
+                    f"Invalid current price '{current_price}'. Must be a positive number",
+                    field="current_price",
+                    value=current_price
+                )
+            
+            # Validate price is reasonable (not too extreme)
+            if current_price > 1000000:  # $1M max per unit
+                raise ValidationTradingError(
+                    f"Current price too high: {current_price}. Maximum allowed: 1,000,000",
+                    field="current_price",
+                    value=current_price
+                )
+            
+            logger.debug(f"✅ Simulate trade inputs validation passed for {symbol}")
+            
+        except (ValidationError, PydanticValidationError) as e:
+            error_response = self.error_handler.handle_trading_error(
+                error=e,
+                symbol=symbol,
+                context={
+                    "operation": "simulate_trade_inputs_validation",
+                    "signal": signal,
+                    "current_price": current_price
+                }
+            )
+            logger.error(f"Simulate trade inputs validation failed - ID: {error_response.error_id}")
+            raise ValidationTradingError(f"Simulate trade inputs validation failed: {str(e)}", field="simulate_trade_inputs")
+        except Exception as e:
+            error_response = self.error_handler.handle_critical_error(
+                error=e,
+                context={
+                    "operation": "simulate_trade_inputs_validation",
+                    "symbol": symbol,
+                    "signal": signal,
+                    "current_price": current_price
+                }
+            )
+            logger.error(f"Critical error during simulate trade inputs validation - ID: {error_response.error_id}")
+            raise ValidationTradingError(f"Unexpected error during simulate trade inputs validation: {str(e)}", field="simulate_trade_inputs")
+
+    def print_status(self):
+        """Logs current bot status (replaced print statements with logging)."""
+        logger.info("\n--- Trading Bot Status ---")
+        logger.info(f"Mode: {self.mode}")
+        logger.info(f"Running: {self.running}")
+        logger.info(
+            f"Active Strategy: {self.current_active_strategy.__class__.__name__ if self.current_active_strategy else 'N/A'}")
+        
+        if self.strategy_router:
+            try:
+                current_regime = self.strategy_router.get_current_regime()
+                logger.info(f"Current Market Regime: {current_regime}")
+                
+                active_router_strategies = self.strategy_router.get_active_strategies()
+                if active_router_strategies:
+                    logger.info("Router Active Strategies:")
+                    for name, strat_instance in active_router_strategies.items():
+                        trading_pair = getattr(strat_instance, 'trading_pair', 'unknown')
+                        logger.info(f"  - {name} ({trading_pair})")
+                else:
+                    logger.info("Router: No strategies currently active.")
+            except Exception as e:
+                error_response = self.error_handler.handle_critical_error(
+                    error=e,
+                    context={"operation": "status_strategy_router_info"}
+                )
+                logger.error(f"Error getting strategy router info - ID: {error_response.error_id}")
+
+        if self.safety_manager:
+            try:
+                killswitch_active = self.safety_manager.is_killswitch_active()
+                current_drawdown = getattr(self.safety_manager, 'current_drawdown_percent', 0.0)
+                logger.info(f"Killswitch Active: {killswitch_active}")
+                logger.info(f"Current Drawdown: {current_drawdown:.2%}")
+            except Exception as e:
+                error_response = self.error_handler.handle_critical_error(
+                    error=e,
+                    context={"operation": "status_safety_manager_info"}
+                )
+                logger.error(f"Error getting safety manager info - ID: {error_response.error_id}")
+
+        try:
+            current_prices = self.exchange.get_current_prices()
+            current_capital = self.position_manager.get_total_capital(current_prices)
+            logger.info(f"Total Capital: {current_capital:.2f} USDT")
+        except Exception as e:
+            error_response = self.error_handler.handle_api_error(
+                error=e,
+                context={"operation": "status_capital_calculation"}
+            )
+            logger.error(f"Error calculating total capital - ID: {error_response.error_id}")
+            logger.info("Total Capital: Unable to calculate")
+        
+        logger.info("--- Positions ---")
+        try:
+            positions = self.position_manager.get_all_positions()
+            if positions:
+                for symbol, pos in positions.items():
+                    logger.info(f"  {symbol}: Amount={pos['amount']:.4f}, EntryPrice={pos['entry_price']:.4f}, "
+                                f"CurrentPrice={pos['current_price']:.4f}, UnrealizedPNL={pos['unrealized_pnl']:.2f}")
+            else:
+                logger.info("  No open positions.")
+        except Exception as e:
+            error_response = self.error_handler.handle_critical_error(
+                error=e,
+                context={"operation": "status_positions_info"}
+            )
+            logger.error(f"Error getting positions info - ID: {error_response.error_id}")
+            logger.info("  Unable to retrieve position information")
+        
+        logger.info("--------------------------")

@@ -19,6 +19,7 @@ from datetime import datetime
 from dataclasses import dataclass
 
 from .strategy_base import Strategy
+from utils.error_handler import secure_error_handler
 
 logger = logging.getLogger(__name__)
 
@@ -155,11 +156,19 @@ class DeFiYieldStrategy(Strategy):
             }
 
         except Exception as e:
-            logger.error(f"Error in DeFi yield calculation: {e}")
+            error_response = secure_error_handler.handle_critical_error(
+                error=e,
+                context={
+                    "operation": "defi_yield_signal_calculation",
+                    "symbol": symbol,
+                    "strategy": "defi_yield"
+                }
+            )
+            logger.error(f"Error in DeFi yield calculation - ID: {error_response.error_id}")
             return 'HOLD', {
                 'confidence': 0.0,
                 'signal': 'HOLD',
-                'error': str(e),
+                'error_id': error_response.error_id,
                 'strategy': 'defi_yield'
             }
 

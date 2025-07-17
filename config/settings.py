@@ -1,3 +1,4 @@
+# config/settings.py
 import os
 import json
 import logging
@@ -14,17 +15,20 @@ class Settings:
         "exchange": {
             "name": "binance",
             "testnet": True,
-            "rate_limit": True
+            "rate_limit": True,
+            "maker_fee": 0.001,  # Example fee for simulation
+            "taker_fee": 0.001  # Example fee for simulation
         },
         "trading": {
             "initial_capital": 10000,
             "max_positions": 5,
             "position_sizing": "fixed",
-            "risk_per_trade": 0.02
+            "risk_per_trade": 0.02,
+            "default_strategy": "momentum"  # Fallback strategy if auto-routing fails
         },
         "timeframes": {
             "analysis": "1h",
-            "check_interval": 300,
+            "check_interval": 300,  # Bot loop check interval in seconds (5 mins)
             "secondary": "4h"
         },
         "logging": {
@@ -35,175 +39,201 @@ class Settings:
             "source": "exchange",
             "source_name": "binance",
             "use_cache": True,
-            "min_candles": 50,
+            "min_candles": 200,  # Min candles needed for indicator calculation for strategies and ML
             "cache_dir": "data/market_data"
         },
         "ml": {
-            "enabled": False,
+            "enabled": True,
+            "auto_train": False,  # Set to True to auto-train ML models on startup if not present
             "data_dir": "data/market_data",
             "models_dir": "data/ml_models",
             "output_dir": "data/ml_analysis",
-            "n_regimes": 5,
-            "monitor_new_coins": True,
-            "regime_check_interval": 3600,
+            "n_regimes": 5,  # Number of market regimes for clustering
+            "min_data_points_for_ml": 200,  # Minimum data points required for ML training/prediction
+            "regime_check_interval": 1800,  # How often to re-evaluate market regime (seconds, e.g., 30 mins)
             "regime_core_symbols": ["BTC/USDT", "ETH/USDT", "BNB/USDT", "XRP/USDT", "SOL/USDT"],
-            # New: Fixed symbols for ML regime detection
-            "min_data_points_for_ml": 200  # New: Minimum candles required for ML feature extraction
+            # Symbols for global regime detection
+            "feature_extraction": {
+                "rsi_period": 14,
+                "ma_short": 20,
+                "ma_long": 50,
+                "bollinger_window": 20,
+                "bollinger_std_dev": 2.0,
+                "atr_period": 14
+            },
+            "sentiment_api_key": ""
+            # API keys are now stored securely in SecretManager, not in config files
         },
         "strategy_router": {
-            "enabled": False,
-            "default_strategy": "momentum",
-            "regime_strategies": {
-                "bullish": "momentum",
-                "aufwärtstrend": "momentum",
-                "bearish": "mean_reversion",
-                "abwärtstrend": "mean_reversion",
-                "sideways": "grid_trading",
-                "niedrige-volatilität": "grid_trading",
-                "volatile": "arbitrage",
-                "extreme fear": "defi_yield"
-            },
-            "capital_allocation_rules": {
-                "momentum": 0.2,
-                "mean_reversion": 0.2,
-                "grid_trading": 0.2,
-                "arbitrage": 0.2,
-                "ml": 0.1,
-                "defi_yield": 0.1
+            "enabled": True,
+            "regime_strategies": {  # Maps detected regime to preferred strategies and their capital allocation weights
+                "bull": {
+                    "momentum": 0.7,
+                    "ml_strategy": 0.3
+                },
+                "bear": {
+                    "mean_reversion": 0.6,
+                    "liquidation": 0.4
+                },
+                "sideways": {
+                    "grid_trading": 0.8,
+                    "arbitrage": 0.2
+                },
+                "volatile": {
+                    "defi_yield": 0.5,  # Move to stable yield in high volatility
+                    "conservative": 0.5
+                    # A more conservative general strategy (placeholder for a less aggressive strategy)
+                },
+                "extreme_fear": {
+                    "manual_intervention_required": 1.0
+                    # Pause bot or require human decision (represented by 1.0 capital, but router should handle pausing logic)
+                },
+                "neutral": {  # Default if no clear regime is detected or for unknown
+                    "momentum": 0.5,
+                    "mean_reversion": 0.5
+                }
             }
         },
-        "risk_management": {
-            "max_drawdown": 0.15,
-            "daily_loss_limit": 0.05,
+        "risk_management": {  # General risk management settings
             "killswitch": {
                 "enabled": True,
-                "max_drawdown": 0.10,
-                "auto_reactivate_after_hours": 24
+                "max_drawdown": 0.15,  # 15% max drawdown from peak equity
+                "auto_reactivate_after_hours": 24,  # Auto-reactivate after 24 hours if killswitch triggered
+                "notification_on_trigger": True
+            },
+            "max_position_size": 1000,  # Max USD value per single position
+            "max_drawdown": 0.20,  # Overall max drawdown (redundant with killswitch.max_drawdown but kept for clarity)
+            "stop_loss_percentage": 0.02,  # Default stop loss
+            "take_profit_percentage": 0.05,  # Default take profit
+            "max_positions": 5,  # Max number of concurrent open positions
+            "risk_per_trade": 0.02  # Percentage of capital to risk per trade (for position sizing)
+        },
+        "notifications": {
+            "telegram": {
+                "enabled": False,
+                "bot_token": "",  # Stored in SecretManager
+                "chat_id": ""  # Stored in SecretManager
+            },
+            "email": {
+                "enabled": False,
+                "sender_email": "your_email@example.com",
+                "recipient_email": "alert_recipient@example.com",
+                "smtp_server": "smtp.yourprovider.com",
+                "smtp_port": 587,
+                "smtp_username": "",  # Stored in SecretManager
+                "smtp_password": ""  # Stored in SecretManager
             }
         },
-        "backtest": {
-            "start_date": "2023-01-01",
-            "end_date": "2023-12-31",
-            "initial_balance": 10000,
-            "commission": 0.001,
-            "create_plots": True,
-            "export_results": True,
-            "export_format": "excel",
-            "output_dir": "latest"
+        "strategy_configs": {  # Detailed parameters for each strategy, overridden by profile-specific settings
+            "momentum": {
+                "trading_pair": "BTC/USDT",  # Example default pair, can be overridden by router
+                "rsi_oversold": 30,
+                "rsi_overbought": 70,
+                "sma_short_period": 5,
+                "sma_long_period": 20
+            },
+            "mean_reversion": {
+                "trading_pair": "ETH/USDT",
+                "bollinger_period": 20,
+                "bollinger_std": 2.0,
+                "use_rsi_filter": True
+            },
+            "grid_trading": {
+                "trading_pair": "BNB/USDT",
+                "num_grids": 10,
+                "price_range_multiplier": 0.05,
+                "grid_size_percent": 0.01  # New parameter
+            },
+            "arbitrage": {
+                "trading_pair": "XRP/USDT",  # Example, usually involves multiple pairs/exchanges
+                "min_profit_threshold": 0.005,
+                "max_execution_slippage": 0.0002
+            },
+            "defi_yield": {
+                "trading_pair": "USDT/USDC",  # Example stablecoin pair for yield farming concept
+                "min_apy": 0.15,
+                "compound_frequency_hours": 24
+            },
+            "liquidation": {
+                "trading_pair": "SOL/USDT",  # Example, could be any volatile altcoin
+                "min_profit_usd": 50,
+                "liquidation_bonus_threshold": 0.01
+            },
+            "ml_strategy": {
+                "trading_pair": "ADA/USDT",  # Example, ML strategy might focus on specific altcoins
+                "prediction_threshold": 0.7,
+                "model_confidence_min": 0.6
+            },
+            "conservative": {  # New placeholder strategy for volatile/extreme fear regimes
+                "trading_pair": "BTC/USDT",
+                "max_drawdown_per_trade": 0.01,
+                "fixed_position_size_usd": 100
+            },
+            "manual_intervention_required": {  # Special 'strategy' for extreme fear, implies bot pauses
+                "trading_pair": "N/A"
+            }
         }
     }
 
-    def __init__(self):
-        self.config = self.DEFAULT_CONFIG.copy()
-        self.profiles_dir = Path(__file__).parent / "profiles"
-        self.loaded_profile = None
+    def __init__(self, config_name: str = 'default'):
+        self.config = self._load_config(config_name)
 
-    def load_profile(self, profile_name: str) -> Dict[str, Any]:
-        """Load a configuration profile"""
-        profile_path = self.profiles_dir / f"{profile_name}.json"
+    def _load_config(self, config_name: str) -> Dict[str, Any]:
+        """Loads configuration from a JSON file, merging with default settings."""
+        config_path = Path(__file__).parent / 'profiles' / f'{config_name}.json'
 
-        if not profile_path.exists():
-            logger.warning(f"Profile {profile_name} not found at {profile_path}")
-            logger.info("Using default configuration")
-            return self.config
+        loaded_config = {}
+        if config_path.exists():
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    loaded_config = json.load(f)
+                logger.info(f"Loaded configuration profile: {config_name}.json")
+            except json.JSONDecodeError as e:
+                logger.error(f"Error decoding JSON from {config_path}: {e}")
+            except Exception as e:
+                logger.error(f"Error loading configuration file {config_path}: {e}")
+        else:
+            logger.warning(f"Configuration profile '{config_name}.json' not found. Using default settings.")
+            if config_name != 'default':  # Avoid double warning if user explicitly asked for non-existent non-default
+                logger.warning("Ensure the profile exists or use 'default'.")
 
-        try:
-            with open(profile_path, 'r') as f:
-                profile_config = json.load(f)
+        # Merge with default config. Loaded config values override defaults.
+        merged_config = self.DEFAULT_CONFIG.copy()
+        self._deep_update(merged_config, loaded_config)
+        return merged_config
 
-            self.config = self._deep_merge(self.DEFAULT_CONFIG.copy(), profile_config)
-            self.loaded_profile = profile_name
-
-            logger.info(f"Loaded configuration profile: {profile_name}")
-            return self.config
-
-        except Exception as e:
-            logger.error(f"Error loading profile {profile_name}: {e}")
-            logger.info("Using default configuration")
-            return self.config
+    def _deep_update(self, base_dict: Dict, update_dict: Dict):
+        """Recursively updates a dictionary with values from another dictionary."""
+        for k, v in update_dict.items():
+            if isinstance(v, dict) and k in base_dict and isinstance(base_dict[k], dict):
+                base_dict[k] = self._deep_update(base_dict[k], v)
+            else:
+                base_dict[k] = v
+        return base_dict
 
     def get(self, key: str, default: Any = None) -> Any:
-        """Get configuration value by key (supports nested keys with dots)"""
+        """Retrieves a setting value using dot notation (e.g., 'exchange.name')."""
         keys = key.split('.')
-        value = self.config
-
+        current_level = self.config
         for k in keys:
-            if isinstance(value, dict) and k in value:
-                value = value[k]
+            if isinstance(current_level, dict) and k in current_level:
+                current_level = current_level[k]
             else:
                 return default
-
-        return value
+        return current_level
 
     def set(self, key: str, value: Any):
-        """Set configuration value by key"""
+        """Sets a setting value using dot notation."""
         keys = key.split('.')
-        config = self.config
-
-        for k in keys[:-1]:
-            if k not in config:
-                config[k] = {}
-            config = config[k]
-
-        config[keys[-1]] = value
-
-    def _deep_merge(self, base: Dict, update: Dict) -> Dict:
-        """Deep merge two dictionaries"""
-        for key, value in update.items():
-            if key in base and isinstance(base[key], dict) and isinstance(value, dict):
-                base[key] = self._deep_merge(base[key], value)
+        current_level = self.config
+        for i, k in enumerate(keys):
+            if i == len(keys) - 1:
+                current_level[k] = value
             else:
-                base[key] = value
-        return base
-
-    def validate(self) -> bool:
-        """Validate configuration"""
-        required_keys = [
-            'trading_pairs',
-            'timeframes.analysis',
-            'trading.initial_capital'
-        ]
-
-        for key in required_keys:
-            if self.get(key) is None:
-                logger.error(f"Missing required configuration: {key}")
-                return False
-
-        if self.get('strategy_router.enabled') and not self.get('ml.enabled'):
-            logger.error("Strategy Router requires ML components to be enabled.")
-            return False
-
-        if self.get('strategy_router.enabled'):
-            # This check requires STRATEGIES imported from strategies/__init__.py
-            # For simplicity in this isolated file, assuming STRATEGIES is globally accessible
-            # or that this check is re-evaluated within the main bot logic.
-            pass  # Simplified for import reasons in this isolated snippet
-
-        if self.get('risk_management.killswitch.enabled', False):
-            if self.get('risk_management.killswitch.max_drawdown', 0) <= 0:
-                logger.error("Killswitch enabled but 'killswitch.max_drawdown' is not set or invalid.")
-                return False
-
-        return True
-
-
-settings = Settings()
-
-
-def load_config(profile_name: str = "default") -> Dict[str, Any]:
-    """Load configuration profile"""
-    logger.info(f"Looking for profile at: {settings.profiles_dir / f'{profile_name}.json'}")
-    config = settings.load_profile(profile_name)
-    logger.info(f"Configuration loaded for profile: {profile_name}")
-    return config
-
-
-def get_config() -> Dict[str, Any]:
-    """Get current configuration"""
-    return settings.config
-
-
-def validate_config(config: Dict[str, Any]) -> bool:
-    """Validate configuration dictionary. This function is deprecated in favor of settings.validate()"""
-    logger.warning("Using deprecated validate_config. Please use settings.validate() instead.")
-    return settings.validate()
+                if not isinstance(current_level, dict):
+                    logger.error(f"Cannot set value: Intermediate key '{k}' is not a dictionary.")
+                    return
+                if k not in current_level:
+                    current_level[k] = {}
+                current_level = current_level[k]
+        logger.info(f"Setting '{key}' updated to '{value}'.")

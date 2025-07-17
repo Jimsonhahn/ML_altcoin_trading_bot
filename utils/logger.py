@@ -320,9 +320,9 @@ def cleanup_old_logs(days: int = 30):
             file_time = datetime.fromtimestamp(os.path.getmtime(log_file))
             if file_time < cutoff_date:
                 os.remove(log_file)
-                print(f"Removed old log file: {log_file}")
+                logging.info(f"Removed old log file: {log_file}")
         except Exception as e:
-            print(f"Error removing log file {log_file}: {e}")
+            logging.error(f"Error removing log file {log_file}: {e}")
 
 
 # Initialize default loggers when module is imported

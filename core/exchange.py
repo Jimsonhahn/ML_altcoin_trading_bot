@@ -9,6 +9,14 @@ from typing import Dict, List, Optional, Tuple, Any
 import logging
 from datetime import datetime, timedelta
 import time
+from pathlib import Path
+import sys
+
+# Add parent directory to path for imports
+sys.path.append(str(Path(__file__).parent.parent))
+from utils.secret_manager import SecretManager, get_api_credentials
+from utils.secure_http import create_secure_session
+from utils.error_handler import secure_error_handler, ErrorCategory
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +33,7 @@ class ExchangeManager:
         else:
             # Es ist ein String
             self.exchange_name = exchange_name or 'binance'
-            self.testnet = testnet
+            self.testnet = mode == 'paper'  # Fix: use mode instead of undefined testnet
         self.mode = mode
         self.exchange = None
         self.connected = False
@@ -38,7 +46,7 @@ class ExchangeManager:
             'enableRateLimit': True
         }
 
-        logger.info(f"Initializing {exchange_name} exchange in {mode} mode")
+        logger.info(f"Initializing {self.exchange_name} exchange in {mode} mode")
 
     def connect(self) -> bool:
         """Connect to the exchange"""
@@ -48,7 +56,15 @@ class ExchangeManager:
             else:
                 return self._connect_live()
         except Exception as e:
-            logger.error(f"Failed to connect: {e}")
+            error_response = secure_error_handler.handle_critical_error(
+                error=e,
+                context={
+                    "operation": "exchange_connect",
+                    "exchange_name": self.exchange_name,
+                    "mode": self.mode
+                }
+            )
+            logger.error(f"Failed to connect to exchange - ID: {error_response.error_id}")
             return False
 
     def _connect_paper(self) -> bool:
@@ -56,7 +72,8 @@ class ExchangeManager:
         try:
             config = {
                 'enableRateLimit': True,
-                'options': self.options
+                'options': self.options,
+                'session': create_secure_session()
             }
 
             if self.exchange_name == 'binance':
@@ -79,27 +96,38 @@ class ExchangeManager:
             return True
 
         except Exception as e:
-            logger.error(f"Failed to connect to paper exchange: {e}")
-            # Use mock mode
+            error_response = secure_error_handler.handle_api_error(
+                error=e,
+                context={
+                    "operation": "paper_exchange_connect",
+                    "exchange_name": self.exchange_name
+                }
+            )
+            logger.error(f"Failed to connect to paper exchange - ID: {error_response.error_id}")
+            # Use mock mode as fallback
             self._init_mock_mode()
             return True
 
     def _connect_live(self) -> bool:
         """Connect to live exchange"""
         try:
-            # Get API credentials
-            api_key = os.getenv(f'{self.exchange_name.upper()}_API_KEY')
-            api_secret = os.getenv(f'{self.exchange_name.upper()}_API_SECRET')
+            # Get API credentials from SecretManager first, fallback to env vars
+            api_key, api_secret = self._get_api_credentials()
 
             if not api_key or not api_secret:
                 logger.warning("No API credentials found, using read-only mode")
-                config = {'enableRateLimit': True, 'options': self.options}
+                config = {
+                    'enableRateLimit': True, 
+                    'options': self.options,
+                    'session': create_secure_session()
+                }
             else:
                 config = {
                     'apiKey': api_key,
                     'secret': api_secret,
                     'enableRateLimit': True,
-                    'options': self.options
+                    'options': self.options,
+                    'session': create_secure_session()
                 }
 
             # Create exchange instance
@@ -115,9 +143,74 @@ class ExchangeManager:
             return True
 
         except Exception as e:
-            logger.error(f"Failed to connect to live exchange: {e}")
+            error_response = secure_error_handler.handle_api_error(
+                error=e,
+                context={
+                    "operation": "live_exchange_connect",
+                    "exchange_name": self.exchange_name,
+                    "has_credentials": bool(api_key and api_secret)
+                }
+            )
+            logger.error(f"Failed to connect to live exchange - ID: {error_response.error_id}")
             self.connected = False
             return False
+
+    def _get_api_credentials(self) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Get API credentials from SecretManager first, then fallback to environment variables
+        Includes automatic migration from env vars to SecretManager
+        """
+        try:
+            # Determine if we're using testnet
+            suffix = '_testnet' if self.testnet else ''
+            exchange_key = f"{self.exchange_name}{suffix}"
+            
+            # Try to get from SecretManager first
+            api_key, api_secret = get_api_credentials(exchange_key)
+            
+            if api_key and api_secret:
+                logger.info(f"Retrieved {self.exchange_name} credentials from SecretManager")
+                return api_key, api_secret
+            
+            # Fallback to environment variables
+            env_key_name = f'{self.exchange_name.upper()}_{"TESTNET_" if self.testnet else ""}API_KEY'
+            env_secret_name = f'{self.exchange_name.upper()}_{"TESTNET_" if self.testnet else ""}API_SECRET'
+            
+            env_api_key = os.getenv(env_key_name)
+            env_api_secret = os.getenv(env_secret_name)
+            
+            # If found in env, migrate to SecretManager
+            if env_api_key and env_api_secret:
+                logger.info(f"Found {self.exchange_name} credentials in environment, migrating to SecretManager...")
+                from utils.secret_manager import store_api_key
+                
+                success = store_api_key(exchange_key, env_api_key, env_api_secret)
+                if success:
+                    logger.info(f"Successfully migrated {self.exchange_name} credentials to SecretManager")
+                    logger.warning(f"Please remove {env_key_name} and {env_secret_name} from your .env file!")
+                else:
+                    logger.error(f"Failed to migrate {self.exchange_name} credentials to SecretManager")
+                
+                return env_api_key, env_api_secret
+            
+            # No credentials found anywhere
+            logger.warning(f"No API credentials found for {self.exchange_name}")
+            return None, None
+            
+        except Exception as e:
+            error_response = secure_error_handler.handle_critical_error(
+                error=e,
+                context={
+                    "operation": "api_credentials_retrieval",
+                    "exchange_name": self.exchange_name,
+                    "testnet": self.testnet
+                }
+            )
+            logger.error(f"Error retrieving API credentials - ID: {error_response.error_id}")
+            # Last resort fallback to env vars
+            env_key_name = f'{self.exchange_name.upper()}_API_KEY'
+            env_secret_name = f'{self.exchange_name.upper()}_API_SECRET'
+            return os.getenv(env_key_name), os.getenv(env_secret_name)
 
     def _init_mock_mode(self):
         """Initialize mock mode for paper trading"""
@@ -139,7 +232,15 @@ class ExchangeManager:
             else:
                 return self._get_mock_ticker(symbol)
         except Exception as e:
-            logger.error(f"Error fetching ticker for {symbol}: {e}")
+            error_response = secure_error_handler.handle_api_error(
+                error=e,
+                context={
+                    "operation": "fetch_ticker",
+                    "symbol": symbol,
+                    "exchange_name": self.exchange_name
+                }
+            )
+            logger.error(f"Error fetching ticker for {symbol} - ID: {error_response.error_id}")
             return self._get_mock_ticker(symbol)
 
     def fetch_ohlcv(self, symbol: str, timeframe: str = '1h', limit: int = 100) -> pd.DataFrame:
@@ -154,7 +255,17 @@ class ExchangeManager:
             else:
                 return self._get_mock_ohlcv(symbol, timeframe, limit)
         except Exception as e:
-            logger.error(f"Error fetching OHLCV for {symbol}: {e}")
+            error_response = secure_error_handler.handle_api_error(
+                error=e,
+                context={
+                    "operation": "fetch_ohlcv",
+                    "symbol": symbol,
+                    "timeframe": timeframe,
+                    "limit": limit,
+                    "exchange_name": self.exchange_name
+                }
+            )
+            logger.error(f"Error fetching OHLCV for {symbol} - ID: {error_response.error_id}")
             return self._get_mock_ohlcv(symbol, timeframe, limit)
 
     def fetch_balance(self) -> Dict[str, Any]:
@@ -172,7 +283,15 @@ class ExchangeManager:
             else:
                 return {'USDT': {'free': 10000, 'used': 0, 'total': 10000}}
         except Exception as e:
-            logger.error(f"Error fetching balance: {e}")
+            error_response = secure_error_handler.handle_api_error(
+                error=e,
+                context={
+                    "operation": "fetch_balance",
+                    "exchange_name": self.exchange_name,
+                    "mode": self.mode
+                }
+            )
+            logger.error(f"Error fetching balance - ID: {error_response.error_id}")
             return {'USDT': {'free': 10000, 'used': 0, 'total': 10000}}
 
     def create_order(self, symbol: str, order_type: str, side: str,
@@ -201,7 +320,20 @@ class ExchangeManager:
                 raise Exception("Exchange not connected")
 
         except Exception as e:
-            logger.error(f"Error creating order: {e}")
+            error_response = secure_error_handler.handle_trading_error(
+                error=e,
+                symbol=symbol,
+                amount=amount,
+                context={
+                    "operation": "create_order",
+                    "order_type": order_type,
+                    "side": side,
+                    "price": price,
+                    "exchange_name": self.exchange_name,
+                    "mode": self.mode
+                }
+            )
+            logger.error(f"Error creating order for {symbol} - ID: {error_response.error_id}")
             raise
 
     def cancel_order(self, order_id: str, symbol: str) -> bool:
@@ -215,7 +347,17 @@ class ExchangeManager:
                 return True
             return False
         except Exception as e:
-            logger.error(f"Error canceling order: {e}")
+            error_response = secure_error_handler.handle_trading_error(
+                error=e,
+                symbol=symbol,
+                order_id=order_id,
+                context={
+                    "operation": "cancel_order",
+                    "exchange_name": self.exchange_name,
+                    "mode": self.mode
+                }
+            )
+            logger.error(f"Error canceling order {order_id} - ID: {error_response.error_id}")
             return False
 
     def fetch_order(self, order_id: str, symbol: str) -> Dict[str, Any]:
@@ -235,7 +377,17 @@ class ExchangeManager:
             else:
                 raise Exception("Exchange not connected")
         except Exception as e:
-            logger.error(f"Error fetching order: {e}")
+            error_response = secure_error_handler.handle_trading_error(
+                error=e,
+                symbol=symbol,
+                order_id=order_id,
+                context={
+                    "operation": "fetch_order",
+                    "exchange_name": self.exchange_name,
+                    "mode": self.mode
+                }
+            )
+            logger.error(f"Error fetching order {order_id} - ID: {error_response.error_id}")
             raise
 
     def _get_mock_ticker(self, symbol: str) -> Dict[str, Any]:
@@ -408,7 +560,14 @@ def get_account_info(self) -> Dict[str, Any]:
                 'total_value': sum(balance.get('free', {}).values())
             }
     except Exception as e:
-        logger.warning(f"Could not get account info: {e}")
+        error_response = secure_error_handler.handle_api_error(
+            error=e,
+            context={
+                "operation": "get_account_info",
+                "exchange_name": self.exchange_name
+            }
+        )
+        logger.warning(f"Could not get account info - ID: {error_response.error_id}")
         return {
             'balances': {'USDT': 10000},
             'positions': [],
@@ -428,5 +587,13 @@ def get_balance(self, currency: str = 'USDT') -> float:
             balance = self.exchange.fetch_balance()
             return float(balance.get(currency, {}).get('free', 0))
     except Exception as e:
-        logger.warning(f"Could not get balance: {e}")
+        error_response = secure_error_handler.handle_api_error(
+            error=e,
+            context={
+                "operation": "get_balance",
+                "currency": currency,
+                "exchange_name": self.exchange_name
+            }
+        )
+        logger.warning(f"Could not get balance for {currency} - ID: {error_response.error_id}")
         return 10000.0 if currency == 'USDT' else 0.0

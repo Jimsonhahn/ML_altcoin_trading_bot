@@ -9,10 +9,10 @@ NewCoinMonitor für den Trading Bot und Backtest-Modul.
 import logging
 import os
 import json
-import requests
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Tuple, Union
+from utils.secure_http import SecureHTTPClient
 
 
 class NewCoinMonitor:
@@ -41,6 +41,13 @@ class NewCoinMonitor:
 
         # Watchlist laden, falls vorhanden
         self._load_watchlist()
+        
+        # Initialize secure HTTP client
+        self.http_client = SecureHTTPClient(
+            timeout=(5, 30),
+            max_retries=3,
+            user_agent="TradingBot-CoinMonitor/1.0"
+        )
 
     def update_known_coins(self, data_manager=None) -> bool:
         """
@@ -78,7 +85,7 @@ class NewCoinMonitor:
 
             # Bei Binance-API nach allen verfügbaren Symbolen fragen
             try:
-                response = requests.get('https://api.binance.com/api/v3/exchangeInfo')
+                response = self.http_client.get('https://api.binance.com/api/v3/exchangeInfo')
                 if response.status_code == 200:
                     exchange_info = response.json()
                     symbols = exchange_info.get('symbols', [])
@@ -131,7 +138,7 @@ class NewCoinMonitor:
             new_coins = []
 
             try:
-                response = requests.get('https://api.binance.com/api/v3/ticker/24hr')
+                response = self.http_client.get('https://api.binance.com/api/v3/ticker/24hr')
                 if response.status_code == 200:
                     tickers = response.json()
 
@@ -200,7 +207,7 @@ class NewCoinMonitor:
             # Kline-Daten abrufen (max. 1000 Einträge)
             url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval=1d&limit=30"
 
-            response = requests.get(url)
+            response = self.http_client.get(url)
             if response.status_code == 200:
                 klines = response.json()
 
@@ -487,3 +494,8 @@ class NewCoinMonitor:
         except Exception as e:
             self.logger.error(f"Fehler beim Speichern des Analyseergebnisses für {coin}: {e}")
             return False
+    
+    def __del__(self):
+        """Cleanup when object is destroyed"""
+        if hasattr(self, 'http_client'):
+            self.http_client.close()

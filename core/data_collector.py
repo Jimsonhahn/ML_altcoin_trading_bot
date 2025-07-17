@@ -22,10 +22,10 @@ from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 import ccxt
-import requests
 from collections import deque
 import threading
 import queue
+from utils.secure_http import SecureHTTPClient
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,13 @@ class DataCollector:
 
         # Data storage
         self.price_cache = {}  # symbol -> price data
+        
+        # Initialize secure HTTP client
+        self.http_client = SecureHTTPClient(
+            timeout=(5, 30),
+            max_retries=3,
+            user_agent="TradingBot-DataCollector/1.0"
+        )
         self.orderbook_cache = {}  # symbol -> orderbook
         self.trade_cache = {}  # symbol -> recent trades
         self.stats_cache = {}  # symbol -> 24h stats
@@ -494,7 +501,7 @@ class DataCollector:
                 coin_id = self._get_coingecko_id(base)
 
                 url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
-                response = requests.get(url, timeout=5)
+                response = self.http_client.get(url)
 
                 if response.status_code == 200:
                     data = response.json()
@@ -504,7 +511,7 @@ class DataCollector:
             elif source == 'cryptocompare':
                 base, quote = symbol.split('/')
                 url = f"https://min-api.cryptocompare.com/data/price?fsym={base}&tsyms={quote}"
-                response = requests.get(url, timeout=5)
+                response = self.http_client.get(url)
 
                 if response.status_code == 200:
                     data = response.json()
@@ -529,6 +536,11 @@ class DataCollector:
             'doge': 'dogecoin'
         }
         return mapping.get(symbol, symbol)
+    
+    def __del__(self):
+        """Cleanup when object is destroyed"""
+        if hasattr(self, 'http_client'):
+            self.http_client.close()
 
     def _price_stream_worker(self, symbol: str, callback):
         """Worker thread for price streaming"""

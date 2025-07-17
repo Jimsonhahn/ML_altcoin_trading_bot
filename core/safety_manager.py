@@ -1,106 +1,130 @@
+# core/safety_manager.py
 import logging
-from typing import Dict, Any
 from datetime import datetime, timedelta
+from typing import Optional, Any, TYPE_CHECKING, Dict
 
 from config.settings import Settings
+from utils.notifier import NotificationManager
+
+# To avoid circular import, use TYPE_CHECKING for type hints
+if TYPE_CHECKING:
+    from core.trading_bot import TradingBot
 
 logger = logging.getLogger(__name__)
 
 
 class SafetyManager:
     """
-    Manages safety features like killswitch based on drawdown and monitors critical metrics.
+    Manages safety mechanisms like killswitch based on drawdown.
     """
 
-    def __init__(self, settings: Settings, trading_bot_instance):
+    def __init__(self, settings: Settings):
         self.settings = settings
-        self.bot = trading_bot_instance
         self.killswitch_enabled = self.settings.get('risk_management.killswitch.enabled', True)
-        self.max_drawdown_percent = self.settings.get('risk_management.killswitch.max_drawdown',
-                                                      0.15) * 100  # In percentage
+        self.max_drawdown_percent = self.settings.get('risk_management.killswitch.max_drawdown', 0.15)
         self.auto_reactivate_after_hours = self.settings.get('risk_management.killswitch.auto_reactivate_after_hours',
                                                              24)
+        self.notification_on_trigger = self.settings.get('risk_management.killswitch.notification_on_trigger', True)
+
+        self.is_killswitch_active: bool = False
         self.last_killswitch_activation_time: Optional[datetime] = None
-        self.is_killswitch_active = False
+        self.peak_equity: float = self.settings.get('trading.initial_capital',
+                                                    10000)  # Initial capital as starting peak
+        self.current_drawdown_percent: float = 0.0
 
-        logger.info("SafetyManager initialized.")
-        if self.killswitch_enabled:
-            logger.info(f"Killswitch enabled: Max Drawdown {self.max_drawdown_percent:.1f}%")
+        self.notification_manager = NotificationManager(self.settings)
 
-    def check_and_apply_killswitch(self, current_portfolio_value: float, peak_portfolio_value: float):
+        self.trading_bot: Optional['TradingBot'] = None  # Reference to the trading bot instance
+
+        logger.info(
+            f"SafetyManager initialized. Killswitch enabled: {self.killswitch_enabled}, Max Drawdown: {self.max_drawdown_percent:.2%}")
+
+    def set_trading_bot(self, bot: 'TradingBot'):
+        """Sets the reference to the trading bot instance."""
+        self.trading_bot = bot
+        logger.info("SafetyManager received TradingBot instance reference.")
+
+    def update_equity(self, current_equity: float):
         """
-        Checks if the drawdown threshold is reached and activates the killswitch if necessary.
-
-        Args:
-            current_portfolio_value: The current value of the portfolio.
-            peak_portfolio_value: The highest recorded portfolio value.
+        Updates the current equity and checks for drawdown to trigger killswitch.
         """
         if not self.killswitch_enabled:
             return
 
-        if peak_portfolio_value <= 0:  # Avoid division by zero
-            return
+        if current_equity > self.peak_equity:
+            self.peak_equity = current_equity
+            self.current_drawdown_percent = 0.0
+        else:
+            if self.peak_equity > 0:  # Avoid division by zero
+                self.current_drawdown_percent = (self.peak_equity - current_equity) / self.peak_equity
+            else:
+                self.current_drawdown_percent = 0.0  # Or some other handling for zero peak equity
 
-        drawdown = (peak_portfolio_value - current_portfolio_value) / peak_portfolio_value * 100
+        if self.current_drawdown_percent >= self.max_drawdown_percent and not self.is_killswitch_active:
+            self._activate_killswitch(
+                f"Drawdown {self.current_drawdown_percent:.2%} exceeded {self.max_drawdown_percent:.2%} threshold from peak equity of {self.peak_equity:.2f}.")
 
-        if drawdown >= self.max_drawdown_percent and not self.is_killswitch_active:
-            self._activate_killswitch(f"Drawdown reached {drawdown:.2f}% (Threshold: {self.max_drawdown_percent:.1f}%)")
-        elif self.is_killswitch_active:
-            # Check for auto-reactivation
-            self._check_auto_reactivation(current_portfolio_value, peak_portfolio_value)
+        self._check_auto_reactivation()
 
     def _activate_killswitch(self, reason: str):
-        """Activates the killswitch, stops the bot, and logs the event."""
-        if self.is_killswitch_active:
-            return
-
+        """Activates the killswitch and pauses trading operations."""
         self.is_killswitch_active = True
         self.last_killswitch_activation_time = datetime.now()
-
         logger.critical(f"KILLSWITCH ACTIVATED! Reason: {reason}")
-        self.bot.stop()  # Calls the bot's stop method
-        self.bot._notify_error("killswitch_activated", reason)  # Notify callbacks
+        if self.notification_on_trigger:
+            self.notification_manager.send_alert(f"KILLSWITCH ACTIVATED! Reason: {reason}. Bot paused.",
+                                                 level="CRITICAL")
 
-    def _check_auto_reactivation(self, current_portfolio_value: float, peak_portfolio_value: float):
-        """
-        Checks if the conditions for auto-reactivation are met.
-        Conditions:
-        1. Auto-reactivation is enabled and time since activation has passed.
-        2. Portfolio is no longer in severe drawdown (e.g., drawdown < 50% of max drawdown).
-        """
-        if not self.auto_reactivate_after_hours or not self.is_killswitch_active:
-            return
+        if self.trading_bot:
+            # The bot should have its own internal mechanism to pause trading when killswitch is active
+            # This can be done by checking `is_killswitch_active()` in its main loop.
+            logger.info("Trading operations effectively paused due to killswitch.")
+            # Optionally, if the bot needs explicit stopping of active strategies:
+            # self.trading_bot.strategy_router._deactivate_all_strategies() 
+            # Or self.trading_bot.current_active_strategy.stop_trading() if single strategy
 
-        time_since_activation = (datetime.now() - self.last_killswitch_activation_time).total_seconds() / 3600
-
-        if time_since_activation >= self.auto_reactivate_after_hours:
-            current_drawdown = (peak_portfolio_value - current_portfolio_value) / peak_portfolio_value * 100
-            if current_drawdown < (self.max_drawdown_percent / 2):  # Recovered sufficiently
-                self._deactivate_killswitch(
-                    f"Automatic reactivation after {time_since_activation:.1f} hours. Current drawdown: {current_drawdown:.2f}%")
-                self.bot.run()  # Restart the bot
-            else:
-                logger.info(
-                    f"Killswitch still active: Not enough recovery for auto-reactivation. Current drawdown: {current_drawdown:.2f}%")
+    def _check_auto_reactivation(self):
+        """Checks if the killswitch should be automatically deactivated."""
+        if self.is_killswitch_active and self.auto_reactivate_after_hours > 0:
+            if self.last_killswitch_activation_time and \
+                    (
+                            datetime.now() - self.last_killswitch_activation_time).total_seconds() / 3600 >= self.auto_reactivate_after_hours:
+                self._deactivate_killswitch(f"Automatic reactivation after {self.auto_reactivate_after_hours} hours.")
 
     def _deactivate_killswitch(self, reason: str):
-        """Deactivates the killswitch and logs the event."""
+        """Deactivates the killswitch and resumes trading operations."""
         self.is_killswitch_active = False
         self.last_killswitch_activation_time = None
-        logger.warning(f"KILLSWITCH DEACTIVATED. Reason: {reason}")
-        self.bot._notify_status_update({"killswitch_status": "deactivated", "reason": reason})
+        self.current_drawdown_percent = 0.0  # Reset drawdown after reactivation
+        self.peak_equity = self.trading_bot.position_manager.get_total_capital(
+            self.trading_bot.exchange.get_current_prices()) if self.trading_bot else self.settings.get(
+            'trading.initial_capital', 10000)  # Reset peak equity
 
-    def is_active(self) -> bool:
-        """Returns True if the killswitch is currently active."""
-        return self.is_killswitch_active
+        logger.warning(f"KILLSWITCH DEACTIVATED. Reason: {reason}. Trading can resume.")
+        if self.notification_on_trigger:
+            self.notification_manager.send_alert(f"KILLSWITCH DEACTIVATED. Reason: {reason}. Bot can resume trading.",
+                                                 level="WARNING")
 
-    def trigger_manual_killswitch(self, reason: str = "Manual activation"):
-        """Allows manual activation of the killswitch."""
-        self._activate_killswitch(reason)
+        if self.trading_bot:
+            # If the strategy router was used, it might need to re-evaluate regime and reactivate strategies
+            if self.trading_bot.strategy_router:
+                logger.info("Triggering StrategyRouter to re-evaluate market regime and reactivate strategies.")
+                # Force a regime check and strategy update
+                # This assumes a mock current_total_capital can be passed,
+                # or that strategy_router gets it from bot's position manager
+                self.trading_bot.strategy_router.update_market_regime(
+                    self.trading_bot.strategy_router.get_current_regime(),
+                    # Re-evaluate current regime or force a new check
+                    self.trading_bot.position_manager.get_total_capital(self.trading_bot.exchange.get_current_prices())
+                )
+            logger.info("Trading bot can resume operations.")
 
-    def deactivate_manual_killswitch(self, reason: str = "Manual deactivation"):
-        """Allows manual deactivation of the killswitch."""
-        if self.is_killswitch_active:
-            self._deactivate_killswitch(reason)
-        else:
-            logger.info("Killswitch is not active, no deactivation needed.")
+    def get_status(self) -> Dict[str, Any]:
+        """Returns the current status of the safety manager."""
+        return {
+            "killswitch_enabled": self.killswitch_enabled,
+            "is_killswitch_active": self.is_killswitch_active,
+            "last_activation_time": self.last_killswitch_activation_time.isoformat() if self.last_killswitch_activation_time else None,
+            "current_drawdown_percent": self.current_drawdown_percent,
+            "peak_equity": self.peak_equity
+        }
