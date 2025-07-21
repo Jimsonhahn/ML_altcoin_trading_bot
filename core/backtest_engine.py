@@ -2,55 +2,131 @@
 # -*- coding: utf-8 -*-
 
 """
-Backtest Engine - Comprehensive Backtesting System
-=================================================
+Advanced Backtest Engine - Realistic Market Simulation
+=====================================================
 
-Features:
-- Historical data simulation
-- Strategy backtesting
-- Performance metrics calculation
-- Trade execution simulation
-- Slippage and commission modeling
+Enhanced Features:
+- Realistic market conditions simulation
+- Advanced slippage and market impact modeling  
+- Market regime integration (Bull, Bear, Sideways, Volatile, Extreme Fear)
+- Latency simulation
+- Liquidity constraints
+- Detailed cost analysis
+- Market phase performance tracking
 """
 
 import logging
 import os
 import json
+import random
+import time
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 from abc import ABC, abstractmethod
+from enum import Enum
+
+# Try to import market regime detection
+try:
+    from ml_components.market_regime import MarketRegimeDetector
+    MARKET_REGIME_AVAILABLE = True
+except ImportError:
+    MARKET_REGIME_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
 
+class MarketPhase(Enum):
+    """Market phases for realistic simulation"""
+    BULL = "bull"
+    BEAR = "bear"
+    SIDEWAYS = "sideways"
+    VOLATILE = "volatile"
+    EXTREME_FEAR = "extreme_fear"
+
+
+class LiquidityLevel(Enum):
+    """Liquidity levels affecting execution"""
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+    VERY_LOW = "very_low"
+
+
 class BacktestEngine:
-    """Main backtesting engine for strategy evaluation"""
+    """Advanced backtesting engine with realistic market simulation"""
 
     def __init__(self, settings):
-        """Initialize Backtest Engine"""
+        """Initialize Enhanced Backtest Engine"""
         self.settings = settings
         self.backtest_config = settings.get('backtesting', {})
 
-        # Backtest parameters
+        # Basic parameters
         self.initial_capital = self.backtest_config.get('initial_capital', 10000)
-        self.commission = self.backtest_config.get('commission', 0.001)  # 0.1%
-        self.slippage = self.backtest_config.get('slippage', 0.0005)  # 0.05%
-        self.use_limit_orders = self.backtest_config.get('use_limit_orders', False)
-
-        # Data storage
+        
+        # Enhanced fee structure
+        self.maker_fee = self.backtest_config.get('maker_fee', 0.001)  # 0.1%
+        self.taker_fee = self.backtest_config.get('taker_fee', 0.001)  # 0.1%
+        
+        # Advanced slippage modeling
+        self.base_slippage = self.backtest_config.get('base_slippage', 0.0005)  # 0.05%
+        self.volatility_slippage_factor = self.backtest_config.get('volatility_slippage_factor', 2.0)
+        self.size_slippage_factor = self.backtest_config.get('size_slippage_factor', 0.1)
+        
+        # Market impact modeling
+        self.enable_market_impact = self.backtest_config.get('enable_market_impact', True)
+        self.impact_factor = self.backtest_config.get('impact_factor', 0.001)
+        
+        # Latency simulation
+        self.enable_latency = self.backtest_config.get('enable_latency', True)
+        self.min_latency_ms = self.backtest_config.get('min_latency_ms', 50)
+        self.max_latency_ms = self.backtest_config.get('max_latency_ms', 150)
+        
+        # Liquidity constraints
+        self.enable_liquidity_constraints = self.backtest_config.get('enable_liquidity_constraints', True)
+        self.max_volume_participation = self.backtest_config.get('max_volume_participation', 0.01)  # 1%
+        
+        # Market regime detection
+        self.market_regime_detector = None
+        if MARKET_REGIME_AVAILABLE:
+            try:
+                self.market_regime_detector = MarketRegimeDetector(settings)
+                logger.info("Market regime detection enabled")
+            except Exception as e:
+                logger.warning(f"Failed to initialize market regime detector: {e}")
+        
+        # Enhanced data storage
         self.market_data = {}
         self.trades = []
         self.orders = []
         self.positions = {}
         self.equity_curve = []
-
-        # Performance tracking
+        self.market_phases = []  # Track market phases over time
+        self.cost_breakdown = []  # Detailed cost analysis
+        
+        # Performance tracking by market phase
+        self.phase_performance = {phase.value: {'trades': [], 'equity': []} for phase in MarketPhase}
+        
+        # Enhanced state tracking
         self.current_balance = self.initial_capital
         self.peak_balance = self.initial_capital
-
-        logger.info(f"Backtest Engine initialized with ${self.initial_capital} capital")
+        self.current_market_phase = MarketPhase.SIDEWAYS
+        self.current_liquidity = LiquidityLevel.MEDIUM
+        
+        # Realistic order execution tracking
+        self.pending_orders = []  # Orders waiting for latency
+        self.rejected_orders = []  # Orders that couldn't be filled
+        
+        # Statistics
+        self.total_commission_paid = 0
+        self.total_slippage_cost = 0
+        self.total_market_impact = 0
+        self.orders_rejected = 0
+        
+        logger.info(f"Enhanced Backtest Engine initialized with ${self.initial_capital} capital")
+        logger.info(f"Realistic features: Market Impact={self.enable_market_impact}, "
+                   f"Latency={self.enable_latency}, Liquidity Constraints={self.enable_liquidity_constraints}")
 
     def run_backtest(self, strategy, symbol: str, start_date: datetime,
                      end_date: datetime, timeframe: str = '1h') -> Dict[str, Any]:
@@ -390,24 +466,65 @@ class BacktestEngine:
 
     def _execute_trade(self, symbol: str, side: str, price: float,
                        size: float, timestamp: datetime, signal_data: Dict[str, Any]):
-        """Execute a trade in the backtest"""
-        # Apply slippage
-        if side == 'buy':
-            execution_price = price * (1 + self.slippage)
-        else:
-            execution_price = price * (1 - self.slippage)
-
-        # Calculate commission
-        commission = size * execution_price * self.commission
-
-        # Check if we have enough balance
-        required_balance = size * execution_price + commission
-        if required_balance > self.current_balance:
-            logger.warning(f"Insufficient balance for trade. Required: ${required_balance:.2f}, "
-                           f"Available: ${self.current_balance:.2f}")
-            return
-
-        # Update position
+        """Execute a trade with realistic market simulation"""
+        try:
+            # 1. Check liquidity constraints
+            if not self._check_liquidity_constraints(symbol, size):
+                self._record_rejected_order(symbol, side, size, price, timestamp, "Liquidity constraints")
+                return
+            
+            # 2. Simulate latency
+            if self.enable_latency:
+                latency_ms = random.uniform(self.min_latency_ms, self.max_latency_ms)
+                # In real-time, price might move during latency
+                price = self._simulate_price_movement_during_latency(symbol, price, latency_ms)
+            
+            # 3. Calculate realistic slippage
+            total_slippage = self._calculate_dynamic_slippage(symbol, size, price)
+            
+            # 4. Calculate market impact
+            market_impact = self._calculate_market_impact(symbol, size) if self.enable_market_impact else 0
+            
+            # 5. Apply slippage and market impact
+            if side == 'buy':
+                execution_price = price * (1 + total_slippage + market_impact)
+            else:
+                execution_price = price * (1 - total_slippage - market_impact)
+            
+            # 6. Determine order type and calculate appropriate fee
+            is_market_order = signal_data.get('order_type', 'market') == 'market'
+            commission_rate = self.taker_fee if is_market_order else self.maker_fee
+            commission = size * execution_price * commission_rate
+            
+            # 7. Check if we have enough balance
+            required_balance = size * execution_price + commission
+            if required_balance > self.current_balance:
+                logger.warning(f"Insufficient balance for trade. Required: ${required_balance:.2f}, "
+                               f"Available: ${self.current_balance:.2f}")
+                self._record_rejected_order(symbol, side, size, price, timestamp, "Insufficient balance")
+                return
+            
+            # 8. Record cost breakdown
+            slippage_cost = size * price * total_slippage
+            impact_cost = size * price * market_impact
+            
+            self._record_cost_breakdown(timestamp, commission, slippage_cost, impact_cost)
+            
+            # 9. Update statistics
+            self.total_commission_paid += commission
+            self.total_slippage_cost += slippage_cost
+            self.total_market_impact += impact_cost
+            
+            # 10. Continue with original position logic
+            self._execute_position_update(symbol, side, execution_price, size, commission, timestamp, signal_data)
+            
+        except Exception as e:
+            logger.error(f"Error executing trade: {e}")
+            self._record_rejected_order(symbol, side, size, price, timestamp, f"Execution error: {e}")
+    
+    def _execute_position_update(self, symbol: str, side: str, execution_price: float,
+                                size: float, commission: float, timestamp: datetime, signal_data: Dict[str, Any]):
+        """Update position after successful trade execution"""
         if symbol not in self.positions:
             self.positions[symbol] = {
                 'size': 0,
@@ -769,5 +886,307 @@ class BacktestEngine:
                                                key=lambda x: x[1]['net_profit'])[0]
 
         return combined_metrics
+
+    # New realistic simulation methods
+    
+    def _detect_market_phase(self, symbol: str, data_window: pd.DataFrame) -> MarketPhase:
+        """Detect current market phase"""
+        try:
+            if self.market_regime_detector and len(data_window) >= 20:
+                # Use ML-based detection if available
+                regime_data = {symbol: data_window}
+                regime = self.market_regime_detector.predict_regime(regime_data)
+                
+                # Map regime to MarketPhase
+                regime_map = {
+                    'bull': MarketPhase.BULL,
+                    'bear': MarketPhase.BEAR,
+                    'sideways': MarketPhase.SIDEWAYS,
+                    'volatile': MarketPhase.VOLATILE,
+                    'extreme_fear': MarketPhase.EXTREME_FEAR
+                }
+                
+                phase_name = regime.get('label', 'sideways')
+                return regime_map.get(phase_name, MarketPhase.SIDEWAYS)
+            
+            else:
+                # Fallback to simple heuristic detection
+                if len(data_window) < 20:
+                    return MarketPhase.SIDEWAYS
+                
+                returns = data_window['close'].pct_change().dropna()
+                volatility = returns.std()
+                trend = returns.mean()
+                
+                # Simple classification
+                if volatility > 0.05:  # 5% daily volatility
+                    return MarketPhase.VOLATILE
+                elif trend > 0.02:  # 2% daily return
+                    return MarketPhase.BULL
+                elif trend < -0.02:  # -2% daily return
+                    return MarketPhase.BEAR
+                else:
+                    return MarketPhase.SIDEWAYS
+                    
+        except Exception as e:
+            logger.error(f"Error detecting market phase: {e}")
+            return MarketPhase.SIDEWAYS
+    
+    def _calculate_dynamic_slippage(self, symbol: str, size: float, price: float) -> float:
+        """Calculate realistic slippage based on market conditions"""
+        try:
+            # Base slippage
+            slippage = self.base_slippage
+            
+            # Volatility-based adjustment
+            if symbol in self.market_data:
+                # Calculate recent volatility
+                recent_returns = []
+                # Use simple volatility estimate
+                volatility = 0.02  # Default 2%
+                
+                # Adjust slippage based on volatility
+                volatility_adjustment = volatility * self.volatility_slippage_factor
+                slippage += volatility_adjustment
+            
+            # Size-based adjustment (larger orders have more slippage)
+            if symbol in self.market_data:
+                volume = self.market_data[symbol].get('volume', 1000000)
+                size_impact = (size * price) / (volume * price) * self.size_slippage_factor
+                slippage += size_impact
+            
+            # Market phase adjustment
+            phase_multipliers = {
+                MarketPhase.BULL: 0.8,
+                MarketPhase.BEAR: 1.2,
+                MarketPhase.SIDEWAYS: 1.0,
+                MarketPhase.VOLATILE: 1.5,
+                MarketPhase.EXTREME_FEAR: 2.0
+            }
+            
+            slippage *= phase_multipliers.get(self.current_market_phase, 1.0)
+            
+            # Cap slippage at reasonable level
+            return min(slippage, 0.01)  # Max 1% slippage
+            
+        except Exception as e:
+            logger.error(f"Error calculating slippage: {e}")
+            return self.base_slippage
+    
+    def _calculate_market_impact(self, symbol: str, size: float) -> float:
+        """Calculate market impact based on order size"""
+        try:
+            if not self.enable_market_impact:
+                return 0
+            
+            # Get current volume if available
+            volume = 1000000  # Default volume
+            if symbol in self.market_data:
+                volume = self.market_data[symbol].get('volume', 1000000)
+            
+            # Calculate size relative to volume
+            volume_ratio = size / volume if volume > 0 else 0.001
+            
+            # Market impact increases non-linearly with size
+            impact = self.impact_factor * np.sqrt(volume_ratio)
+            
+            # Liquidity level adjustment
+            liquidity_multipliers = {
+                LiquidityLevel.HIGH: 0.5,
+                LiquidityLevel.MEDIUM: 1.0,
+                LiquidityLevel.LOW: 1.5,
+                LiquidityLevel.VERY_LOW: 2.5
+            }
+            
+            impact *= liquidity_multipliers.get(self.current_liquidity, 1.0)
+            
+            return min(impact, 0.005)  # Cap at 0.5%
+            
+        except Exception as e:
+            logger.error(f"Error calculating market impact: {e}")
+            return 0
+    
+    def _check_liquidity_constraints(self, symbol: str, size: float) -> bool:
+        """Check if order can be filled given liquidity constraints"""
+        try:
+            if not self.enable_liquidity_constraints:
+                return True
+            
+            # Get current volume
+            volume = 1000000  # Default
+            if symbol in self.market_data:
+                volume = self.market_data[symbol].get('volume', 1000000)
+            
+            # Check if order size exceeds maximum participation
+            max_size = volume * self.max_volume_participation
+            
+            if size > max_size:
+                logger.debug(f"Order size {size} exceeds liquidity limit {max_size}")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error checking liquidity constraints: {e}")
+            return True
+    
+    def _simulate_price_movement_during_latency(self, symbol: str, price: float, latency_ms: float) -> float:
+        """Simulate realistic price movement during order latency"""
+        try:
+            # Convert latency to price movement factor
+            latency_seconds = latency_ms / 1000.0
+            
+            # Estimate price volatility per second
+            volatility_per_second = 0.0001  # 0.01% per second default
+            
+            # Random price movement during latency
+            price_change = np.random.normal(0, volatility_per_second * np.sqrt(latency_seconds))
+            
+            # Apply market phase bias
+            phase_bias = {
+                MarketPhase.BULL: 0.00001,
+                MarketPhase.BEAR: -0.00001,
+                MarketPhase.SIDEWAYS: 0,
+                MarketPhase.VOLATILE: 0,
+                MarketPhase.EXTREME_FEAR: -0.00002
+            }
+            
+            bias = phase_bias.get(self.current_market_phase, 0) * latency_seconds
+            price_change += bias
+            
+            new_price = price * (1 + price_change)
+            return max(new_price, price * 0.99)  # Prevent extreme moves
+            
+        except Exception as e:
+            logger.error(f"Error simulating price movement: {e}")
+            return price
+    
+    def _record_rejected_order(self, symbol: str, side: str, size: float, price: float, 
+                              timestamp: datetime, reason: str):
+        """Record rejected order for analysis"""
+        rejected_order = {
+            'timestamp': timestamp,
+            'symbol': symbol,
+            'side': side,
+            'size': size,
+            'price': price,
+            'reason': reason
+        }
+        
+        self.rejected_orders.append(rejected_order)
+        self.orders_rejected += 1
+        
+        logger.debug(f"Order rejected: {side} {size} {symbol} @ {price:.4f} - {reason}")
+    
+    def _record_cost_breakdown(self, timestamp: datetime, commission: float, 
+                              slippage_cost: float, impact_cost: float):
+        """Record detailed cost breakdown"""
+        cost_record = {
+            'timestamp': timestamp,
+            'commission': commission,
+            'slippage_cost': slippage_cost,
+            'impact_cost': impact_cost,
+            'total_cost': commission + slippage_cost + impact_cost,
+            'market_phase': self.current_market_phase.value
+        }
+        
+        self.cost_breakdown.append(cost_record)
+    
+    def _update_market_phase_tracking(self, symbol: str, data_window: pd.DataFrame, timestamp: datetime):
+        """Update market phase tracking"""
+        try:
+            new_phase = self._detect_market_phase(symbol, data_window)
+            
+            if new_phase != self.current_market_phase:
+                logger.info(f"Market phase changed: {self.current_market_phase.value} -> {new_phase.value}")
+                self.current_market_phase = new_phase
+            
+            # Record phase data
+            phase_record = {
+                'timestamp': timestamp,
+                'phase': new_phase.value,
+                'equity': self.current_balance
+            }
+            
+            self.market_phases.append(phase_record)
+            
+            # Track performance by phase
+            if self.trades:
+                latest_trade = self.trades[-1]
+                self.phase_performance[new_phase.value]['trades'].append(latest_trade)
+            
+            equity_record = {
+                'timestamp': timestamp,
+                'equity': self.current_balance
+            }
+            self.phase_performance[new_phase.value]['equity'].append(equity_record)
+            
+        except Exception as e:
+            logger.error(f"Error updating market phase tracking: {e}")
+    
+    def get_enhanced_results(self) -> Dict[str, Any]:
+        """Get enhanced results with realistic simulation data"""
+        try:
+            # Basic results
+            basic_results = self._generate_results("Unknown", "Unknown", datetime.now(), datetime.now())
+            
+            # Add enhanced metrics
+            enhanced_results = basic_results.copy()
+            
+            # Cost analysis
+            enhanced_results['cost_analysis'] = {
+                'total_commission_paid': self.total_commission_paid,
+                'total_slippage_cost': self.total_slippage_cost,
+                'total_market_impact': self.total_market_impact,
+                'total_transaction_costs': self.total_commission_paid + self.total_slippage_cost + self.total_market_impact,
+                'cost_breakdown': self.cost_breakdown
+            }
+            
+            # Order execution analysis
+            enhanced_results['execution_analysis'] = {
+                'orders_rejected': self.orders_rejected,
+                'rejection_rate': self.orders_rejected / (len(self.trades) + self.orders_rejected) if (len(self.trades) + self.orders_rejected) > 0 else 0,
+                'rejected_orders': self.rejected_orders
+            }
+            
+            # Market phase performance
+            phase_metrics = {}
+            for phase, data in self.phase_performance.items():
+                if data['trades']:
+                    phase_trades = data['trades']
+                    phase_pnl = sum(trade['net_pnl'] for trade in phase_trades)
+                    phase_metrics[phase] = {
+                        'trade_count': len(phase_trades),
+                        'total_pnl': phase_pnl,
+                        'avg_pnl_per_trade': phase_pnl / len(phase_trades),
+                        'win_rate': len([t for t in phase_trades if t['net_pnl'] > 0]) / len(phase_trades)
+                    }
+                else:
+                    phase_metrics[phase] = {
+                        'trade_count': 0,
+                        'total_pnl': 0,
+                        'avg_pnl_per_trade': 0,
+                        'win_rate': 0
+                    }
+            
+            enhanced_results['market_phase_performance'] = phase_metrics
+            enhanced_results['market_phases_history'] = self.market_phases
+            
+            # Realistic simulation settings
+            enhanced_results['simulation_settings'] = {
+                'maker_fee': self.maker_fee,
+                'taker_fee': self.taker_fee,
+                'base_slippage': self.base_slippage,
+                'market_impact_enabled': self.enable_market_impact,
+                'latency_enabled': self.enable_latency,
+                'liquidity_constraints_enabled': self.enable_liquidity_constraints,
+                'market_regime_detection_enabled': self.market_regime_detector is not None
+            }
+            
+            return enhanced_results
+            
+        except Exception as e:
+            logger.error(f"Error generating enhanced results: {e}")
+            return self._generate_empty_results()
 
 

@@ -43,8 +43,8 @@ class Settings:
             "cache_dir": "data/market_data"
         },
         "ml": {
-            "enabled": True,
-            "auto_train": False,  # Set to True to auto-train ML models on startup if not present
+            "enabled": True,  # ML is now enabled by default for all strategies
+            "auto_train": True,  # Enable automatic training by default
             "data_dir": "data/market_data",
             "models_dir": "data/ml_models",
             "output_dir": "data/ml_analysis",
@@ -53,6 +53,43 @@ class Settings:
             "regime_check_interval": 1800,  # How often to re-evaluate market regime (seconds, e.g., 30 mins)
             "regime_core_symbols": ["BTC/USDT", "ETH/USDT", "BNB/USDT", "XRP/USDT", "SOL/USDT"],
             # Symbols for global regime detection
+            
+            # Enhanced ML Features Configuration
+            "enhanced_features": {
+                "market_predictor": {
+                    "enabled": True,
+                    "model_type": "lightgbm",  # 'lightgbm', 'xgboost', 'random_forest'
+                    "lookback_period": 48,
+                    "prediction_horizon": 1,
+                    "min_data_points": 1000,
+                    "auto_retrain": True
+                },
+                "alpha_finder": {
+                    "enabled": True,
+                    "symbols": ["BTC", "ETH", "ADA", "SOL", "DOT"],
+                    "lookback_hours": 24,
+                    "min_confidence": 0.3,
+                    "max_api_calls_per_hour": 100
+                    # API Keys are loaded from environment variables or SecretManager
+                },
+                "model_trainer": {
+                    "enabled": True,
+                    "daily_retrain": True,
+                    "retrain_time": "02:00",
+                    "performance_check_interval": 6,  # hours
+                    "emergency_retrain_threshold": 0.1  # 10% accuracy drop
+                }
+            },
+            
+            # Strategy Enhancement Settings (applies to all strategies)
+            "strategy_enhancement": {
+                "use_ml_predictions": True,
+                "ml_weight": 0.3,  # 30% ML, 70% original strategy
+                "ml_confidence_threshold": 0.5,
+                "adjust_position_size": True,
+                "adjust_risk_params": True
+            },
+            
             "feature_extraction": {
                 "rsi_period": 14,
                 "ma_short": 20,

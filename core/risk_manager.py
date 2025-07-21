@@ -19,6 +19,10 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
+# Real-time Risk Integration
+from core.realtime_risk_calculator import get_risk_calculator, RiskMetrics
+from core.interfaces import global_event_bus
+
 logger = logging.getLogger(__name__)
 
 
@@ -44,7 +48,16 @@ class RiskManager:
         self.current_positions = {}
         self.trade_history = []
 
+        # Real-time Risk Integration
+        self._realtime_calculator = get_risk_calculator()
+        self._risk_callbacks_registered = False
+        self._critical_risk_threshold = self.max_drawdown * 0.8  # 80% of max drawdown
+        
+        # Event handlers for risk monitoring
+        self._setup_risk_event_handlers()
+
         logger.info(f"Risk Manager initialized with max position size: ${self.max_position_size}")
+        logger.info("Real-time risk calculation integrated")
 
     def calculate_max_position_size(self, symbol: str, current_price: float,
                                     account_balance: float) -> float:
@@ -333,5 +346,171 @@ RISK LIMITS:
 """
 
         return report
+
+    def _setup_risk_event_handlers(self):
+        """Setup event handlers for real-time risk monitoring"""
+        if not self._risk_callbacks_registered:
+            # Register callback for critical risk events
+            self._realtime_calculator.add_risk_callback(self._on_risk_metrics_update)
+            
+            # Subscribe to risk limit breaches
+            global_event_bus.subscribe("risk_limit_breached", self._on_risk_limit_breached)
+            global_event_bus.subscribe("risk_metrics_update", self._on_realtime_risk_update)
+            
+            self._risk_callbacks_registered = True
+            logger.info("Risk event handlers registered")
+    
+    def _on_risk_metrics_update(self, metrics: RiskMetrics):
+        """Handle real-time risk metrics updates"""
+        try:
+            # Update internal portfolio tracking with real-time data
+            if metrics.timestamp:
+                self.portfolio_value = self._realtime_calculator._current_portfolio_value
+                self.peak_portfolio_value = self._realtime_calculator._peak_portfolio_value
+            
+            # Log significant risk changes
+            if metrics.risk_level in ["HIGH", "CRITICAL"]:
+                logger.warning(f"Risk Level: {metrics.risk_level} - Drawdown: {metrics.current_drawdown:.1%}")
+                
+                # Notify other systems of elevated risk
+                global_event_bus.publish("risk_level_change", {
+                    'level': metrics.risk_level,
+                    'drawdown': metrics.current_drawdown,
+                    'warnings': metrics.warnings
+                })
+        
+        except Exception as e:
+            logger.error(f"Error processing risk metrics update: {e}")
+    
+    def _on_risk_limit_breached(self, data: Dict[str, Any]):
+        """Handle risk limit breach events"""
+        drawdown = data.get('drawdown', 0)
+        limit = data.get('limit', self.max_drawdown)
+        
+        logger.critical(f"RISK LIMIT BREACHED: {drawdown:.1%} > {limit:.1%}")
+        
+        # Trigger emergency risk management
+        self._trigger_emergency_risk_management(drawdown)
+    
+    def _on_realtime_risk_update(self, data: Dict[str, Any]):
+        """Handle real-time risk metric updates"""
+        metrics_data = data.get('metrics')
+        if isinstance(metrics_data, RiskMetrics):
+            # Update current positions from real-time data
+            self._sync_positions_with_realtime()
+    
+    def _trigger_emergency_risk_management(self, current_drawdown: float):
+        """Trigger emergency risk management procedures"""
+        logger.critical("EMERGENCY RISK MANAGEMENT ACTIVATED")
+        
+        # Publish emergency stop signal
+        global_event_bus.publish("emergency_risk_stop", {
+            'drawdown': current_drawdown,
+            'timestamp': datetime.now().isoformat(),
+            'reason': 'Risk limit breached'
+        })
+    
+    def _sync_positions_with_realtime(self):
+        """Synchronize position tracking with real-time calculator"""
+        try:
+            realtime_positions = self._realtime_calculator._current_positions
+            
+            # Update position tracking
+            for symbol, rt_position in realtime_positions.items():
+                if rt_position['quantity'] != 0:
+                    self.current_positions[symbol] = {
+                        'size': abs(rt_position['quantity'] * rt_position['avg_price']),
+                        'entry_price': rt_position['avg_price'],
+                        'current_price': self._realtime_calculator._get_current_price(symbol),
+                        'unrealized_pnl': self._calculate_position_pnl(symbol, rt_position),
+                        'opened_at': rt_position.get('entry_time', datetime.now())
+                    }
+        
+        except Exception as e:
+            logger.error(f"Error syncing positions with real-time calculator: {e}")
+    
+    def _calculate_position_pnl(self, symbol: str, rt_position: Dict[str, Any]) -> float:
+        """Calculate P&L for a position from real-time data"""
+        try:
+            current_price = self._realtime_calculator._get_current_price(symbol)
+            if not current_price:
+                return 0.0
+            
+            entry_price = rt_position['avg_price']
+            quantity = rt_position['quantity']
+            side = rt_position.get('side', 'long')
+            
+            if side == 'long':
+                return (current_price - entry_price) * quantity
+            else:  # short
+                return (entry_price - current_price) * quantity
+        
+        except Exception as e:
+            logger.error(f"Error calculating position P&L for {symbol}: {e}")
+            return 0.0
+    
+    def start_realtime_monitoring(self, initial_capital: float):
+        """Start real-time risk monitoring"""
+        try:
+            self._realtime_calculator.start_monitoring(initial_capital)
+            logger.info(f"Real-time risk monitoring started with {initial_capital} capital")
+        except Exception as e:
+            logger.error(f"Failed to start real-time risk monitoring: {e}")
+    
+    def stop_realtime_monitoring(self):
+        """Stop real-time risk monitoring"""
+        try:
+            self._realtime_calculator.stop_monitoring()
+            logger.info("Real-time risk monitoring stopped")
+        except Exception as e:
+            logger.error(f"Error stopping real-time risk monitoring: {e}")
+    
+    def get_realtime_risk_metrics(self) -> Optional[RiskMetrics]:
+        """Get current real-time risk metrics"""
+        try:
+            return self._realtime_calculator.get_current_metrics()
+        except Exception as e:
+            logger.error(f"Error getting real-time risk metrics: {e}")
+            return None
+    
+    def update_realtime_position(self, symbol: str, quantity: float, avg_price: float, side: str = 'long'):
+        """Update position in real-time calculator"""
+        try:
+            self._realtime_calculator.update_position(symbol, quantity, avg_price, side)
+        except Exception as e:
+            logger.error(f"Error updating real-time position for {symbol}: {e}")
+    
+    def update_realtime_price(self, symbol: str, price: float):
+        """Update price in real-time calculator"""
+        try:
+            self._realtime_calculator.update_price(symbol, price)
+        except Exception as e:
+            logger.error(f"Error updating real-time price for {symbol}: {e}")
+    
+    def get_enhanced_portfolio_metrics(self) -> Dict[str, Any]:
+        """Get enhanced portfolio metrics combining legacy and real-time data"""
+        # Get legacy metrics
+        legacy_metrics = self.get_portfolio_risk_metrics()
+        
+        # Get real-time metrics
+        realtime_metrics = self.get_realtime_risk_metrics()
+        
+        # Combine metrics
+        enhanced_metrics = legacy_metrics.copy()
+        
+        if realtime_metrics:
+            enhanced_metrics.update({
+                'realtime_drawdown': realtime_metrics.current_drawdown,
+                'realtime_var': realtime_metrics.portfolio_var,
+                'realtime_sharpe': realtime_metrics.sharpe_ratio,
+                'realtime_risk_level': realtime_metrics.risk_level,
+                'realtime_warnings': realtime_metrics.warnings,
+                'position_concentration': realtime_metrics.position_concentration,
+                'correlation_risk': realtime_metrics.correlation_risk,
+                'liquidity_risk': realtime_metrics.liquidity_risk,
+                'last_update': realtime_metrics.timestamp.isoformat()
+            })
+        
+        return enhanced_metrics
 
 

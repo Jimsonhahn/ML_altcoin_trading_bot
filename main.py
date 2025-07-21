@@ -18,8 +18,10 @@ from strategies import STRATEGIES  # Import existing STRATEGIES dict
 
 # New/Updated imports for ML, Strategy Router, and Safety
 from ml_components import MLComponents
-from core.strategy_router import StrategyRouter
+from core.strategy_router import StrategyRouter, MarketPhase
+from core.market_analyzer import MarketAnalyzer
 from core.safety_manager import SafetyManager
+from core.advanced_monitoring import get_monitoring_system
 from data_sources.data_manager import DataManager  # Ensure this is imported for bot initialization
 
 
@@ -33,6 +35,10 @@ def parse_arguments():
     parser.add_argument("--mode", type=str, default="live",
                         choices=["live", "paper", "backtest", "optimize"],
                         help="Operation mode: 'live', 'paper', 'backtest', 'optimize'.")
+    parser.add_argument("--symbol", type=str, default="BTC/USDT",
+                        help="Trading symbol (e.g., 'BTC/USDT').")
+    parser.add_argument("--config-json", type=str,
+                        help="JSON configuration string for API mode.")
     parser.add_argument("--debug", action="store_true",
                         help="Enable debug logging.")
     parser.add_argument("--validate-config", action="store_true",
@@ -49,24 +55,117 @@ def parse_arguments():
                         help="Start date for backtesting (YYYY-MM-DD).")
     parser.add_argument("--backtest-end", type=str,
                         help="End date for backtesting (YYYY-MM-DD).")
-    parser.add_argument("--symbol", type=str, default="BTC/USDT",
-                        help="Trading symbol for backtesting.")
     parser.add_argument("--timeframe", type=str, default="1h",
                         help="Timeframe for backtesting data (e.g., '1h', '4h', '1d').")
 
     return parser.parse_args()
 
 
+def setup_services():
+    """Initialize DI Container and services"""
+    try:
+        from core.di_container import setup_container
+        setup_container()
+        logging.info("DI Container initialized successfully")
+    except ImportError:
+        logging.warning("DI Container not available, using direct imports")
+    except Exception as e:
+        logging.error(f"Error setting up DI container: {e}")
+
+
+def initialize_event_handlers():
+    """Initialize global event handlers"""
+    try:
+        from core.interfaces import global_event_bus
+        
+        # Setup emergency risk handlers
+        def emergency_risk_handler(data):
+            logging.critical(f"EMERGENCY RISK EVENT: {data}")
+        
+        global_event_bus.subscribe("emergency_risk_stop", emergency_risk_handler)
+        global_event_bus.subscribe("risk_limit_breached", emergency_risk_handler)
+        
+        logging.info("Event handlers initialized")
+    except Exception as e:
+        logging.error(f"Error initializing event handlers: {e}")
+
+
+def initialize_monitoring(settings):
+    """Initialize advanced monitoring system"""
+    try:
+        monitoring_system = get_monitoring_system(settings)
+        monitoring_system.start_monitoring()
+        
+        # Create startup alert
+        monitoring_system.create_alert(
+            monitoring_system.AlertLevel.INFO,
+            "system.startup",
+            "Trading bot started successfully",
+            {"startup_time": datetime.now().isoformat()}
+        )
+        
+        logging.info("Advanced monitoring initialized")
+        return monitoring_system
+        
+    except Exception as e:
+        logging.error(f"Error initializing monitoring: {e}")
+        return None
+
+
 def main():
+
+
+
+    # Initialize DI Container
+    setup_services()
+    initialize_event_handlers()
+    
+    # Existing main logic...
     args = parse_arguments()
 
-    # Setup logger immediately
+    # Setup logging immediately with proper formatting
     log_level = 'DEBUG' if args.debug else 'INFO'
-    main_logger = setup_logger(name='main', level=log_level)
-    main_logger.info("Bot started.")
+    
+    # Ensure logs directory exists
+    os.makedirs('logs', exist_ok=True)
+    
+    # Configure logging to both console and file
+    logging.basicConfig(
+        level=getattr(logging, log_level),
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler('logs/bot.log', mode='a')
+        ]
+    )
+    
+    main_logger = logging.getLogger(__name__)
+    main_logger.info("=== BOT STARTING ===")
+    main_logger.info(f"Python: {sys.version}")
+    main_logger.info(f"Working directory: {os.getcwd()}")
+    main_logger.info(f"Arguments: {sys.argv}")
+    main_logger.info(f"Parsed args: {args}")
+    
+    # Handle JSON config from API
+    if args.config_json:
+        try:
+            json_config = json.loads(args.config_json)
+            main_logger.info(f"Using JSON config: {json_config}")
+            
+            # Override args with JSON config
+            args.mode = json_config.get('mode', args.mode)
+            args.strategy = json_config.get('strategy', args.strategy)
+            args.symbol = json_config.get('symbol', args.symbol)
+            
+        except json.JSONDecodeError as e:
+            main_logger.error(f"Invalid JSON config: {e}")
+            sys.exit(1)
 
     # Load settings based on config profile
     settings = Settings(config_name=args.config)
+    
+    # Initialize monitoring system early
+    monitoring_system = initialize_monitoring(settings)
 
     if args.validate_config:
         main_logger.info("Configuration validated successfully (basic check).")
@@ -76,14 +175,44 @@ def main():
     data_manager = DataManager(settings)
     main_logger.info("DataManager initialized.")
 
-    # Initialize ML components (if ML is enabled in settings or auto-strategy is requested)
+    # Initialize Enhanced ML components (always enabled by default for all strategies)
     ml_components_instance: Optional[MLComponents] = None
-    if settings.get('ml.enabled', False) or args.auto_strategy:
-        try:
-            # Ensure MarketRegimeDetector has core symbols and min data points
-            core_symbols = settings.get('ml.regime_core_symbols', ["BTC/USDT"])
-            min_data_points = settings.get('ml.min_data_points_for_ml', 200)
+    try:
+        # Try enhanced ML components first
+        from ml_components.enhanced_ml_components import create_enhanced_ml_components
+        
+        # Ensure MarketRegimeDetector has core symbols and min data points
+        core_symbols = settings.get('ml.regime_core_symbols', ["BTC/USDT", "ETH/USDT"])
+        min_data_points = settings.get('ml.min_data_points_for_ml', 200)
 
+        ml_components_instance = create_enhanced_ml_components(settings)
+        main_logger.info("Enhanced ML Components initialized (always-on mode for all strategies).")
+
+        # Optional: Train ML models if they are not trained or mode is 'optimize'
+        if hasattr(ml_components_instance, 'market_regime_detector') and \
+           not ml_components_instance.market_regime_detector.model_trained and \
+           (args.mode == 'optimize' or settings.get('ml.auto_train', False)):
+            main_logger.info("Training Market Regime Detector model...")
+            # Pass DataManager instance for data fetching
+            ml_components_instance.market_regime_detector.train_model(
+                data_manager=data_manager,
+                timeframe=settings.get('timeframes.analysis', '1h'),
+                start_date=args.backtest_start or '2022-01-01',
+                # Use backtest dates if available, otherwise default
+                end_date=args.backtest_end or datetime.now().strftime('%Y-%m-%d')
+            )
+        
+        # Train new ML models if needed
+        if hasattr(ml_components_instance, 'ml_manager') and ml_components_instance.ml_manager:
+            if args.mode == 'optimize' or settings.get('ml.auto_train', False):
+                main_logger.info("Training enhanced ML models...")
+                # This would trigger training of MarketPredictor and other new models
+                # The actual training happens automatically via ModelTrainer
+                
+    except ImportError as e:
+        # Fallback to standard ML components
+        main_logger.warning(f"Enhanced ML not available, using standard ML: {e}")
+        try:
             ml_components_instance = MLComponents(
                 settings=settings,
                 data_cache_dir=settings.get('data.cache_dir', 'data/market_data'),
@@ -92,32 +221,38 @@ def main():
                 core_symbols=core_symbols,
                 min_data_points_required=min_data_points
             )
-            main_logger.info("ML Components initialized.")
+            main_logger.info("Standard ML Components initialized.")
+        except Exception as e2:
+            main_logger.error(f"Error initializing standard ML components: {e2}", exc_info=True)
+            ml_components_instance = None
+    except Exception as e:
+        main_logger.error(f"Error initializing enhanced ML components: {e}", exc_info=True)
+        ml_components_instance = None  # Disable ML if there's an error
 
-            # Optional: Train ML models if they are not trained or mode is 'optimize'
-            if not ml_components_instance.market_regime_detector.model_trained and \
-                    (args.mode == 'optimize' or settings.get('ml.auto_train', False)):
-                main_logger.info("Training Market Regime Detector model...")
-                # Pass DataManager instance for data fetching
-                ml_components_instance.market_regime_detector.train_model(
-                    data_manager=data_manager,
-                    timeframe=settings.get('timeframes.analysis', '1h'),
-                    start_date=args.backtest_start or '2022-01-01',
-                    # Use backtest dates if available, otherwise default
-                    end_date=args.backtest_end or datetime.now().strftime('%Y-%m-%d')
-                )
-        except Exception as e:
-            main_logger.error(f"Error initializing or training ML components: {e}", exc_info=True)
-            ml_components_instance = None  # Disable ML if there's an error
-
-    # Initialize StrategyRouter
+    # Initialize StrategyRouter with MarketAnalyzer integration
     strategy_router_instance: Optional[StrategyRouter] = None
+    market_analyzer_instance: Optional[MarketAnalyzer] = None
+    
     if settings.get('strategy_router.enabled', False) or args.auto_strategy:
+        # Initialize MarketAnalyzer
+        market_analyzer_config = {
+            'symbols': settings.get('symbols', ['BTCUSDT', 'ETHUSDT']),
+            'timeframe': settings.get('timeframes.analysis', '1h'),
+            'lookback_period': settings.get('analysis.lookback_period', 100)
+        }
+        market_analyzer_instance = MarketAnalyzer(market_analyzer_config)
+        main_logger.info("Market Analyzer initialized.")
+        
+        # Initialize StrategyRouter with smooth transitions
         strategy_router_instance = StrategyRouter(settings)
-        main_logger.info("Strategy Router initialized.")
+        main_logger.info("Strategy Router with dynamic market logic and smooth transitions initialized.")
+        
+        # Add market analyzer to strategy router
+        strategy_router_instance.market_analyzer = market_analyzer_instance
+        
         if not ml_components_instance:
             main_logger.warning(
-                "Strategy Router is enabled but ML components are not available. Automatic routing will not function.")
+                "Strategy Router is enabled but ML components are not available. Using technical analysis only.")
 
     # Initialize SafetyManager
     safety_manager_instance = SafetyManager(settings)  # Bot instance is set later by TradingBot
@@ -169,6 +304,30 @@ def main():
 
         else:  # Live or Paper trading
             main_logger.info(f"Starting bot in {args.mode} mode...")
+            
+            # Start market analysis loop if strategy router is enabled
+            if strategy_router_instance and market_analyzer_instance:
+                main_logger.info("Starting dynamic market analysis and strategy routing...")
+                
+                async def market_analysis_loop():
+                    """Async loop for market analysis and strategy rebalancing"""
+                    while bot.running:
+                        try:
+                            # Analyze market and rebalance strategies
+                            total_capital = bot.get_total_capital()
+                            await strategy_router_instance.analyze_market_phase()
+                            await strategy_router_instance.rebalance_strategies(total_capital)
+                            
+                            # Wait 30 minutes before next analysis
+                            await asyncio.sleep(1800)
+                        except Exception as e:
+                            main_logger.error(f"Error in market analysis loop: {e}")
+                            await asyncio.sleep(300)  # Wait 5 minutes on error
+                
+                # Start the market analysis loop in background
+                import asyncio
+                asyncio.create_task(market_analysis_loop())
+            
             bot.start()
             # Keep main thread alive. Bot runs in background threads.
             while True:
@@ -181,6 +340,30 @@ def main():
     finally:
         if bot.running:
             bot.stop()
+        
+        # Shutdown strategy systems
+        if strategy_router_instance:
+            try:
+                strategy_router_instance.shutdown_transitions()
+                strategy_router_instance.shutdown_allocation_tracking()
+                main_logger.info("Strategy systems shutdown complete")
+            except Exception as e:
+                main_logger.error(f"Error shutting down strategy systems: {e}")
+        
+        # Shutdown monitoring system
+        if 'monitoring_system' in locals() and monitoring_system:
+            try:
+                monitoring_system.create_alert(
+                    monitoring_system.AlertLevel.INFO,
+                    "system.shutdown",
+                    "Trading bot shutdown gracefully",
+                    {"shutdown_time": datetime.now().isoformat()}
+                )
+                monitoring_system.stop_monitoring()
+                main_logger.info("Monitoring system shutdown complete")
+            except Exception as e:
+                main_logger.error(f"Error shutting down monitoring: {e}")
+        
         main_logger.info("Bot execution finished.")
 
 

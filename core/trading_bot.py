@@ -1,3 +1,7 @@
+
+# Dependency Injection Support
+from core.interfaces import ITradingBot, global_event_bus
+from core.di_container import container
 # core/trading_bot.py
 import logging
 import threading
@@ -12,7 +16,7 @@ from core.exchange import ExchangeManager
 from core.order_manager import OrderManager
 from core.position import PositionManager
 from core.risk_manager import RiskManager
-from core.safety_manager import SafetyManager  # Assuming SafetyManager is in core
+# Removed direct import - using DI
 from data_sources.data_manager import DataManager
 from ml_components import MLComponents  # Assuming MLComponents is in ml_components/__init__.py
 from core.strategy_router import StrategyRouter  # Assuming StrategyRouter is in core
@@ -34,7 +38,16 @@ from pydantic import ValidationError as PydanticValidationError
 logger = logging.getLogger(__name__)
 
 
-class TradingBot:
+class TradingBot(ITradingBot):
+    
+    @property
+    def safety_manager(self):
+        """Lazy loaded safety manager via DI"""
+        if not hasattr(self, '_safety_manager'):
+            from core.di_container import get_safety_manager
+            self._safety_manager = get_safety_manager()
+        return self._safety_manager
+
     def __init__(self, mode: str, strategy_name: str, settings: Settings,
                  data_manager: DataManager,
                  ml_components: Optional[MLComponents] = None,
@@ -248,6 +261,14 @@ class TradingBot:
             logger.error("No strategy initialized. Bot cannot start.")
             return
 
+        # Start real-time risk monitoring
+        initial_capital = self.settings.get('trading.initial_capital', 10000)
+        try:
+            self.risk_manager.start_realtime_monitoring(initial_capital)
+            logger.info("Real-time risk monitoring started")
+        except Exception as e:
+            logger.error(f"Failed to start real-time risk monitoring: {e}")
+
         self.running = True
         self.trade_thread = threading.Thread(target=self._run_trading_loop, daemon=True)
         self.trade_thread.start()
@@ -258,6 +279,14 @@ class TradingBot:
             logger.info("Bot is not running.")
             return
         self.running = False
+        
+        # Stop real-time risk monitoring
+        try:
+            self.risk_manager.stop_realtime_monitoring()
+            logger.info("Real-time risk monitoring stopped")
+        except Exception as e:
+            logger.error(f"Error stopping real-time risk monitoring: {e}")
+        
         if self.trade_thread:
             self.trade_thread.join(timeout=5)  # Give time for thread to finish
             if self.trade_thread.is_alive():
@@ -300,6 +329,13 @@ class TradingBot:
                     if ohlcv:
                         df = self.data_manager.convert_ohlcv_to_dataframe(ohlcv)
                         latest_candle = df.iloc[-1]
+                        
+                        # Update real-time price data
+                        current_price = latest_candle['close']
+                        try:
+                            self.risk_manager.update_realtime_price(symbol, current_price)
+                        except Exception as e:
+                            logger.debug(f"Error updating real-time price for {symbol}: {e}")
 
                         # Execute strategy logic
                         if self.strategy_router:
@@ -416,6 +452,17 @@ class TradingBot:
             # Update position manager and performance tracker
             self.position_manager.update_position_from_order(order)
             self.performance_tracker.record_trade(order)
+            
+            # Update real-time risk calculator with new position
+            try:
+                fill_price = order.get('price', order.get('average', price))
+                quantity = amount if trade_type == 'buy' else -amount  # Negative for sells
+                side = 'long' if trade_type == 'buy' else 'short'
+                
+                self.risk_manager.update_realtime_position(symbol, quantity, fill_price, side)
+                logger.debug(f"Real-time position updated: {symbol} {quantity} @ {fill_price}")
+            except Exception as e:
+                logger.error(f"Error updating real-time position for {symbol}: {e}")
         else:
             logger.error(f"Failed to execute {trade_type} order for {symbol}.")
 
