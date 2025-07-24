@@ -1,35 +1,105 @@
-# strategies/__init__.py
+"""
+Strategies Package - Konsolidierte Strategie-Registry
+"""
+
 import logging
+from typing import Dict, Type, Optional
+
+# Basis-Strategieklasse
 from .strategy_base import Strategy
-from .momentum import MomentumStrategy
-from .mean_reversion import MeanReversionStrategy
-from .grid_trading import GridTradingStrategy
-from .arbitrage import ArbitrageStrategy
-from .defi_yield import DeFiYieldStrategy
-from .liquidation import LiquidationStrategy
-from .ml_strategy import MLStrategy
-from .lazy_billionaire_strategy import LazyBillionaireStrategy
-from .super_lazy_billionaire_strategy import SuperLazyBillionaireStrategy
-from .ultimate_btc_strategy import UltimateBTCStrategy
-from .autopilot import AutopilotStrategy
-from .copy_trading import CopyTradingStrategy
 
 logger = logging.getLogger(__name__)
 
-# Dictionary mapping strategy names to their classes
-STRATEGIES = {
-    "ultimate_btc": UltimateBTCStrategy,  # 🏆 ULTIMATE HIGH-PERFORMANCE STRATEGY
-    "super_lazy_billionaire": SuperLazyBillionaireStrategy,  # 🚀 NEW MASTER STRATEGY
-    "autopilot": AutopilotStrategy,
-    "momentum": MomentumStrategy,
-    "mean_reversion": MeanReversionStrategy,
-    "grid_trading": GridTradingStrategy,
-    "arbitrage": ArbitrageStrategy,
-    "defi_yield": DeFiYieldStrategy,
-    "liquidation": LiquidationStrategy,
-    "ml_strategy": MLStrategy,
-    "lazy_billionaire": LazyBillionaireStrategy,  # Original strategy
-    "copy_trading": CopyTradingStrategy,
-}
+# Registry für alle verfügbaren Strategien
+STRATEGIES: Dict[str, Type[Strategy]] = {}
 
-logger.info(f"Loaded {len(STRATEGIES)} trading strategies.")
+def register_strategy(name: str, strategy_class: Type[Strategy]):
+    """
+    Registriert eine Strategie in der globalen Registry
+    
+    Args:
+        name: Name der Strategie
+        strategy_class: Strategieklasse
+    """
+    STRATEGIES[name] = strategy_class
+    logger.debug(f"Strategie registriert: {name}")
+
+def get_strategy(name: str) -> Optional[Type[Strategy]]:
+    """
+    Holt eine Strategie aus der Registry
+    
+    Args:
+        name: Name der Strategie
+        
+    Returns:
+        Strategieklasse oder None wenn nicht gefunden
+    """
+    return STRATEGIES.get(name)
+
+def list_strategies() -> list:
+    """
+    Gibt Liste aller verfügbaren Strategien zurück
+    
+    Returns:
+        Liste der Strategienamen
+    """
+    return list(STRATEGIES.keys())
+
+# Lade alle verfügbaren Strategien
+def _load_strategies():
+    """Lädt alle verfügbaren Strategien und registriert sie"""
+    strategies_to_load = [
+        ('momentum', 'MomentumStrategy'),
+        ('mean_reversion', 'MeanReversionStrategy'),
+        ('arbitrage', 'ArbitrageStrategy'),
+        ('grid_trading', 'GridTradingStrategy'),
+        ('defi_yield', 'DeFiYieldStrategy'),
+        ('ultimate_btc', 'UltimateBtcStrategy'),
+        ('profitable_btc', 'ProfitableBtcStrategy'),
+        ('lazy_billionaire', 'LazyBillionaireStrategy'),
+        ('super_lazy_billionaire', 'SuperLazyBillionaireStrategy'),
+        ('ml_strategy', 'MLStrategy'),
+        ('autopilot', 'AutopilotStrategy'),
+        ('copy_trading', 'CopyTradingStrategy'),
+        ('liquidation', 'LiquidationStrategy'),
+        # Neue defensive Strategien
+        ('advanced_portfolio', 'AdvancedPortfolioStrategy'),
+        ('defensive_volatility', 'DefensiveVolatilityStrategy'),
+        ('smart_rebalancing', 'SmartRebalancingStrategy')
+    ]
+    
+    for strategy_name, class_name in strategies_to_load:
+        try:
+            # Import des Strategie-Moduls
+            module = __import__(f'strategies.{strategy_name}', fromlist=[class_name])
+            strategy_class = getattr(module, class_name)
+            
+            # Validierung der Strategieklasse
+            if not issubclass(strategy_class, Strategy):
+                logger.warning(f"Klasse {class_name} ist keine gültige Strategie-Subklasse")
+                continue
+            
+            # Registrierung in der Registry
+            register_strategy(strategy_name, strategy_class)
+            
+        except ImportError as e:
+            logger.debug(f"Strategie {strategy_name} nicht verfügbar: {e}")
+        except AttributeError as e:
+            logger.warning(f"Klasse {class_name} nicht gefunden in {strategy_name}: {e}")
+        except Exception as e:
+            logger.error(f"Fehler beim Laden der Strategie {strategy_name}: {e}")
+
+# Strategien beim Import laden
+_load_strategies()
+
+# Log verfügbare Strategien
+logger.info(f"Verfügbare Strategien: {list_strategies()}")
+
+# Exports
+__all__ = [
+    'Strategy',
+    'STRATEGIES',
+    'register_strategy',
+    'get_strategy',
+    'list_strategies'
+]

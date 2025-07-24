@@ -1,290 +1,491 @@
-# utils/notifier.py
 """
-Final Clean Telegram-Only Notification Manager for Trading Bot
-Email functionality completely removed - Telegram only
+Notifier - Konsolidierte Version für Benachrichtigungen
+Saubere Telegram-Integration mit Error-Handling
 """
 
+import asyncio
 import logging
-import requests
-import traceback
-from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
-from enum import Enum
 import os
-from threading import Lock
+import json
+from datetime import datetime, timedelta
+from typing import Optional, Dict, List, Any
+from enum import Enum
+from dataclasses import dataclass, asdict
+
+import aiohttp
+
+from config.settings import Settings
 
 logger = logging.getLogger(__name__)
 
 
 class AlertLevel(Enum):
-    """Alert severity levels"""
-    INFO = "INFO"
-    WARNING = "WARNING"
-    ERROR = "ERROR"
-    CRITICAL = "CRITICAL"
+    """Alarm-Level für verschiedene Benachrichtigungstypen"""
+    INFO = "info"
+    WARNING = "warning" 
+    ERROR = "error"
+    CRITICAL = "critical"
 
 
 class AlertType(Enum):
-    """Types of alerts"""
-    STRATEGY_CHANGE = "STRATEGY_CHANGE"
-    MARKET_PHASE_CHANGE = "MARKET_PHASE_CHANGE"
-    DRAWDOWN = "DRAWDOWN"
-    API_ERROR = "API_ERROR"
-    BOT_CRASH = "BOT_CRASH"
-    TRADE_EXECUTED = "TRADE_EXECUTED"
-    SYSTEM_STATUS = "SYSTEM_STATUS"
-    PORTFOLIO_UPDATE = "PORTFOLIO_UPDATE"
+    """Alarm-Typen für Kategorisierung"""
+    TRADE_EXECUTED = "trade_executed"
+    TRADE_REJECTED = "trade_rejected"
+    SYSTEM_ERROR = "system_error"
+    PRICE_ALERT = "price_alert"
+    PERFORMANCE_UPDATE = "performance_update"
+    REGIME_CHANGE = "regime_change"
+    SAFETY_TRIGGER = "safety_trigger"
+    BOT_STATUS = "bot_status"
 
 
-class NotificationManager:
+@dataclass
+class Alert:
+    """Strukturierte Alarm-Nachricht"""
+    level: AlertLevel
+    alert_type: AlertType
+    title: str
+    message: str
+    timestamp: datetime
+    symbol: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class TelegramNotifier:
     """
-    Clean Telegram-Only Notification Manager
+    Telegram-Notifier für Trading Bot Benachrichtigungen
     """
     
-    def __init__(self, settings: Optional[Dict] = None):
-        self.settings = settings or {}
+    def __init__(self, bot_token: str, chat_id: str, settings: Settings):
+        self.bot_token = bot_token
+        self.chat_id = chat_id
+        self.settings = settings
+        self.base_url = f"https://api.telegram.org/bot{bot_token}"
         
-        # Configuration
-        self.telegram_config = self.settings.get('notifications', {}).get('telegram', {})
-        self.alert_config = self.settings.get('notifications', {}).get('alerts', {})
+        # Rate Limiting
+        self.last_message_time = {}
+        self.rate_limit_window = timedelta(seconds=30)  # 30 Sekunden zwischen gleichen Nachrichten
         
-        # Rate limiting
-        self.rate_limit_window = timedelta(minutes=5)
-        self.max_alerts_per_window = 10
-        self.alert_count = 0
-        self.last_reset = datetime.now()
-        self.lock = Lock()
+        # Message Queue für Batch-Nachrichten
+        self.message_queue = []
+        self.batch_size = settings.get('notifications.batch_size', 5)
+        self.batch_timeout = timedelta(seconds=settings.get('notifications.batch_timeout', 60))
         
-        # Alert filtering
-        try:
-            self.min_level = AlertLevel(self.alert_config.get('min_level', 'INFO'))
-        except ValueError:
-            self.min_level = AlertLevel.INFO
+        # Aktivierte Benachrichtigungstypen
+        self.enabled_alerts = set(settings.get('notifications.enabled_alerts', [
+            AlertType.TRADE_EXECUTED.value,
+            AlertType.SYSTEM_ERROR.value,
+            AlertType.SAFETY_TRIGGER.value,
+            AlertType.BOT_STATUS.value
+        ]))
+        
+        # Mindest-Level für Benachrichtigungen
+        self.min_level = AlertLevel(settings.get('notifications.min_level', AlertLevel.INFO.value))
+        
+        logger.info(f"Telegram Notifier initialisiert für Chat {chat_id}")
+    
+    async def send_alert(self, alert: Alert) -> bool:
+        """
+        Sendet eine strukturierte Alarm-Nachricht
+        
+        Args:
+            alert: Alert-Objekt mit allen Informationen
             
-        self.enabled_types = set(self.alert_config.get('enabled_types', [t.value for t in AlertType]))
+        Returns:
+            True wenn erfolgreich gesendet, False sonst
+        """
+        # Prüfe ob Alert-Typ aktiviert ist
+        if alert.alert_type.value not in self.enabled_alerts:
+            logger.debug(f"Alert-Typ {alert.alert_type.value} ist deaktiviert")
+            return False
         
-        # Initialize Telegram
-        self.telegram_enabled = False
-        self._load_credentials()
-        self._initialize_telegram()
+        # Prüfe Mindest-Level
+        if not self._should_send_alert(alert.level):
+            logger.debug(f"Alert-Level {alert.level.value} unter Mindest-Level")
+            return False
         
-        logger.info("Clean Telegram-Only NotificationManager initialized")
-    
-    def _load_credentials(self):
-        """Load Telegram credentials"""
-        self.telegram_bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
-        self.telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID')
+        # Rate Limiting prüfen
+        if self._is_rate_limited(alert):
+            logger.debug(f"Alert ist rate-limited: {alert.title}")
+            return False
         
-        # Fallback to config
-        if not self.telegram_bot_token:
-            self.telegram_bot_token = self.telegram_config.get('bot_token')
-        if not self.telegram_chat_id:
-            self.telegram_chat_id = self.telegram_config.get('chat_id')
-    
-    def _initialize_telegram(self):
-        """Initialize Telegram notifications"""
-        if self.telegram_config.get('enabled', True):  # Default enabled
-            if self.telegram_bot_token and self.telegram_chat_id:
-                self.telegram_enabled = True
-                logger.info("Telegram notifications enabled")
-            else:
-                logger.warning("Telegram disabled - missing credentials")
+        # Nachricht formatieren
+        message = self._format_alert_message(alert)
+        
+        # Senden
+        success = await self._send_telegram_message(message)
+        
+        if success:
+            self._update_rate_limit(alert)
+            logger.debug(f"Alert erfolgreich gesendet: {alert.title}")
         else:
-            logger.info("Telegram notifications disabled in config")
+            logger.warning(f"Fehler beim Senden des Alerts: {alert.title}")
+        
+        return success
     
-    def _check_rate_limit(self) -> bool:
-        """Check if we're within rate limits"""
-        with self.lock:
-            now = datetime.now()
-            if now - self.last_reset > self.rate_limit_window:
-                self.alert_count = 0
-                self.last_reset = now
-            
-            return self.alert_count < self.max_alerts_per_window
+    def _should_send_alert(self, level: AlertLevel) -> bool:
+        """Prüft ob Alert basierend auf Level gesendet werden soll"""
+        level_hierarchy = {
+            AlertLevel.INFO: 0,
+            AlertLevel.WARNING: 1,
+            AlertLevel.ERROR: 2,
+            AlertLevel.CRITICAL: 3
+        }
+        
+        return level_hierarchy[level] >= level_hierarchy[self.min_level]
     
-    def _increment_rate_limit(self):
-        """Increment rate limit counter"""
-        with self.lock:
-            self.alert_count += 1
-    
-    def send_alert(self, message: str, level: AlertLevel = AlertLevel.INFO, 
-                  alert_type: AlertType = AlertType.SYSTEM_STATUS) -> bool:
-        """
-        Send alert through Telegram
-        """
-        try:
-            # Check if alert should be sent
-            if not self._should_send_alert(level, alert_type):
-                return False
-            
-            # Log the alert
-            log_level = {
-                AlertLevel.INFO: logging.INFO,
-                AlertLevel.WARNING: logging.WARNING,
-                AlertLevel.ERROR: logging.ERROR,
-                AlertLevel.CRITICAL: logging.CRITICAL
-            }.get(level, logging.INFO)
-            
-            logger.log(log_level, f"ALERT [{alert_type.value}]: {message}")
-            
-            # Send through Telegram
-            if self.telegram_enabled:
-                return self._send_telegram(message, level, alert_type)
-            
+    def _is_rate_limited(self, alert: Alert) -> bool:
+        """Prüft Rate Limiting für ähnliche Nachrichten"""
+        # Rate Limit Key basierend auf Alert-Typ und Titel
+        rate_key = f"{alert.alert_type.value}:{alert.title[:50]}"
+        
+        last_time = self.last_message_time.get(rate_key)
+        if last_time is None:
             return False
-            
+        
+        return datetime.now() - last_time < self.rate_limit_window
+    
+    def _update_rate_limit(self, alert: Alert):
+        """Aktualisiert Rate Limit Timing"""
+        rate_key = f"{alert.alert_type.value}:{alert.title[:50]}"
+        self.last_message_time[rate_key] = datetime.now()
+    
+    def _format_alert_message(self, alert: Alert) -> str:
+        """Formatiert Alert-Nachricht für Telegram"""
+        # Emoji basierend auf Level
+        level_emojis = {
+            AlertLevel.INFO: "ℹ️",
+            AlertLevel.WARNING: "⚠️",
+            AlertLevel.ERROR: "❌",
+            AlertLevel.CRITICAL: "🚨"
+        }
+        
+        # Emoji basierend auf Alert-Typ
+        type_emojis = {
+            AlertType.TRADE_EXECUTED: "💰",
+            AlertType.TRADE_REJECTED: "🚫",
+            AlertType.SYSTEM_ERROR: "🔧",
+            AlertType.PRICE_ALERT: "📈",
+            AlertType.PERFORMANCE_UPDATE: "📊",
+            AlertType.REGIME_CHANGE: "🔄",
+            AlertType.SAFETY_TRIGGER: "🛡️",
+            AlertType.BOT_STATUS: "🤖"
+        }
+        
+        level_emoji = level_emojis.get(alert.level, "")
+        type_emoji = type_emojis.get(alert.alert_type, "")
+        
+        # Header
+        header = f"{level_emoji} {type_emoji} *{alert.title}*"
+        
+        # Timestamp
+        time_str = alert.timestamp.strftime("%H:%M:%S")
+        
+        # Symbol falls vorhanden
+        symbol_str = f" ({alert.symbol})" if alert.symbol else ""
+        
+        # Basis-Nachricht
+        message_parts = [
+            header,
+            f"⏰ {time_str}{symbol_str}",
+            "",
+            alert.message
+        ]
+        
+        # Metadata falls vorhanden
+        if alert.metadata:
+            message_parts.append("")
+            message_parts.append("📋 *Details:*")
+            for key, value in alert.metadata.items():
+                if isinstance(value, (int, float)):
+                    if key.endswith('_percent') or 'percent' in key.lower():
+                        message_parts.append(f"• {key}: {value:.2%}")
+                    elif isinstance(value, float):
+                        message_parts.append(f"• {key}: {value:.4f}")
+                    else:
+                        message_parts.append(f"• {key}: {value}")
+                else:
+                    message_parts.append(f"• {key}: {value}")
+        
+        return "\n".join(message_parts)
+    
+    async def _send_telegram_message(self, message: str) -> bool:
+        """Sendet Nachricht über Telegram API"""
+        url = f"{self.base_url}/sendMessage"
+        
+        payload = {
+            'chat_id': self.chat_id,
+            'text': message,
+            'parse_mode': 'Markdown',
+            'disable_web_page_preview': True
+        }
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload, timeout=10) as response:
+                    if response.status == 200:
+                        return True
+                    else:
+                        response_text = await response.text()
+                        logger.error(f"Telegram API Fehler {response.status}: {response_text}")
+                        return False
+                        
+        except asyncio.TimeoutError:
+            logger.error("Timeout beim Senden der Telegram-Nachricht")
+            return False
         except Exception as e:
-            logger.error(f"Error sending alert: {e}")
+            logger.error(f"Fehler beim Senden der Telegram-Nachricht: {e}")
             return False
     
-    def _should_send_alert(self, level: AlertLevel, alert_type: AlertType) -> bool:
-        """Check if alert should be sent"""
-        # Check alert level
-        level_order = {AlertLevel.INFO: 0, AlertLevel.WARNING: 1, AlertLevel.ERROR: 2, AlertLevel.CRITICAL: 3}
-        if level_order[level] < level_order[self.min_level]:
-            return False
+    async def send_batch_summary(self, alerts: List[Alert]) -> bool:
+        """Sendet eine Zusammenfassung mehrerer Alerts"""
+        if not alerts:
+            return True
         
-        # Check alert type
-        if alert_type.value not in self.enabled_types:
-            return False
+        # Gruppiere Alerts nach Level
+        level_groups = {}
+        for alert in alerts:
+            level = alert.level
+            if level not in level_groups:
+                level_groups[level] = []
+            level_groups[level].append(alert)
         
-        # Check rate limiting (allow critical alerts through)
-        if level != AlertLevel.CRITICAL and not self._check_rate_limit():
-            logger.warning(f"Rate limit exceeded, dropping {level.value} alert")
-            return False
+        # Erstelle Zusammenfassung
+        summary_parts = ["📊 *Alert-Zusammenfassung*", ""]
         
-        return True
-    
-    def _send_telegram(self, message: str, level: AlertLevel, alert_type: AlertType) -> bool:
-        """Send alert via Telegram - simple text only"""
-        try:
-            # Emoji for level
-            emoji_map = {
+        for level, level_alerts in level_groups.items():
+            level_emojis = {
                 AlertLevel.INFO: "ℹ️",
                 AlertLevel.WARNING: "⚠️", 
                 AlertLevel.ERROR: "❌",
                 AlertLevel.CRITICAL: "🚨"
             }
             
-            emoji = emoji_map.get(level, "📢")
-            timestamp = datetime.now().strftime('%H:%M:%S')
+            emoji = level_emojis.get(level, "")
+            summary_parts.append(f"{emoji} *{level.value.upper()}* ({len(level_alerts)})")
             
-            # Simple text formatting (no Markdown)
-            formatted_message = f"{emoji} {level.value} - {alert_type.value}\n\n{message}\n\n🕐 {timestamp}"
+            for alert in level_alerts[:3]:  # Nur ersten 3 zeigen
+                summary_parts.append(f"• {alert.title}")
             
-            # Send to Telegram
-            url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
-            payload = {
-                'chat_id': self.telegram_chat_id,
-                'text': formatted_message
-            }
+            if len(level_alerts) > 3:
+                summary_parts.append(f"• ... und {len(level_alerts) - 3} weitere")
             
-            response = requests.post(url, json=payload, timeout=30)
-            response.raise_for_status()
+            summary_parts.append("")
+        
+        # Zeitraum
+        first_time = min(alert.timestamp for alert in alerts)
+        last_time = max(alert.timestamp for alert in alerts)
+        summary_parts.append(f"⏰ {first_time.strftime('%H:%M')} - {last_time.strftime('%H:%M')}")
+        
+        message = "\n".join(summary_parts)
+        return await self._send_telegram_message(message)
+
+
+class Notifier:
+    """
+    Hauptklasse für alle Benachrichtigungen
+    """
+    
+    def __init__(self, settings: Settings):
+        self.settings = settings
+        self.telegram_notifier = None
+        
+        # Telegram-Notifier initialisieren wenn konfiguriert
+        self._init_telegram_notifier()
+        
+        # Alert-Queue für Batch-Processing
+        self.alert_queue = []
+        self.last_batch_time = datetime.now()
+        
+        logger.info("Notifier initialisiert")
+    
+    def _init_telegram_notifier(self):
+        """Initialisiert Telegram-Notifier falls konfiguriert"""
+        bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+        chat_id = os.getenv('TELEGRAM_CHAT_ID')
+        
+        if bot_token and chat_id:
+            try:
+                self.telegram_notifier = TelegramNotifier(bot_token, chat_id, self.settings)
+                logger.info("Telegram-Notifier erfolgreich initialisiert")
+            except Exception as e:
+                logger.error(f"Fehler beim Initialisieren des Telegram-Notifiers: {e}")
+        else:
+            logger.warning("Telegram-Konfiguration fehlt - Benachrichtigungen deaktiviert")
+    
+    async def send_notification(
+        self,
+        message: str,
+        alert_type: str,
+        level: str = AlertLevel.INFO.value,
+        symbol: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Vereinfachte Methode zum Senden von Benachrichtigungen
+        
+        Args:
+            message: Nachrichtentext
+            alert_type: Typ der Benachrichtigung
+            level: Alert-Level
+            symbol: Optionales Symbol
+            metadata: Optionale Metadaten
             
-            self._increment_rate_limit()
-            logger.debug("Telegram alert sent successfully")
-            return True
+        Returns:
+            True wenn erfolgreich gesendet
+        """
+        try:
+            alert = Alert(
+                level=AlertLevel(level),
+                alert_type=AlertType(alert_type),
+                title=alert_type.replace('_', ' ').title(),
+                message=message,
+                timestamp=datetime.now(),
+                symbol=symbol,
+                metadata=metadata
+            )
             
+            return await self.send_alert(alert)
+            
+        except ValueError as e:
+            logger.error(f"Ungültiger Alert-Level oder -Typ: {e}")
+            return False
         except Exception as e:
-            logger.error(f"Failed to send Telegram alert: {e}")
+            logger.error(f"Fehler beim Senden der Benachrichtigung: {e}")
             return False
     
-    # Convenience methods
-    def send_strategy_change_alert(self, old_strategy: str, new_strategy: str, reason: str = ""):
-        """Send alert for strategy change"""
-        message = f"Strategy: {old_strategy} → {new_strategy}"
-        if reason:
-            message += f"\nReason: {reason}"
-        return self.send_alert(message, AlertLevel.INFO, AlertType.STRATEGY_CHANGE)
-    
-    def send_market_phase_change_alert(self, old_phase: str, new_phase: str, confidence: float = None):
-        """Send alert for market phase change"""
-        message = f"Market Phase: {old_phase} → {new_phase}"
-        if confidence:
-            message += f"\nConfidence: {confidence:.1%}"
-        return self.send_alert(message, AlertLevel.INFO, AlertType.MARKET_PHASE_CHANGE)
-    
-    def send_drawdown_alert(self, current_drawdown: float, max_drawdown: float, portfolio_value: float):
-        """Send alert for significant drawdown"""
-        message = f"Drawdown: {current_drawdown:.1%} (max: {max_drawdown:.1%})\nPortfolio: ${portfolio_value:,.2f}"
+    async def send_alert(self, alert: Alert) -> bool:
+        """
+        Sendet einen strukturierten Alert
         
-        level = AlertLevel.WARNING if current_drawdown < 0.1 else AlertLevel.ERROR
-        if current_drawdown > 0.2:
-            level = AlertLevel.CRITICAL
+        Args:
+            alert: Alert-Objekt
+            
+        Returns:
+            True wenn erfolgreich gesendet
+        """
+        if not self.telegram_notifier:
+            logger.debug("Kein Telegram-Notifier verfügbar")
+            return False
         
-        return self.send_alert(message, level, AlertType.DRAWDOWN)
+        return await self.telegram_notifier.send_alert(alert)
     
-    def send_api_error_alert(self, api_name: str, error_message: str):
-        """Send alert for API errors"""
-        message = f"API Error: {api_name}\n{error_message}"
-        return self.send_alert(message, AlertLevel.ERROR, AlertType.API_ERROR)
+    async def send_trade_notification(
+        self,
+        symbol: str,
+        side: str,
+        amount: float,
+        price: float,
+        strategy: str = "unknown"
+    ) -> bool:
+        """
+        Sendet Trade-Benachrichtigung
+        
+        Args:
+            symbol: Trading-Symbol
+            side: buy/sell
+            amount: Menge
+            price: Preis
+            strategy: Verwendete Strategie
+        """
+        message = f"{side.upper()} {amount:.4f} {symbol} @ {price:.4f}"
+        
+        metadata = {
+            'side': side,
+            'amount': amount,
+            'price': price,
+            'strategy': strategy,
+            'value': amount * price
+        }
+        
+        return await self.send_notification(
+            message=message,
+            alert_type=AlertType.TRADE_EXECUTED.value,
+            level=AlertLevel.INFO.value,
+            symbol=symbol,
+            metadata=metadata
+        )
     
-    def send_bot_crash_alert(self, error_message: str):
-        """Send critical alert for bot crashes"""
-        message = f"Bot crashed: {error_message}"
-        return self.send_alert(message, AlertLevel.CRITICAL, AlertType.BOT_CRASH)
+    async def send_error_notification(
+        self,
+        error_message: str,
+        error_type: str = "system_error",
+        symbol: Optional[str] = None
+    ) -> bool:
+        """
+        Sendet Fehler-Benachrichtigung
+        
+        Args:
+            error_message: Fehlermeldung
+            error_type: Typ des Fehlers
+            symbol: Optionales Symbol
+        """
+        return await self.send_notification(
+            message=error_message,
+            alert_type=AlertType.SYSTEM_ERROR.value,
+            level=AlertLevel.ERROR.value,
+            symbol=symbol,
+            metadata={'error_type': error_type}
+        )
     
-    def send_trade_alert(self, action: str, symbol: str, quantity: float, price: float, strategy: str):
-        """Send alert for trade execution"""
-        message = f"Trade: {action} {quantity} {symbol}\nPrice: ${price:.4f}\nStrategy: {strategy}"
-        return self.send_alert(message, AlertLevel.INFO, AlertType.TRADE_EXECUTED)
+    async def send_performance_update(
+        self,
+        total_return: float,
+        daily_return: float,
+        drawdown: float,
+        total_trades: int
+    ) -> bool:
+        """
+        Sendet Performance-Update
+        
+        Args:
+            total_return: Gesamtrendite
+            daily_return: Tägliche Rendite
+            drawdown: Aktueller Drawdown
+            total_trades: Anzahl Trades
+        """
+        message = f"Performance-Update: {total_return:.2%} total, {daily_return:.2%} heute"
+        
+        metadata = {
+            'total_return_percent': total_return,
+            'daily_return_percent': daily_return,
+            'drawdown_percent': drawdown,
+            'total_trades': total_trades
+        }
+        
+        return await self.send_notification(
+            message=message,
+            alert_type=AlertType.PERFORMANCE_UPDATE.value,
+            level=AlertLevel.INFO.value,
+            metadata=metadata
+        )
     
-    def send_portfolio_update_alert(self, total_value: float, pnl_24h: float):
-        """Send periodic portfolio update"""
-        message = f"Portfolio: ${total_value:,.2f}\n24h P&L: {pnl_24h:+.2f}"
-        return self.send_alert(message, AlertLevel.INFO, AlertType.PORTFOLIO_UPDATE)
+    async def send_safety_alert(
+        self,
+        alert_message: str,
+        drawdown: float,
+        action_taken: str
+    ) -> bool:
+        """
+        Sendet Safety-Alert
+        
+        Args:
+            alert_message: Alert-Nachricht
+            drawdown: Aktueller Drawdown
+            action_taken: Ergriffene Maßnahme
+        """
+        metadata = {
+            'drawdown_percent': drawdown,
+            'action_taken': action_taken
+        }
+        
+        return await self.send_notification(
+            message=alert_message,
+            alert_type=AlertType.SAFETY_TRIGGER.value,
+            level=AlertLevel.WARNING.value,
+            metadata=metadata
+        )
     
-    def test_notification(self) -> bool:
-        """Test Telegram notification"""
-        if self.telegram_enabled:
-            return self.send_alert("Test notification - Clean Telegram-Only system working!", AlertLevel.INFO, AlertType.SYSTEM_STATUS)
-        return False
-
-
-# Global notifier instance
-_global_notifier: Optional[NotificationManager] = None
-
-
-def initialize_notifier(settings: Optional[Dict] = None) -> NotificationManager:
-    """Initialize global notifier instance"""
-    global _global_notifier
-    _global_notifier = NotificationManager(settings)
-    return _global_notifier
-
-
-def get_notifier() -> Optional[NotificationManager]:
-    """Get global notifier instance"""
-    return _global_notifier
-
-
-def send_alert(message: str, level: AlertLevel = AlertLevel.INFO, 
-               alert_type: AlertType = AlertType.SYSTEM_STATUS) -> bool:
-    """Simple interface to send alerts"""
-    notifier = get_notifier()
-    if notifier:
-        return notifier.send_alert(message, level, alert_type)
-    else:
-        logger.warning(f"No notifier initialized: {message}")
-        return False
-
-
-# Convenience functions
-def send_info(message: str) -> bool:
-    """Send info level alert"""
-    return send_alert(message, AlertLevel.INFO)
-
-
-def send_warning(message: str) -> bool:
-    """Send warning level alert"""
-    return send_alert(message, AlertLevel.WARNING)
-
-
-def send_error(message: str) -> bool:
-    """Send error level alert"""
-    return send_alert(message, AlertLevel.ERROR)
-
-
-def send_critical(message: str) -> bool:
-    """Send critical level alert"""
-    return send_alert(message, AlertLevel.CRITICAL)
+    def is_enabled(self) -> bool:
+        """Prüft ob Notifier aktiviert ist"""
+        return self.telegram_notifier is not None
