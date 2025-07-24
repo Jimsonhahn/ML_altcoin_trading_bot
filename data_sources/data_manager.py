@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 
 from config.settings import Settings
-from core.exchange import ExchangeManager  # Use the actual class name
 from data_sources.binance_source import BinanceDataSource  # Use the actual class name
 from utils.error_handler import handle_errors, ErrorCategory, handle_data_error
 

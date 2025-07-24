@@ -281,7 +281,7 @@ class TelegramNotifier:
         return await self._send_telegram_message(message)
 
 
-class Notifier:
+class NotificationManager:
     """
     Hauptklasse für alle Benachrichtigungen
     """

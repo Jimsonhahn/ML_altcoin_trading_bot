@@ -21,6 +21,7 @@ except ImportError:
 # To avoid circular import, use TYPE_CHECKING for type hints
 if TYPE_CHECKING:
     # Removed circular import - using events
+    pass
 
 logger = logging.getLogger(__name__)
 

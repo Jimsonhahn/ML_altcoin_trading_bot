@@ -20,7 +20,7 @@ import seaborn as sns
 from config.settings import Settings
 from strategies.strategy_base import Strategy
 from core.position import Position
-from data_sources import DataManager  # Korrigierter Import  # Korrigierter Import!
+from data_sources.data_manager import DataManager
 
 
 class EnhancedBacktester:
