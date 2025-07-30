@@ -65,13 +65,26 @@ def _load_strategies():
         # Neue defensive Strategien
         ('advanced_portfolio', 'AdvancedPortfolioStrategy'),
         ('defensive_volatility', 'DefensiveVolatilityStrategy'),
-        ('smart_rebalancing', 'SmartRebalancingStrategy')
+        ('smart_rebalancing', 'SmartRebalancingStrategy'),
+        # Candle momentum strategy
+        ('candle_momentum', 'CandleMomentumStrategy'),
+        # Exact TradingView candle body momentum strategy
+        ('candle_body_momentum', 'CandleBodyMomentumStrategy'),
+        # Optimized candle momentum strategy  
+        ('optimized_candle_momentum', 'OptimizedCandleMomentumStrategy'),
+        # High-risk daily trading strategy
+        ('high_risk_daily', 'HighRiskDailyStrategy')
     ]
     
     for strategy_name, class_name in strategies_to_load:
         try:
             # Import des Strategie-Moduls
-            module = __import__(f'strategies.{strategy_name}', fromlist=[class_name])
+            if strategy_name == 'optimized_candle_momentum':
+                module = __import__(f'strategies.optimized_candle_momentum', fromlist=[class_name])
+            elif strategy_name == 'high_risk_daily':
+                module = __import__(f'strategies.high_risk_daily', fromlist=[class_name])
+            else:
+                module = __import__(f'strategies.{strategy_name}', fromlist=[class_name])
             strategy_class = getattr(module, class_name)
             
             # Validierung der Strategieklasse
