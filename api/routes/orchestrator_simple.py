@@ -8,46 +8,303 @@ Simplified REST API endpoints for orchestrator dashboard integration.
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
+import os
+import sys
+
+# Add project root to path to import bot controller
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from core.bot_controller import get_bot_controller, BotStatus
+import sqlite3
 
 logger = logging.getLogger(__name__)
 
 bp = Blueprint('orchestrator', __name__)
 
+# Helper functions for real data retrieval
+def get_real_portfolio_data():
+    """Get real portfolio data from database"""
+    try:
+        db_path = os.path.join(os.path.dirname(__file__), '..', '..', 'db', 'trading_bot.db')
+        if not os.path.exists(db_path):
+            # Return empty portfolio if no database
+            return {
+                'total_value': 0.0,
+                'cash_balance': 0.0,
+                'positions_value': 0.0,
+                'total_pnl': 0.0,
+                'total_pnl_percent': 0.0,
+                'win_rate': 0.0,
+                'sharpe_ratio': 0.0,
+                'max_drawdown': 0.0,
+                'total_positions': 0,
+                'daily_pnl': 0.0
+            }
+        
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Get latest portfolio snapshot
+        cursor.execute("""
+            SELECT total_value, cash_balance, positions_value, total_pnl, total_pnl_percent,
+                   win_rate, sharpe_ratio, max_drawdown, daily_pnl
+            FROM portfolio_snapshots 
+            ORDER BY timestamp DESC LIMIT 1
+        """)
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            return {
+                'total_value': result[0] or 0.0,
+                'cash_balance': result[1] or 0.0,
+                'positions_value': result[2] or 0.0,
+                'total_pnl': result[3] or 0.0,
+                'total_pnl_percent': result[4] or 0.0,
+                'win_rate': result[5] or 0.0,
+                'sharpe_ratio': result[6] or 0.0,
+                'max_drawdown': result[7] or 0.0,
+                'daily_pnl': result[8] or 0.0,
+                'total_positions': count_open_positions()
+            }
+        else:
+            # Return zeros if no data
+            return {
+                'total_value': 0.0,
+                'cash_balance': 0.0,
+                'positions_value': 0.0,
+                'total_pnl': 0.0,
+                'total_pnl_percent': 0.0,
+                'win_rate': 0.0,
+                'sharpe_ratio': 0.0,
+                'max_drawdown': 0.0,
+                'total_positions': 0,
+                'daily_pnl': 0.0
+            }
+            
+    except Exception as e:
+        logger.error(f"Error getting real portfolio data: {e}")
+        return {
+            'total_value': 0.0,
+            'cash_balance': 0.0,
+            'positions_value': 0.0,
+            'total_pnl': 0.0,
+            'total_pnl_percent': 0.0,
+            'win_rate': 0.0,
+            'sharpe_ratio': 0.0,
+            'max_drawdown': 0.0,
+            'total_positions': 0,
+            'daily_pnl': 0.0
+        }
+
+def get_real_positions():
+    """Get real open positions from database"""
+    try:
+        db_path = os.path.join(os.path.dirname(__file__), '..', '..', 'db', 'trading_bot.db')
+        if not os.path.exists(db_path):
+            return []
+        
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT symbol, strategy_name, position_side, entry_price, current_price,
+                   quantity, position_value, unrealized_pnl, pnl_percent, entry_time, is_paper
+            FROM positions 
+            WHERE status = 'open'
+            ORDER BY entry_time DESC
+        """)
+        
+        positions = []
+        for row in cursor.fetchall():
+            positions.append({
+                'id': f'pos_{hash(row[0] + str(row[3]))}',  # Generate unique ID
+                'symbol': row[0],
+                'strategy': row[1],
+                'side': row[2],
+                'entry_price': row[3] or 0.0,
+                'current_price': row[4] or 0.0,
+                'quantity': row[5] or 0.0,
+                'position_value': row[6] or 0.0,
+                'unrealized_pnl': row[7] or 0.0,
+                'pnl_percent': row[8] or 0.0,
+                'entry_time': row[9],
+                'is_paper': bool(row[10]) if row[10] is not None else True
+            })
+        
+        conn.close()
+        return positions
+        
+    except Exception as e:
+        logger.error(f"Error getting real positions: {e}")
+        return []
+
+def get_real_recent_trades(limit=20):
+    """Get recent trades from database"""
+    try:
+        db_path = os.path.join(os.path.dirname(__file__), '..', '..', 'db', 'trading_bot.db')
+        if not os.path.exists(db_path):
+            return []
+        
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT timestamp, action, strategy_name, symbol, position_side,
+                   quantity, price, realized_pnl, is_paper
+            FROM trades 
+            ORDER BY timestamp DESC
+            LIMIT ?
+        """, (limit,))
+        
+        trades = []
+        for row in cursor.fetchall():
+            trades.append({
+                'timestamp': row[0],
+                'action': row[1] or 'unknown',
+                'strategy': row[2] or 'unknown',
+                'symbol': row[3],
+                'side': row[4],
+                'quantity': row[5] or 0.0,
+                'price': row[6] or 0.0,
+                'pnl': row[7] or 0.0,
+                'is_paper': bool(row[8]) if row[8] is not None else True
+            })
+        
+        conn.close()
+        return trades
+        
+    except Exception as e:
+        logger.error(f"Error getting recent trades: {e}")
+        return []
+
+def count_open_positions():
+    """Count open positions"""
+    try:
+        db_path = os.path.join(os.path.dirname(__file__), '..', '..', 'db', 'trading_bot.db')
+        if not os.path.exists(db_path):
+            return 0
+        
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM positions WHERE status = 'open'")
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count
+        
+    except Exception as e:
+        logger.error(f"Error counting positions: {e}")
+        return 0
+
+def get_available_strategies():
+    """Get list of available strategies"""
+    strategies_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'strategies')
+    if os.path.exists(strategies_dir):
+        return [f[:-3] for f in os.listdir(strategies_dir) if f.endswith('.py') and not f.startswith('__')]
+    return []
+
+def count_active_alerts():
+    """Count active alerts - placeholder"""
+    # TODO: Implement alert system
+    return 0
+
+def calculate_real_allocations(positions):
+    """Calculate real strategy and symbol allocations from positions"""
+    if not positions:
+        return {
+            'by_strategy': {},
+            'by_symbol': {}
+        }
+    
+    # Calculate total value
+    total_value = sum(pos['position_value'] for pos in positions)
+    
+    if total_value == 0:
+        return {
+            'by_strategy': {},
+            'by_symbol': {}
+        }
+    
+    # Strategy allocations
+    strategy_values = {}
+    symbol_values = {}
+    
+    for pos in positions:
+        strategy = pos['strategy']
+        symbol = pos['symbol']
+        value = pos['position_value']
+        
+        strategy_values[strategy] = strategy_values.get(strategy, 0) + value
+        symbol_values[symbol] = symbol_values.get(symbol, 0) + value
+    
+    # Convert to percentages
+    strategy_allocations = {k: v / total_value for k, v in strategy_values.items()}
+    symbol_allocations = {k: v / total_value for k, v in symbol_values.items()}
+    
+    return {
+        'by_strategy': strategy_allocations,
+        'by_symbol': symbol_allocations
+    }
+
 @bp.route('/status', methods=['GET'])
 def get_orchestrator_status():
-    """Get current orchestrator status - simplified version"""
+    """Get current orchestrator status - REAL implementation"""
     try:
+        # Get real bot status from controller
+        controller = get_bot_controller()
+        bot_status = controller.get_bot_status()
+        
+        # Get real portfolio data from database
+        portfolio_data = get_real_portfolio_data()
+        
+        # Determine system status
+        if not bot_status['success']:
+            system_status = 'error'
+        elif bot_status['overall_status'] == BotStatus.RUNNING.value:
+            system_status = 'active'
+        elif bot_status['overall_status'] == BotStatus.STARTING.value:
+            system_status = 'starting'
+        else:
+            system_status = 'stopped'
+            
         return jsonify({
-            'status': 'active',
-            'mode': 'paper',
-            'discovered_strategies': 8,
-            'portfolio': {
-                'total_value': 10523.45,
-                'cash_balance': 5234.12,
-                'positions_value': 5289.33,
-                'total_pnl': 523.45,
-                'total_pnl_percent': 5.23,
-                'win_rate': 0.67,
-                'sharpe_ratio': 1.34,
-                'max_drawdown': 0.08,
-                'total_positions': 8
+            'status': system_status,
+            'server_status': 'connected',
+            'bot_running': bot_status['overall_status'] == BotStatus.RUNNING.value,
+            'system_status': 'operational' if bot_status['process_count'] > 0 else 'standby',
+            'mode': 'paper',  # TODO: Get from bot configuration
+            'discovered_strategies': len(get_available_strategies()),
+            'portfolio': portfolio_data,
+            'process_info': {
+                'process_count': bot_status['process_count'],
+                'uptime_hours': bot_status.get('aggregated_metrics', {}).get('max_uptime_hours', 0),
+                'cpu_usage': bot_status.get('aggregated_metrics', {}).get('total_cpu_percent', 0),
+                'memory_mb': bot_status.get('aggregated_metrics', {}).get('total_memory_mb', 0)
             },
             'health_monitoring': {
-                'monitored_strategies': 8,
-                'active_alerts': 1,
+                'monitored_strategies': len(get_available_strategies()),
+                'active_alerts': count_active_alerts(),
                 'emergency_stops': 0
             },
             'ab_testing': {
-                'total_active_tests': 2,
-                'completed_tests': 15
-            }
+                'total_active_tests': 0,  # TODO: Implement A/B testing tracking
+                'completed_tests': 0
+            },
+            'last_update': datetime.now().strftime('%H:%M:%S')
         }), 200
         
     except Exception as e:
         logger.error(f"Error getting orchestrator status: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'status': 'error',
+            'server_status': 'error',
+            'bot_running': False,
+            'system_status': 'error',
+            'error': str(e),
+            'last_update': datetime.now().strftime('%H:%M:%S')
+        }), 500
 
 @bp.route('/strategies', methods=['GET'])
 def get_discovered_strategies():
@@ -187,99 +444,28 @@ def get_discovered_strategies():
 
 @bp.route('/portfolio', methods=['GET'])
 def get_portfolio_details():
-    """Get detailed portfolio information"""
+    """Get detailed portfolio information - REAL implementation"""
     try:
-        positions = [
-            {
-                'id': 'pos_1',
-                'symbol': 'BTC/USDT',
-                'strategy': 'momentum_strategy',
-                'side': 'long',
-                'entry_price': 45000.0,
-                'current_price': 45750.0,
-                'quantity': 0.1,
-                'position_value': 4575.0,
-                'unrealized_pnl': 75.0,
-                'pnl_percent': 1.67,
-                'entry_time': '2025-07-29T07:30:00Z',
-                'is_paper': True
-            },
-            {
-                'id': 'pos_2',
-                'symbol': 'ETH/USDT',
-                'strategy': 'arbitrage',
-                'side': 'long',
-                'entry_price': 2500.0,
-                'current_price': 2520.0,
-                'quantity': 2.0,
-                'position_value': 5040.0,
-                'unrealized_pnl': 40.0,
-                'pnl_percent': 0.8,
-                'entry_time': '2025-07-29T08:00:00Z',
-                'is_paper': True
-            }
-        ]
-        
-        recent_trades = [
-            {
-                'timestamp': '2025-07-29T08:15:00Z',
-                'action': 'close',
-                'strategy': 'grid_trading',
-                'symbol': 'SOL/USDT',
-                'side': 'long',
-                'quantity': 10.0,
-                'price': 102.5,
-                'pnl': 125.0,
-                'is_paper': True
-            },
-            {
-                'timestamp': '2025-07-29T08:00:00Z',
-                'action': 'open',
-                'strategy': 'arbitrage',
-                'symbol': 'ETH/USDT',
-                'side': 'long',
-                'quantity': 2.0,
-                'price': 2500.0,
-                'pnl': 0.0,
-                'is_paper': True
-            }
-        ]
+        # Get real data from database
+        portfolio_data = get_real_portfolio_data()
+        positions = get_real_positions()
+        recent_trades = get_real_recent_trades()
         
         return jsonify({
-            'mode': 'paper',
+            'mode': 'paper',  # TODO: Get from bot configuration
             'performance': {
-                'overview': {
-                    'total_value': 10523.45,
-                    'total_pnl': 523.45,
-                    'total_pnl_percent': 5.23,
-                    'cash_balance': 5234.12,
-                    'positions_value': 5289.33
-                },
+                'overview': portfolio_data,
                 'performance': {
-                    'daily_pnl': 89.34,
-                    'win_rate': 0.67,
-                    'sharpe_ratio': 1.34,
-                    'max_drawdown': 0.08,
-                    'total_trades': 145
+                    'daily_pnl': portfolio_data.get('daily_pnl', 0.0),
+                    'win_rate': portfolio_data.get('win_rate', 0.0),
+                    'sharpe_ratio': portfolio_data.get('sharpe_ratio', 0.0),
+                    'max_drawdown': portfolio_data.get('max_drawdown', 0.0),
+                    'total_trades': len(recent_trades)
                 }
             },
             'positions': positions,
             'recent_trades': recent_trades,
-            'allocations': {
-                'by_strategy': {
-                    'momentum_strategy': 0.30,
-                    'arbitrage': 0.25,
-                    'grid_trading': 0.20,
-                    'mean_reversion': 0.15,
-                    'high_risk_daily': 0.10
-                },
-                'by_symbol': {
-                    'BTC/USDT': 0.45,
-                    'ETH/USDT': 0.30,
-                    'SOL/USDT': 0.15,
-                    'BNB/USDT': 0.10
-                }
-            }
+            'allocations': calculate_real_allocations(positions)
         }), 200
         
     except Exception as e:
@@ -461,53 +647,84 @@ def switch_trading_mode():
 
 @bp.route('/start', methods=['POST'])
 def start_orchestrator():
-    """Start the orchestrator in specified mode"""
+    """Start the trading bot - REAL implementation"""
     try:
         data = request.get_json() or {}
         mode = data.get('mode', 'paper').lower()
+        script_name = data.get('script', 'main.py')
         
         if mode not in ['paper', 'live', 'hybrid']:
             return jsonify({'error': 'Invalid mode. Use: paper, live, or hybrid'}), 400
         
-        # In a real implementation, this would:
-        # 1. Initialize the strategy discovery engine
-        # 2. Start the orchestrator in the specified mode
-        # 3. Begin strategy allocation and monitoring
-        # 4. Set up real-time data streams
+        # Use real bot controller to start bot
+        controller = get_bot_controller()
+        result = controller.start_bot(script_name=script_name)
         
-        logger.info(f"Starting orchestrator in {mode} mode")
-        
-        return jsonify({
-            'success': True,
-            'status': 'active',
-            'mode': mode,
-            'message': f'Orchestrator started successfully in {mode} mode',
-            'started_at': datetime.now().isoformat()
-        }), 200
+        if result['success']:
+            logger.info(f"Bot started successfully in {mode} mode (PID: {result.get('pid')})")
+            return jsonify({
+                'success': True,
+                'status': 'starting',
+                'mode': mode,
+                'message': result['message'],
+                'pid': result.get('pid'),
+                'script_path': result.get('script_path'),
+                'started_at': result.get('start_time', datetime.now().isoformat())
+            }), 200
+        else:
+            logger.error(f"Failed to start bot: {result['message']}")
+            return jsonify({
+                'success': False,
+                'status': 'error',
+                'error': result['message'],
+                'error_code': result.get('error_code'),
+                'available_files': result.get('available_files', []),
+                'search_directory': result.get('search_directory')
+            }), 400
         
     except Exception as e:
-        logger.error(f"Error starting orchestrator: {e}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error starting bot: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_code': 'EXCEPTION'
+        }), 500
 
 @bp.route('/stop', methods=['POST'])
 def stop_orchestrator():
-    """Stop the orchestrator"""
+    """Stop the trading bot - REAL implementation"""
     try:
-        # In a real implementation, this would:
-        # 1. Close all active positions (if in live mode)
-        # 2. Stop strategy discovery and monitoring
-        # 3. Clean up resources and data streams
-        # 4. Save state for potential restart
+        data = request.get_json() or {}
+        force = data.get('force', False)
+        pid = data.get('pid')
         
-        logger.info("Stopping orchestrator")
+        # Use real bot controller to stop bot
+        controller = get_bot_controller()
+        result = controller.stop_bot(pid=pid, force=force)
         
-        return jsonify({
-            'success': True,
-            'status': 'stopped',
-            'message': 'Orchestrator stopped successfully',
-            'stopped_at': datetime.now().isoformat()
-        }), 200
+        if result['success']:
+            logger.info(f"Bot stopped successfully")
+            return jsonify({
+                'success': True,
+                'status': 'stopped',
+                'message': result['message'],
+                'stopped_processes': result.get('stopped_processes', []),
+                'stopped_at': datetime.now().isoformat()
+            }), 200
+        else:
+            logger.error(f"Failed to stop bot: {result['message']}")
+            return jsonify({
+                'success': False,
+                'status': 'error',
+                'error': result['message'],
+                'error_code': result.get('error_code'),
+                'failed_processes': result.get('failed_processes', [])
+            }), 400
         
     except Exception as e:
-        logger.error(f"Error stopping orchestrator: {e}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error stopping bot: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_code': 'EXCEPTION'
+        }), 500

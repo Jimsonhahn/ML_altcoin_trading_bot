@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Janics Freedom Factory - API Test Dashboard</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .status-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .status-card h3 {
+            margin-top: 0;
+            color: #4fc3f7;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-online { background: #4caf50; }
+        .status-offline { background: #f44336; }
+        .status-warning { background: #ff9800; }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        button {
+            background: linear-gradient(45deg, #4fc3f7, #29b6f6);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 195, 247, 0.4);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .data-display {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: 'Monaco', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .portfolio-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-item {
+            text-align: center;
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #4fc3f7;
+        }
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Janics Freedom Factory - API Test Dashboard</h1>
+        
+        <div class="status-grid">
+            <div class="status-card">
+                <h3>
+                    <span id="server-indicator" class="status-indicator status-offline"></span>
+                    Server Status
+                </h3>
+                <p id="server-status">Checking connection...</p>
+                <div class="button-group">
+                    <button onclick="checkServerStatus()">Refresh Status</button>
+                    <button id="start-btn" onclick="startBot()" disabled>Start Bot</button>
+                    <button id="stop-btn" onclick="stopBot()" disabled>Stop Bot</button>
+                </div>
+                <div id="server-data" class="data-display" style="display: none;"></div>
+            </div>
+            
+            <div class="status-card">
+                <h3>
+                    <span id="bot-indicator" class="status-indicator status-offline"></span>
+                    Bot Status
+                </h3>
+                <p id="bot-status">Not running</p>
+                <div id="bot-info"></div>
+            </div>
+            
+            <div class="status-card">
+                <h3>
+                    <span class="status-indicator status-online"></span>
+                    Portfolio Performance
+                </h3>
+                <div id="portfolio-stats" class="portfolio-stats">
+                    <div class="stat-item">
+                        <div id="total-value" class="stat-value">$0.00</div>
+                        <div class="stat-label">Total Value</div>
+                    </div>
+                    <div class="stat-item">
+                        <div id="daily-pnl" class="stat-value">$0.00</div>
+                        <div class="stat-label">Daily P&L</div>
+                    </div>
+                    <div class="stat-item">
+                        <div id="total-pnl" class="stat-value">0.00%</div>
+                        <div class="stat-label">Total P&L</div>
+                    </div>
+                    <div class="stat-item">
+                        <div id="positions" class="stat-value">0</div>
+                        <div class="stat-label">Open Positions</div>
+                    </div>
+                </div>
+                <button onclick="loadPortfolio()">Refresh Portfolio</button>
+            </div>
+        </div>
+        
+        <div class="status-card">
+            <h3>🧠 Real-Time API Data</h3>
+            <div class="button-group">
+                <button onclick="loadStrategies()">Load Strategies</button>
+                <button onclick="loadTrades()">Load Recent Trades</button>
+                <button onclick="testAllEndpoints()">Test All Endpoints</button>
+            </div>
+            <div id="api-data" class="data-display"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api/v1/orchestrator';
+        
+        // Auto-refresh status every 5 seconds
+        setInterval(checkServerStatus, 5000);
+        
+        // Initial load
+        window.onload = function() {
+            checkServerStatus();
+            loadPortfolio();
+        };
+        
+        async function checkServerStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/status`);
+                const data = await response.json();
+                
+                // Update server status
+                document.getElementById('server-indicator').className = 
+                    'status-indicator ' + (data.server_status === 'connected' ? 'status-online' : 'status-offline');
+                document.getElementById('server-status').textContent = 
+                    `${data.status.toUpperCase()} - ${data.server_status}`;
+                
+                // Update bot status  
+                document.getElementById('bot-indicator').className = 
+                    'status-indicator ' + (data.bot_running ? 'status-online' : 'status-offline');
+                document.getElementById('bot-status').textContent = 
+                    data.bot_running ? `Running (${data.process_info.process_count} processes)` : 'Stopped';
+                
+                // Update bot info
+                document.getElementById('bot-info').innerHTML = `
+                    <small>System: ${data.system_status}<br>
+                    Strategies: ${data.discovered_strategies}<br>
+                    Last Update: ${data.last_update}</small>
+                `;
+                
+                // Enable/disable buttons
+                document.getElementById('start-btn').disabled = data.bot_running;
+                document.getElementById('stop-btn').disabled = !data.bot_running;
+                
+                // Show server data
+                document.getElementById('server-data').style.display = 'block';
+                document.getElementById('server-data').textContent = JSON.stringify(data, null, 2);
+                
+            } catch (error) {
+                document.getElementById('server-indicator').className = 'status-indicator status-offline';
+                document.getElementById('server-status').textContent = 'Connection Failed';
+                document.getElementById('bot-indicator').className = 'status-indicator status-offline';
+                document.getElementById('bot-status').textContent = 'Cannot connect to server';
+                console.error('Server status check failed:', error);
+            }
+        }
+        
+        async function loadPortfolio() {
+            try {
+                const response = await fetch(`${API_BASE}/portfolio`);
+                const data = await response.json();
+                
+                const portfolio = data.performance.overview;
+                
+                document.getElementById('total-value').textContent = 
+                    '$' + portfolio.total_value.toLocaleString('en-US', {minimumFractionDigits: 2});
+                document.getElementById('daily-pnl').textContent = 
+                    '$' + portfolio.daily_pnl.toLocaleString('en-US', {minimumFractionDigits: 2});
+                document.getElementById('total-pnl').textContent = 
+                    portfolio.total_pnl_percent.toFixed(2) + '%';
+                document.getElementById('positions').textContent = 
+                    portfolio.total_positions.toString();
+                
+            } catch (error) {
+                console.error('Portfolio load failed:', error);
+            }
+        }
+        
+        async function startBot() {
+            setButtonLoading('start-btn', true);
+            try {
+                const response = await fetch(`${API_BASE}/start`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({mode: 'paper'})
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`Bot started successfully! PID: ${data.pid}`);
+                } else {
+                    alert(`Failed to start bot: ${data.error}`);
+                }
+                
+                // Refresh status
+                setTimeout(checkServerStatus, 2000);
+                
+            } catch (error) {
+                alert('Failed to start bot: ' + error.message);
+            }
+            setButtonLoading('start-btn', false);
+        }
+        
+        async function stopBot() {
+            setButtonLoading('stop-btn', true);
+            try {
+                const response = await fetch(`${API_BASE}/stop`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Bot stopped successfully!');
+                } else {
+                    alert(`Failed to stop bot: ${data.error}`);
+                }
+                
+                // Refresh status
+                setTimeout(checkServerStatus, 2000);
+                
+            } catch (error) {
+                alert('Failed to stop bot: ' + error.message);
+            }
+            setButtonLoading('stop-btn', false);
+        }
+        
+        async function loadStrategies() {
+            try {
+                const response = await fetch(`${API_BASE}/strategies`);
+                const data = await response.json();
+                
+                document.getElementById('api-data').innerHTML = 
+                    `<strong>Available Strategies (${data.total}):</strong><br>` + 
+                    data.strategies.map(s => 
+                        `• ${s.name} (${s.risk_level}) - Win Rate: ${(s.expected_win_rate * 100).toFixed(1)}%`
+                    ).join('<br>');
+                    
+            } catch (error) {
+                document.getElementById('api-data').textContent = 'Error loading strategies: ' + error.message;
+            }
+        }
+        
+        async function loadTrades() {
+            try {
+                const response = await fetch(`${API_BASE}/portfolio`);
+                const data = await response.json();
+                
+                document.getElementById('api-data').innerHTML = 
+                    `<strong>Recent Trades:</strong><br>` + 
+                    (data.recent_trades.length > 0 ? 
+                        data.recent_trades.map(t => 
+                            `• ${t.action.toUpperCase()} ${t.symbol} (${t.strategy}) - P&L: $${t.pnl.toFixed(2)}`
+                        ).join('<br>') : 
+                        'No recent trades found'
+                    );
+                    
+            } catch (error) {
+                document.getElementById('api-data').textContent = 'Error loading trades: ' + error.message;
+            }
+        }
+        
+        async function testAllEndpoints() {
+            const endpoints = [
+                '/status',
+                '/portfolio', 
+                '/strategies',
+                '/market-analysis'
+            ];
+            
+            let results = '<strong>API Endpoint Test Results:</strong><br>';
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(`${API_BASE}${endpoint}`);
+                    const status = response.ok ? '✅' : '❌';
+                    results += `${status} ${endpoint} (${response.status})<br>`;
+                } catch (error) {
+                    results += `❌ ${endpoint} (Error: ${error.message})<br>`;
+                }
+            }
+            
+            document.getElementById('api-data').innerHTML = results;
+        }
+        
+        function setButtonLoading(buttonId, loading) {
+            const button = document.getElementById(buttonId);
+            if (loading) {
+                button.classList.add('loading');
+                button.textContent = 'Loading...';
+            } else {
+                button.classList.remove('loading');
+                button.textContent = buttonId === 'start-btn' ? 'Start Bot' : 'Stop Bot';
+            }
+        }
+    </script>
+</body>
+</html>
