@@ -55,6 +55,26 @@ def create_intelligence_app():
     # CORS für alle Origins
     CORS(app, origins=["*"])
     
+    # Dashboard route
+    @app.route('/')
+    @app.route('/dashboard')
+    def serve_dashboard():
+        """Serve the JANICS FREEDOM FACTORY dashboard"""
+        import os
+        try:
+            dashboard_path = 'janics_freedom_factory_dashboard.html'
+            if os.path.exists(dashboard_path):
+                with open(dashboard_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                # Update API base URL to use relative path
+                content = content.replace('http://85.215.183.30:8080/api/intelligence', '/api/intelligence')
+                content = content.replace('http://85.215.183.30:8002/api/intelligence', '/api/intelligence')
+                return content, 200, {'Content-Type': 'text/html'}
+            else:
+                return "Dashboard not found. Please ensure janics_freedom_factory_dashboard.html exists.", 404
+        except Exception as e:
+            return f"Error loading dashboard: {str(e)}", 500
+    
     # Basic routes
     @app.route('/health')
     def health():
