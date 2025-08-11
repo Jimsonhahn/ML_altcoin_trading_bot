@@ -1020,80 +1020,6 @@
             </div>
         </div>
 
-        <!-- Enhanced AI Decision Engine -->
-        <div class="panel">
-            <div class="panel-header">
-                <div class="panel-title">🧠 Strategy Command Center</div>
-                <div class="live-indicator">
-                    <div class="factory-dot"></div>
-                    <span>AI Active</span>
-                </div>
-            </div>
-            
-            <div style="text-align: center; margin: 20px 0;">
-                <div style="display: flex; justify-content: center; flex-wrap: wrap;">
-                    <div class="strategy-hexagon">
-                        <div class="hexagon active">
-                            <div class="strategy-name">MOMENTUM<br>V2.1</div>
-                        </div>
-                    </div>
-                    <div class="strategy-hexagon">
-                        <div class="hexagon">
-                            <div class="strategy-name">MEAN<br>REVERT</div>
-                        </div>
-                    </div>
-                    <div class="strategy-hexagon">
-                        <div class="hexagon">
-                            <div class="strategy-name">ARBITRAGE<br>PRO</div>
-                        </div>
-                    </div>
-                    <div class="strategy-hexagon">
-                        <div class="hexagon">
-                            <div class="strategy-name">ML<br>PREDICT</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div style="text-align: center; margin: 20px 0;">
-                <div style="color: var(--gold-accent); font-weight: 700; font-size: 16px;">MOMENTUM_BREAKOUT_V2.1</div>
-                <div style="color: var(--text-secondary); font-size: 14px; margin-top: 5px;">Active for 2h 34m • Performance: +$2,847.33</div>
-            </div>
-            
-            <div class="confidence-breakdown">
-                <div>
-                    <div style="color: var(--text-secondary); font-size: 12px; margin-bottom: 5px;">Strategy Confidence</div>
-                    <div class="confidence-meter">
-                        <div class="confidence-fill" style="width: 94.2%"></div>
-                    </div>
-                </div>
-                <div style="color: var(--profit-green); font-weight: 700; font-size: 24px;">94.2%</div>
-            </div>
-            
-            <div class="decision-tree">
-                <div class="decision-node active">
-                    <div class="narrative-icon">⚡</div>
-                    <div>
-                        <div style="font-weight: 600;">IF Market Momentum > 0.75 → BUY Signal</div>
-                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px;">Current: 0.87 ✅</div>
-                    </div>
-                </div>
-                <div class="decision-node">
-                    <div class="narrative-icon">📊</div>
-                    <div>
-                        <div style="font-weight: 600;">IF RSI < 30 AND Volume > 1.5x → Strong Buy</div>
-                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px;">Monitoring...</div>
-                    </div>
-                </div>
-                <div class="decision-node">
-                    <div class="narrative-icon">🎯</div>
-                    <div>
-                        <div style="font-weight: 600;">Risk/Reward > 1:3 → Position Confirmed</div>
-                        <div style="font-size: 12px; color: var(--profit-green); margin-top: 3px;">Current: 1:3.2 ✅</div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Janics Bot Intelligence -->
         <div class="panel">
@@ -1370,6 +1296,7 @@
         const API_BASE = 'http://85.215.183.30:8080/api/intelligence';
         let autoRefresh = true;
         let refreshInterval;
+        let botStatusInterval;
         let portfolioValue = 127450.32;
         let dailyProfit = 2847.93;
         
@@ -1377,6 +1304,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             initializeParticles();
             loadDashboardData();
+            checkTradingBotStatus(); // Initial bot status check
             startAutoRefresh();
             startMoneyStream();
             startValueAnimation();
@@ -1550,9 +1478,12 @@
         async function checkTradingBotStatus() {
             try {
                 const response = await axios.get('/api/bot/status');
-                const data = response.data.data;
                 
-                const tradingBot = data.trading_bot;
+                if (!response.data.success) {
+                    throw new Error(response.data.message || 'Status check failed');
+                }
+                
+                const data = response.data;
                 const statusElement = document.getElementById('tradingBotStatus');
                 const controlsElement = document.getElementById('botControls');
                 const startBtn = document.getElementById('startBtn');
@@ -1562,12 +1493,16 @@
                 // Show controls
                 controlsElement.style.display = 'flex';
                 
-                if (tradingBot.running) {
-                    if (tradingBot.process_count > 1) {
-                        statusElement.innerHTML = `Trading Bot: ⚠️ ${tradingBot.process_count} Instances (${tradingBot.uptime_hours.toFixed(1)}h uptime)`;
+                const isRunning = data.process_count > 0;
+                const processCount = data.process_count;
+                const uptimeHours = data.aggregated_metrics.max_uptime_hours;
+                
+                if (isRunning) {
+                    if (processCount > 1) {
+                        statusElement.innerHTML = `Trading Bot: ⚠️ ${processCount} Instances (${uptimeHours.toFixed(1)}h uptime)`;
                         statusElement.style.color = 'orange';
                     } else {
-                        statusElement.innerHTML = `Trading Bot: ✅ Running (${tradingBot.uptime_hours.toFixed(1)}h uptime)`;
+                        statusElement.innerHTML = `Trading Bot: ✅ Running (${uptimeHours.toFixed(1)}h uptime)`;
                         statusElement.style.color = '#00ff88';
                     }
                     
@@ -1575,6 +1510,12 @@
                     startBtn.disabled = true;
                     stopBtn.disabled = false;
                     restartBtn.disabled = false;
+                    
+                    // Show process details
+                    const processInfo = data.processes.map(p => 
+                        `PID: ${p.pid}, CPU: ${p.cpu_percent.toFixed(1)}%, Memory: ${p.memory_mb.toFixed(1)} MB`
+                    ).join(' | ');
+                    console.log(`Bot Processes: ${processInfo}`);
                     
                 } else {
                     statusElement.innerHTML = 'Trading Bot: 🔴 OFFLINE - Use controls to start!';
@@ -1585,16 +1526,19 @@
                     stopBtn.disabled = true;
                     restartBtn.disabled = true;
                     
-                    // Show critical notification for offline bot
-                    showNotification('🚨 TRADING BOT OFFLINE', 'Main trading bot is not running! Use the Start Bot button to begin trading.', 'critical');
+                    // Show critical notification for offline bot (but not too frequently)
+                    if (!window.lastOfflineNotification || Date.now() - window.lastOfflineNotification > 60000) {
+                        showNotification('🚨 TRADING BOT OFFLINE', 'Main trading bot is not running! Use the Start Bot button to begin trading.', 'critical');
+                        window.lastOfflineNotification = Date.now();
+                    }
                 }
                 
-                // Update system resource info if needed
-                const systemInfo = data.system;
-                console.log(`System: CPU ${systemInfo.cpu_percent}%, Memory ${systemInfo.memory_percent}%`);
+                // Update system resource info
+                const systemMetrics = data.system_metrics;
+                console.log(`System: CPU ${systemMetrics.cpu_percent.toFixed(1)}%, Memory ${systemMetrics.memory_percent.toFixed(1)}%, Disk ${systemMetrics.disk_percent.toFixed(1)}%`);
                 
             } catch (error) {
-                document.getElementById('tradingBotStatus').innerHTML = 'Trading Bot: ❌ Check Failed';
+                document.getElementById('tradingBotStatus').innerHTML = 'Trading Bot: ❌ Status Check Failed';
                 document.getElementById('tradingBotStatus').style.color = '#ff6b6b';
                 console.error('Bot status check error:', error);
                 
@@ -1994,13 +1938,22 @@
 
         function startAutoRefresh() {
             if (refreshInterval) clearInterval(refreshInterval);
+            if (botStatusInterval) clearInterval(botStatusInterval);
+            
+            // Main dashboard data refresh every 15 seconds
             refreshInterval = setInterval(loadDashboardData, 15000);
+            
+            // Bot status refresh every 5 seconds (more frequent for real-time monitoring)
+            botStatusInterval = setInterval(checkTradingBotStatus, 5000);
+            
             updateAutoRefreshButton();
         }
 
         function stopAutoRefresh() {
             if (refreshInterval) clearInterval(refreshInterval);
+            if (botStatusInterval) clearInterval(botStatusInterval);
             refreshInterval = null;
+            botStatusInterval = null;
             updateAutoRefreshButton();
         }
 

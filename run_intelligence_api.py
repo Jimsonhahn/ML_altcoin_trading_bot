@@ -11,6 +11,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from utils.api_security import init_api_security, security_manager, resilient_client
 from utils.dashboard_enhancements import dashboard_manager, BotHealthStatus, NotificationLevel
+from core.bot_controller import get_bot_controller, initialize_bot_controller
 import sys
 
 # Logging Setup
@@ -464,65 +465,41 @@ def create_intelligence_app():
     @app.route('/api/bot/status')
     @security_manager.rate_limit_decorator('dashboard')
     def bot_status():
-        """Get detailed bot process status"""
-        from datetime import datetime
+        """Get detailed bot process status using JanicsBotController"""
         try:
-            system_status = dashboard_manager.process_monitor.get_system_status()
+            bot_controller = get_bot_controller()
+            status_result = bot_controller.get_bot_status()
             
-            return jsonify({
-                'success': True,
-                'data': {
-                    'trading_bot': {
-                        'running': system_status['trading_bot']['trading_bot_running'],
-                        'process_count': system_status['trading_bot']['bot_count'],
-                        'main_pid': system_status['trading_bot']['main_pid'],
-                        'uptime_hours': system_status['trading_bot']['uptime_hours'],
-                        'cpu_usage': system_status['trading_bot']['total_cpu_usage'],
-                        'memory_usage': system_status['trading_bot']['total_memory_usage'],
-                        'processes': [{
-                            'pid': proc['pid'],
-                            'name': proc['name'],
-                            'start_time': proc['start_time'].isoformat(),
-                            'cpu_percent': proc['cpu_percent'],
-                            'memory_percent': proc['memory_percent']
-                        } for proc in system_status['trading_bot']['processes']]
-                    },
-                    'intelligence_api': system_status['intelligence_api'],
-                    'system': system_status['system'],
-                    'timestamp': datetime.now().isoformat()
-                }
-            })
+            return jsonify(status_result)
         except Exception as e:
             return jsonify({
                 'success': False,
-                'error': str(e)
+                'error': str(e),
+                'message': 'Failed to get bot status'
             }), 500
     
     @app.route('/api/bot/start', methods=['POST'])
     @security_manager.rate_limit_decorator('dashboard')
     def start_bot():
-        """Start the trading bot"""
+        """Start the trading bot using JanicsBotController"""
         from datetime import datetime
+        from flask import request
         try:
             data = request.get_json() or {}
             bot_script = data.get('script', 'main.py')
             
-            result = dashboard_manager.process_monitor.start_trading_bot(bot_script)
+            bot_controller = get_bot_controller()
+            result = bot_controller.start_bot(bot_script)
             
             if result['success']:
                 dashboard_manager.add_notification(
                     "🚀 Trading Bot Started",
                     f"Bot started successfully (PID: {result['pid']})",
-                    dashboard_manager.NotificationLevel.INFO,
+                    NotificationLevel.INFO,
                     "system"
                 )
             
-            return jsonify({
-                'success': result['success'],
-                'message': result['message'],
-                'data': result,
-                'timestamp': datetime.now().isoformat()
-            })
+            return jsonify(result)
         except Exception as e:
             return jsonify({
                 'success': False,
@@ -533,28 +510,26 @@ def create_intelligence_app():
     @app.route('/api/bot/stop', methods=['POST'])
     @security_manager.rate_limit_decorator('dashboard')
     def stop_bot():
-        """Stop the trading bot"""
+        """Stop the trading bot using JanicsBotController"""
         from datetime import datetime
+        from flask import request
         try:
             data = request.get_json() or {}
             pid = data.get('pid')  # Optional specific PID
+            force = data.get('force', False)  # Force kill option
             
-            result = dashboard_manager.process_monitor.stop_trading_bot(pid)
+            bot_controller = get_bot_controller()
+            result = bot_controller.stop_bot(pid=pid, force=force)
             
             if result['success']:
                 dashboard_manager.add_notification(
                     "🛑 Trading Bot Stopped",
                     result['message'],
-                    dashboard_manager.NotificationLevel.INFO,
+                    NotificationLevel.INFO,
                     "system"
                 )
             
-            return jsonify({
-                'success': result['success'],
-                'message': result['message'],
-                'data': result,
-                'timestamp': datetime.now().isoformat()
-            })
+            return jsonify(result)
         except Exception as e:
             return jsonify({
                 'success': False,
@@ -565,33 +540,67 @@ def create_intelligence_app():
     @app.route('/api/bot/restart', methods=['POST'])
     @security_manager.rate_limit_decorator('dashboard')
     def restart_bot():
-        """Restart the trading bot"""
+        """Restart the trading bot using JanicsBotController"""
         from datetime import datetime
+        from flask import request
         try:
             data = request.get_json() or {}
             bot_script = data.get('script', 'main.py')
+            force_stop = data.get('force_stop', False)
             
-            result = dashboard_manager.process_monitor.restart_trading_bot(bot_script)
+            bot_controller = get_bot_controller()
+            result = bot_controller.restart_bot(bot_script, force_stop=force_stop)
             
             if result['success']:
                 dashboard_manager.add_notification(
                     "🔄 Trading Bot Restarted",
                     f"Bot restarted successfully (PID: {result['pid']})",
-                    dashboard_manager.NotificationLevel.INFO,
+                    NotificationLevel.INFO,
                     "system"
                 )
             
-            return jsonify({
-                'success': result['success'],
-                'message': result['message'],
-                'data': result,
-                'timestamp': datetime.now().isoformat()
-            })
+            return jsonify(result)
         except Exception as e:
             return jsonify({
                 'success': False,
                 'error': str(e),
                 'message': 'Failed to restart trading bot'
+            }), 500
+    
+    @app.route('/api/bot/logs')
+    @security_manager.rate_limit_decorator('dashboard')
+    def get_bot_logs():
+        """Get bot process logs"""
+        from flask import request
+        try:
+            pid = request.args.get('pid', type=int)
+            lines = request.args.get('lines', default=50, type=int)
+            
+            bot_controller = get_bot_controller()
+            result = bot_controller.get_bot_logs(pid=pid, lines=lines)
+            
+            return jsonify(result)
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e),
+                'message': 'Failed to get bot logs'
+            }), 500
+    
+    @app.route('/api/bot/cleanup', methods=['POST'])
+    @security_manager.rate_limit_decorator('dashboard')
+    def cleanup_processes():
+        """Cleanup orphaned processes"""
+        try:
+            bot_controller = get_bot_controller()
+            result = bot_controller.cleanup_orphaned_processes()
+            
+            return jsonify(result)
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e),
+                'message': 'Failed to cleanup processes'
             }), 500
     
     @app.route('/api/intelligence/demo')
@@ -724,12 +733,19 @@ async def initialize_risk_tiered_system():
 def run_intelligence_server(host='localhost', port=8001):
     """Run Intelligence API Server"""
     from datetime import datetime
+    import os
     
     print("🚀 Intelligence API Server")
     print("=" * 40)
     print(f"Host: {host}")
     print(f"Port: {port}")
     print("=" * 40)
+    
+    # Initialize Bot Controller
+    working_dir = os.getcwd()
+    bot_scripts = ["main.py", "main_fixed.py", "trading_bot.py", "core/trading_bot.py"]
+    initialize_bot_controller(working_directory=working_dir, bot_scripts=bot_scripts)
+    print("✅ Bot Controller initialized")
     
     # Initialize async components
     loop = asyncio.new_event_loop()
