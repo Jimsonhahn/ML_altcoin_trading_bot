@@ -199,13 +199,20 @@ class BotProcessMonitor:
             import subprocess
             import sys
             
-            # Try different possible bot locations
+            # Try different possible bot locations - extensive search
             possible_locations = [
                 bot_script,
                 f"./{bot_script}",
                 f"../{bot_script}",
                 "main.py",
-                "./main.py"
+                "./main.py",
+                "../main.py",
+                "trading_bot.py",
+                "./trading_bot.py",
+                "core/trading_bot.py",
+                "./core/trading_bot.py",
+                "main_fixed.py",
+                "./main_fixed.py"
             ]
             
             bot_path = None
@@ -215,11 +222,22 @@ class BotProcessMonitor:
                     break
             
             if not bot_path:
-                return {
-                    'success': False,
-                    'message': f'Could not find {bot_script} to start',
-                    'error': 'BOT_SCRIPT_NOT_FOUND'
-                }
+                # List available Python files for debugging
+                try:
+                    available_files = [f for f in os.listdir('.') if f.endswith('.py')]
+                    return {
+                        'success': False,
+                        'message': f'Could not find {bot_script}. Available .py files: {available_files[:10]}',
+                        'error': 'BOT_SCRIPT_NOT_FOUND',
+                        'available_files': available_files[:10],
+                        'current_dir': os.getcwd()
+                    }
+                except:
+                    return {
+                        'success': False,
+                        'message': f'Could not find {bot_script} to start',
+                        'error': 'BOT_SCRIPT_NOT_FOUND'
+                    }
             
             # Start bot process in background
             process = subprocess.Popen([

@@ -442,12 +442,12 @@ def init_api_security(app, secret_key: str = None, admin_keys: List[str] = None)
     def apply_security():
         g.security_manager = security_manager
         
-        # Skip rate limiting for whitelisted IPs
+        # Skip rate limiting for whitelisted IPs and GET requests
         ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
-        if ip in security_manager.whitelisted_ips:
+        if ip in security_manager.whitelisted_ips or request.method == 'GET':
             return
         
-        # Apply basic rate limiting
+        # Apply basic rate limiting only for POST/PUT/DELETE to prevent dashboard timeouts
         endpoint = request.endpoint or 'default'
         try:
             security_manager.apply_rate_limiting(lambda: None, endpoint)
