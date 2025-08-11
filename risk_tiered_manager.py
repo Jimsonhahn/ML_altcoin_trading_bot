@@ -146,26 +146,24 @@ class RiskTieredStrategyManager:
         """
         strategy_allocations = []
         
-        # Define strategy risk mappings based on analysis
+        # Define strategy risk mappings based on ACTUAL available strategies from server log
         strategy_risk_mapping = {
-            # LOW RISK STRATEGIES (50% allocation)
-            'DefensiveVolatilityStrategy': ('LOW_RISK', 20.0),
-            'SmartRebalancingStrategy': ('LOW_RISK', 15.0),
-            'MeanReversionStrategy': ('LOW_RISK', 10.0),
-            'ArbitrageStrategy': ('LOW_RISK', 5.0),
+            # LOW RISK STRATEGIES (50% allocation) - Using real strategy names from log
+            'mean_reversion': ('LOW_RISK', 20.0),
+            'arbitrage': ('LOW_RISK', 15.0),
+            'grid_trading': ('LOW_RISK', 15.0),
             
             # MEDIUM RISK STRATEGIES (35% allocation)
-            'MomentumStrategy': ('MEDIUM_RISK', 12.0),
-            'CandleBodyMomentumStrategy': ('MEDIUM_RISK', 10.0),
-            'GridTradingStrategy': ('MEDIUM_RISK', 8.0),
-            'TrendFollowingStrategy': ('MEDIUM_RISK', 5.0),
+            'momentum': ('MEDIUM_RISK', 15.0),
+            'candle_momentum': ('MEDIUM_RISK', 10.0),
+            'candle_body_momentum': ('MEDIUM_RISK', 5.0),
+            'optimized_candle_momentum': ('MEDIUM_RISK', 5.0),
             
             # HIGH RISK STRATEGIES (15% allocation)  
-            'MLStrategy': ('HIGH_RISK', 5.0),
-            'EnhancedHighRiskStrategy': ('HIGH_RISK', 4.0),
-            'HighRiskDailyStrategy': ('HIGH_RISK', 3.0),
-            'LiquidationStrategy': ('HIGH_RISK', 2.0),
-            'UltimateBTCStrategy': ('HIGH_RISK', 1.0)
+            'high_risk_daily': ('HIGH_RISK', 8.0),
+            'liquidation': ('HIGH_RISK', 4.0),
+            'defi_yield': ('HIGH_RISK', 2.0),
+            'copy_trading': ('HIGH_RISK', 1.0)
         }
         
         # Import and validate all strategies

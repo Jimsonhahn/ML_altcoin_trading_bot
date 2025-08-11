@@ -905,7 +905,7 @@
             <div class="status-item">
                 <span id="tradingBotStatus">Trading Bot: Checking...</span>
             </div>
-            <div class="status-item bot-controls" id="botControls" style="display: none;">
+            <div class="status-item bot-controls" id="botControls" style="display: flex;">
                 <button onclick="startTradingBot()" class="control-btn start-btn" id="startBtn">
                     🚀 Start Bot
                 </button>
@@ -915,6 +915,9 @@
                 <button onclick="restartTradingBot()" class="control-btn restart-btn" id="restartBtn">
                     🔄 Restart Bot
                 </button>
+            </div>
+            <div class="status-item system-info" id="systemInfo">
+                System: Loading...
             </div>
             <div class="status-item">
                 <span id="lastUpdate">Last Update: --</span>
@@ -1418,13 +1421,13 @@
                 // Load open trades
                 updateOpenTrades();
                 
-                // Update bot mood and activity
+                // Update bot mood and activity with REAL data
                 updateBotIntelligence(data);
                 
-                // Update trade narratives
+                // Update trade narratives with REAL decisions
                 updateTradeNarratives(data.decisions || []);
                 
-                // Check Trading Bot Status
+                // Check Trading Bot Status FIRST (most important)
                 await checkTradingBotStatus();
                 
                 // Load Risk-Tiered System data
@@ -1432,6 +1435,9 @@
                 
                 // Load Portfolio Optimization data
                 await loadPortfolioOptimizationData();
+                
+                // Load Dashboard Health Data (replaces mock data)
+                await loadDashboardHealthData();
                 
                 document.getElementById('serverStatus').textContent = 'Server: Online 🟢';
                 
@@ -1594,6 +1600,49 @@
                 
                 // Hide controls on error
                 document.getElementById('botControls').style.display = 'none';
+            }
+        }
+
+        async function loadDashboardHealthData() {
+            try {
+                const response = await axios.get('/api/dashboard/health');
+                const data = response.data.data;
+                
+                if (data.bot_health) {
+                    const botHealth = data.bot_health;
+                    
+                    // Update real system metrics instead of mock data
+                    console.log('Real Bot Health Data:', botHealth);
+                    
+                    // Update memory/CPU if available
+                    if (botHealth.memory_usage && botHealth.cpu_usage) {
+                        updateSystemMetrics(botHealth.cpu_usage, botHealth.memory_usage);
+                    }
+                }
+                
+                // Update notifications
+                if (data.notifications && data.notifications.length > 0) {
+                    data.notifications.forEach(notification => {
+                        if (notification.level === 'critical' || notification.level === 'emergency') {
+                            showNotification(notification.title, notification.message, 'error');
+                        } else if (notification.level === 'warning') {
+                            showNotification(notification.title, notification.message, 'warning');
+                        }
+                    });
+                }
+                
+            } catch (error) {
+                console.error('Error loading dashboard health data:', error);
+            }
+        }
+
+        function updateSystemMetrics(cpu, memory) {
+            // Update real system metrics in dashboard
+            console.log(`Real System Metrics - CPU: ${cpu}%, Memory: ${memory}%`);
+            
+            const systemInfoElement = document.getElementById('systemInfo');
+            if (systemInfoElement) {
+                systemInfoElement.innerHTML = `💻 CPU: ${cpu.toFixed(1)}% | 💾 Memory: ${memory.toFixed(1)}%`;
             }
         }
 
