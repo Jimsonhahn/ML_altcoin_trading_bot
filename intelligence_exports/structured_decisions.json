@@ -51,10 +51,62 @@
         "market_hours": true,
         "system_load": "normal"
       }
+    },
+    {
+      "decision_id": "decision_20250811_183405_5275",
+      "timestamp": "2025-08-11T18:34:05.256028",
+      "session_id": "eb971267-d79c-4026-81fa-d949f4aa1ded",
+      "decision_data": {
+        "strategy": "momentum_strategy",
+        "symbol": "BTC/USDT",
+        "action": "buy",
+        "price": 45000.0
+      },
+      "market_context": {
+        "regime": "bull_market",
+        "volatility": 0.15,
+        "rsi": 65.5
+      },
+      "strategy_reasoning": "Demo decision for testing",
+      "confidence_level": 0.85,
+      "bot_version": "enhanced_v1.0",
+      "environmental_factors": {
+        "cpu_usage": 0,
+        "memory_usage": 0,
+        "active_strategies": [],
+        "market_hours": true,
+        "system_load": "normal"
+      }
+    },
+    {
+      "decision_id": "decision_20250811_183537_2629",
+      "timestamp": "2025-08-11T18:35:37.037224",
+      "session_id": "4f21e4cd-b705-4bf9-8b18-967211efb11e",
+      "decision_data": {
+        "strategy": "momentum_strategy",
+        "symbol": "BTC/USDT",
+        "action": "buy",
+        "price": 45000.0
+      },
+      "market_context": {
+        "regime": "bull_market",
+        "volatility": 0.15,
+        "rsi": 65.5
+      },
+      "strategy_reasoning": "Demo decision for testing",
+      "confidence_level": 0.85,
+      "bot_version": "enhanced_v1.0",
+      "environmental_factors": {
+        "cpu_usage": 0,
+        "memory_usage": 0,
+        "active_strategies": [],
+        "market_hours": true,
+        "system_load": "normal"
+      }
     }
   ],
   "metadata": {
-    "last_updated": "2025-08-11T12:03:11.814844",
-    "total_decisions": 2
+    "last_updated": "2025-08-11T18:35:37.039092",
+    "total_decisions": 4
   }
 }

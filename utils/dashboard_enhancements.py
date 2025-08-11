@@ -7,6 +7,9 @@ Live Bot-Health Indicators, Strategy Orchestra, Performance Tracking & Notificat
 import json
 import logging
 import asyncio
+import os
+import psutil
+import subprocess
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
@@ -46,6 +49,12 @@ class BotHealthMetrics:
     failed_trades: int = 0
     total_pnl: float = 0.0
     last_update: datetime = None
+    
+    # Bot Process Status
+    trading_bot_running: bool = False        # Is main.py running?
+    trading_bot_pid: Optional[int] = None    # Process ID if running
+    trading_bot_uptime: float = 0.0          # Bot uptime in hours
+    intelligence_api_running: bool = False   # Is Intelligence API running?
     
     def __post_init__(self):
         if self.last_update is None:
@@ -87,6 +96,115 @@ class DashboardNotification:
         if isinstance(self.timestamp, str):
             self.timestamp = datetime.fromisoformat(self.timestamp)
 
+class BotProcessMonitor:
+    """
+    🤖 Trading Bot Process Monitor
+    
+    Detects if the main trading bot (main.py) is actually running
+    """
+    
+    def __init__(self):
+        self.known_bot_processes = []
+        self.process_patterns = [
+            'main.py',
+            'python main.py',
+            'python3 main.py',
+            'trading_bot.py',
+            'altcoin_trading_bot'
+        ]
+        
+    def check_bot_processes(self) -> Dict[str, Any]:
+        """Check if trading bot processes are running"""
+        try:
+            running_bots = []
+            total_cpu = 0
+            total_memory = 0
+            oldest_start_time = None
+            
+            # Check all running processes
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'create_time', 'cpu_percent', 'memory_percent']):
+                try:
+                    pinfo = proc.info
+                    cmdline = ' '.join(pinfo['cmdline']) if pinfo['cmdline'] else ''
+                    
+                    # Check if this looks like our trading bot
+                    is_trading_bot = any(pattern in cmdline.lower() or pattern in pinfo['name'].lower() 
+                                       for pattern in self.process_patterns)
+                    
+                    # Exclude the Intelligence API itself
+                    if 'run_intelligence_api.py' in cmdline or 'intelligence_api' in cmdline:
+                        continue
+                        
+                    if is_trading_bot:
+                        bot_info = {
+                            'pid': pinfo['pid'],
+                            'name': pinfo['name'],
+                            'cmdline': cmdline,
+                            'start_time': datetime.fromtimestamp(pinfo['create_time']),
+                            'cpu_percent': pinfo.get('cpu_percent', 0),
+                            'memory_percent': pinfo.get('memory_percent', 0)
+                        }
+                        
+                        running_bots.append(bot_info)
+                        total_cpu += bot_info['cpu_percent']
+                        total_memory += bot_info['memory_percent']
+                        
+                        if oldest_start_time is None or bot_info['start_time'] < oldest_start_time:
+                            oldest_start_time = bot_info['start_time']
+                            
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    continue
+            
+            # Calculate uptime
+            uptime_hours = 0
+            if oldest_start_time:
+                uptime_hours = (datetime.now() - oldest_start_time).total_seconds() / 3600
+            
+            return {
+                'trading_bot_running': len(running_bots) > 0,
+                'bot_count': len(running_bots),
+                'processes': running_bots,
+                'total_cpu_usage': total_cpu,
+                'total_memory_usage': total_memory,
+                'uptime_hours': uptime_hours,
+                'main_pid': running_bots[0]['pid'] if running_bots else None
+            }
+            
+        except Exception as e:
+            logger.error(f"Error checking bot processes: {e}")
+            return {
+                'trading_bot_running': False,
+                'bot_count': 0,
+                'processes': [],
+                'total_cpu_usage': 0,
+                'total_memory_usage': 0,
+                'uptime_hours': 0,
+                'main_pid': None,
+                'error': str(e)
+            }
+    
+    def check_intelligence_api(self) -> bool:
+        """Check if Intelligence API is running (this process)"""
+        return True  # We're running if we can execute this code
+    
+    def get_system_status(self) -> Dict[str, Any]:
+        """Get comprehensive system status"""
+        bot_status = self.check_bot_processes()
+        
+        return {
+            'trading_bot': bot_status,
+            'intelligence_api': {
+                'running': self.check_intelligence_api(),
+                'pid': os.getpid(),
+                'uptime_hours': (datetime.now() - datetime.fromtimestamp(psutil.Process().create_time())).total_seconds() / 3600
+            },
+            'system': {
+                'cpu_percent': psutil.cpu_percent(interval=1),
+                'memory_percent': psutil.virtual_memory().percent,
+                'disk_percent': psutil.disk_usage('/').percent
+            }
+        }
+
 class DashboardEnhancementManager:
     """
     📊 Enhanced Dashboard Management System
@@ -105,6 +223,10 @@ class DashboardEnhancementManager:
         self.notifications: List[DashboardNotification] = []
         self.performance_history: List[Dict] = []
         self.connection_history: List[Dict] = []
+        
+        # Bot Process Monitoring
+        self.process_monitor = BotProcessMonitor()
+        self.last_bot_check = None
         
         # Health monitoring configuration
         self.health_thresholds = {
@@ -127,16 +249,21 @@ class DashboardEnhancementManager:
     def update_bot_health(self, metrics: Dict) -> BotHealthMetrics:
         """Update comprehensive bot health metrics"""
         try:
-            # Calculate overall health score
+            # Check trading bot process status first
+            system_status = self.process_monitor.get_system_status()
+            trading_bot_status = system_status['trading_bot']
+            
+            # Calculate overall health score with bot status factor
             health_factors = {
-                'connection_quality': metrics.get('connection_quality', 0) * 0.25,
-                'api_response': self._calculate_response_score(metrics.get('api_response_time', 1000)) * 0.20,
-                'error_rate': (100 - metrics.get('error_rate', 100)) * 0.20,
+                'connection_quality': metrics.get('connection_quality', 0) * 0.20,
+                'api_response': self._calculate_response_score(metrics.get('api_response_time', 1000)) * 0.15,
+                'error_rate': (100 - metrics.get('error_rate', 100)) * 0.15,
                 'system_resources': self._calculate_resource_score(
-                    metrics.get('cpu_usage', 100), 
-                    metrics.get('memory_usage', 100)
+                    system_status['system']['cpu_percent'], 
+                    system_status['system']['memory_percent']
                 ) * 0.15,
-                'trading_performance': metrics.get('trading_success_rate', 0) * 0.20
+                'trading_performance': metrics.get('trading_success_rate', 0) * 0.15,
+                'bot_process_status': (100 if trading_bot_status['trading_bot_running'] else 0) * 0.20  # Major factor!
             }
             
             overall_health = sum(health_factors.values())
@@ -153,7 +280,7 @@ class DashboardEnhancementManager:
             else:
                 status = BotHealthStatus.OFFLINE
             
-            # Update bot health
+            # Update bot health with process information
             self.bot_health = BotHealthMetrics(
                 overall_health=overall_health,
                 status=status,
@@ -161,13 +288,19 @@ class DashboardEnhancementManager:
                 connection_quality=metrics.get('connection_quality', 0),
                 api_response_time=metrics.get('api_response_time', 0),
                 error_rate=metrics.get('error_rate', 0),
-                memory_usage=metrics.get('memory_usage', 0),
-                cpu_usage=metrics.get('cpu_usage', 0),
+                memory_usage=system_status['system']['memory_percent'],
+                cpu_usage=system_status['system']['cpu_percent'],
                 active_strategies=metrics.get('active_strategies', 0),
                 successful_trades=metrics.get('successful_trades', 0),
                 failed_trades=metrics.get('failed_trades', 0),
                 total_pnl=metrics.get('total_pnl', 0),
-                last_update=datetime.now()
+                last_update=datetime.now(),
+                
+                # Bot Process Status
+                trading_bot_running=trading_bot_status['trading_bot_running'],
+                trading_bot_pid=trading_bot_status.get('main_pid'),
+                trading_bot_uptime=trading_bot_status.get('uptime_hours', 0),
+                intelligence_api_running=system_status['intelligence_api']['running']
             )
             
             # Add to history
@@ -182,8 +315,9 @@ class DashboardEnhancementManager:
             if len(self.performance_history) > 100:
                 self.performance_history = self.performance_history[-100:]
             
-            # Check for alerts
+            # Check for alerts including bot process alerts
             self._check_health_alerts(status, overall_health)
+            self._check_bot_process_alerts(trading_bot_status)
             
             return self.bot_health
             
@@ -324,6 +458,46 @@ class DashboardEnhancementManager:
                 "performance"
             )
     
+    def _check_bot_process_alerts(self, bot_status: Dict[str, Any]):
+        \"\"\"Check for bot process-specific alerts\"\"\"
+        
+        # Trading Bot offline alert
+        if not bot_status['trading_bot_running']:
+            self.add_notification(
+                \"🚨 TRADING BOT OFFLINE\",
+                \"Main trading bot is not running! Start main.py to begin trading.\",
+                NotificationLevel.EMERGENCY,
+                \"system\",
+                action_required=True
+            )
+        
+        # Multiple bot instances warning
+        elif bot_status['bot_count'] > 1:
+            self.add_notification(
+                \"⚠️ Multiple Trading Bots Detected\",
+                f\"Found {bot_status['bot_count']} trading bot instances running. This may cause conflicts.\",
+                NotificationLevel.WARNING,
+                \"system\"
+            )
+        
+        # Bot high resource usage
+        if bot_status['total_cpu_usage'] > 80:
+            self.add_notification(
+                \"💻 High Bot CPU Usage\",
+                f\"Trading bot using {bot_status['total_cpu_usage']:.1f}% CPU. Check for performance issues.\",
+                NotificationLevel.WARNING,
+                \"performance\"
+            )
+        
+        # Bot recently restarted
+        if bot_status['uptime_hours'] > 0 and bot_status['uptime_hours'] < 0.5:  # Less than 30 minutes
+            self.add_notification(
+                \"🔄 Trading Bot Recently Started\",
+                f\"Trading bot has been running for {bot_status['uptime_hours']:.1f} hours.\",
+                NotificationLevel.INFO,
+                \"system\"
+            )
+    
     def get_dashboard_data(self) -> Dict:
         """Get comprehensive dashboard data"""
         return {
@@ -375,13 +549,11 @@ class DashboardEnhancementManager:
     
     def simulate_demo_data(self):
         """Generate demo data for testing"""
-        # Demo bot health
+        # Demo bot health (system stats will be real, trading metrics simulated)
         demo_health = {
             'connection_quality': 85,
             'api_response_time': 150,
             'error_rate': 2.3,
-            'cpu_usage': 45,
-            'memory_usage': 60,
             'trading_success_rate': 78,
             'uptime_hours': 24.5,
             'active_strategies': 8,

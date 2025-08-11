@@ -461,6 +461,43 @@ def create_intelligence_app():
                 'error': str(e)
             }), 500
     
+    @app.route('/api/bot/status')
+    @security_manager.rate_limit_decorator('dashboard')
+    def bot_status():
+        \"\"\"Get detailed bot process status\"\"\"
+        from datetime import datetime
+        try:
+            system_status = dashboard_manager.process_monitor.get_system_status()
+            
+            return jsonify({
+                'success': True,
+                'data': {
+                    'trading_bot': {
+                        'running': system_status['trading_bot']['trading_bot_running'],
+                        'process_count': system_status['trading_bot']['bot_count'],
+                        'main_pid': system_status['trading_bot']['main_pid'],
+                        'uptime_hours': system_status['trading_bot']['uptime_hours'],
+                        'cpu_usage': system_status['trading_bot']['total_cpu_usage'],
+                        'memory_usage': system_status['trading_bot']['total_memory_usage'],
+                        'processes': [{
+                            'pid': proc['pid'],
+                            'name': proc['name'],
+                            'start_time': proc['start_time'].isoformat(),
+                            'cpu_percent': proc['cpu_percent'],
+                            'memory_percent': proc['memory_percent']
+                        } for proc in system_status['trading_bot']['processes']]
+                    },
+                    'intelligence_api': system_status['intelligence_api'],
+                    'system': system_status['system'],
+                    'timestamp': datetime.now().isoformat()
+                }
+            })
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
     @app.route('/api/intelligence/demo')
     @security_manager.rate_limit_decorator('api/intelligence')
     def demo_data():

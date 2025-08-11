@@ -833,6 +833,9 @@
                 <span id="serverStatus">Server: Connecting...</span>
             </div>
             <div class="status-item">
+                <span id="tradingBotStatus">Trading Bot: Checking...</span>
+            </div>
+            <div class="status-item">
                 <span id="lastUpdate">Last Update: --</span>
             </div>
         </div>
@@ -1340,6 +1343,9 @@
                 // Update trade narratives
                 updateTradeNarratives(data.decisions || []);
                 
+                // Check Trading Bot Status
+                await checkTradingBotStatus();
+                
                 // Load Risk-Tiered System data
                 await loadRiskTieredData();
                 
@@ -1355,6 +1361,41 @@
             }
             
             refreshIcon.textContent = '🔄';
+        }
+
+        async function checkTradingBotStatus() {
+            try {
+                const response = await axios.get('/api/bot/status');
+                const data = response.data.data;
+                
+                const tradingBot = data.trading_bot;
+                const statusElement = document.getElementById('tradingBotStatus');
+                
+                if (tradingBot.running) {
+                    if (tradingBot.process_count > 1) {
+                        statusElement.innerHTML = `Trading Bot: ⚠️ ${tradingBot.process_count} Instances (${tradingBot.uptime_hours.toFixed(1)}h uptime)`;
+                        statusElement.style.color = 'orange';
+                    } else {
+                        statusElement.innerHTML = `Trading Bot: ✅ Running (${tradingBot.uptime_hours.toFixed(1)}h uptime)`;
+                        statusElement.style.color = '#00ff88';
+                    }
+                } else {
+                    statusElement.innerHTML = 'Trading Bot: 🔴 OFFLINE - Start main.py!';
+                    statusElement.style.color = '#ff4757';
+                    
+                    // Show critical notification for offline bot
+                    showNotification('🚨 TRADING BOT OFFLINE', 'Main trading bot is not running! Start main.py to begin trading.', 'critical');
+                }
+                
+                // Update system resource info if needed
+                const systemInfo = data.system;
+                console.log(`System: CPU ${systemInfo.cpu_percent}%, Memory ${systemInfo.memory_percent}%`);
+                
+            } catch (error) {
+                document.getElementById('tradingBotStatus').innerHTML = 'Trading Bot: ❌ Check Failed';
+                document.getElementById('tradingBotStatus').style.color = '#ff6b6b';
+                console.error('Bot status check error:', error);
+            }
         }
 
         async function loadRiskTieredData() {
