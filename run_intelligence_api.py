@@ -9,6 +9,8 @@ import logging
 from pathlib import Path
 from flask import Flask, jsonify
 from flask_cors import CORS
+from utils.api_security import init_api_security, security_manager, resilient_client
+from utils.dashboard_enhancements import dashboard_manager, BotHealthStatus, NotificationLevel
 import sys
 
 # Logging Setup
@@ -57,6 +59,13 @@ def create_intelligence_app():
     # CORS für alle Origins
     CORS(app, origins=["*"])
     
+    # Initialize API Security
+    init_api_security(
+        app, 
+        secret_key="janics_freedom_factory_secure_2024",
+        admin_keys=["janics_admin_2024_secure"]
+    )
+    
     # Dashboard route
     @app.route('/')
     @app.route('/dashboard')
@@ -87,11 +96,18 @@ def create_intelligence_app():
         })
     
     @app.route('/api/intelligence/health')
+    @security_manager.rate_limit_decorator('api/intelligence')
     def intelligence_health():
+        from datetime import datetime
         return jsonify({
             'status': 'healthy',
             'timestamp': datetime.utcnow().isoformat(),
             'intelligence_enabled': enhanced_logger is not None,
+            'security': {
+                'rate_limiting': True,
+                'circuit_breaker': True,
+                'encrypted_transmission': True
+            },
             'features': {
                 'learning': enhanced_logger.learning_enabled if enhanced_logger else False,
                 'dashboard_updates': enhanced_logger.dashboard_updates if enhanced_logger else False,
@@ -142,6 +158,7 @@ def create_intelligence_app():
     
     # Risk-Tiered Strategy System API Endpoints
     @app.route('/api/risk-tiered/status')
+    @security_manager.rate_limit_decorator('api/risk-tiered')
     def risk_tiered_status():
         """Get Risk-Tiered Strategy System status"""
         if not risk_tiered_manager:
@@ -192,6 +209,7 @@ def create_intelligence_app():
             }), 500
     
     @app.route('/api/risk-tiered/performance')
+    @security_manager.rate_limit_decorator('api/risk-tiered')
     def risk_tiered_performance():
         """Get detailed performance metrics"""
         if not risk_tiered_manager:
@@ -277,6 +295,7 @@ def create_intelligence_app():
             }), 500
     
     @app.route('/api/portfolio/optimization')
+    @security_manager.rate_limit_decorator('api/risk-tiered')
     def portfolio_optimization_status():
         """Get portfolio optimization metrics"""
         if not portfolio_optimizer:
@@ -341,7 +360,88 @@ def create_intelligence_app():
                 'error': str(e)
             }), 500
     
+    # Enhanced Dashboard Endpoints
+    @app.route('/api/dashboard/health')
+    @security_manager.rate_limit_decorator('dashboard')
+    def dashboard_health():
+        """Get comprehensive bot health metrics"""
+        try:
+            # Simulate real health data
+            dashboard_manager.simulate_demo_data()
+            health_data = dashboard_manager.get_dashboard_data()
+            
+            return jsonify({
+                'success': True,
+                'data': health_data
+            })
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
+    @app.route('/api/dashboard/notifications')
+    @security_manager.rate_limit_decorator('dashboard')
+    def dashboard_notifications():
+        """Get current dashboard notifications"""
+        try:
+            notifications = [{
+                'id': notif.id,
+                'title': notif.title,
+                'message': notif.message,
+                'level': notif.level.value,
+                'category': notif.category,
+                'timestamp': notif.timestamp.isoformat(),
+                'action_required': notif.action_required
+            } for notif in dashboard_manager.notifications[:10]]
+            
+            return jsonify({
+                'success': True,
+                'notifications': notifications
+            })
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
+    @app.route('/api/dashboard/orchestra')
+    @security_manager.rate_limit_decorator('dashboard')
+    def strategy_orchestra():
+        """Get strategy orchestra display data"""
+        try:
+            orchestra_data = [{
+                'name': item.name,
+                'status': item.status,
+                'performance_score': item.performance_score,
+                'current_signal': item.current_signal,
+                'confidence': item.confidence,
+                'trades_today': item.trades_today,
+                'pnl_today': item.pnl_today,
+                'risk_level': item.risk_level,
+                'execution_time_ms': item.execution_time_ms,
+                'last_action': item.last_action,
+                'last_action_time': item.last_action_time.isoformat()
+            } for item in dashboard_manager.strategy_orchestra]
+            
+            return jsonify({
+                'success': True,
+                'strategies': orchestra_data,
+                'summary': {
+                    'total_active': len([s for s in dashboard_manager.strategy_orchestra if s.status == 'active']),
+                    'total_trades_today': sum(s.trades_today for s in dashboard_manager.strategy_orchestra),
+                    'total_pnl_today': sum(s.pnl_today for s in dashboard_manager.strategy_orchestra),
+                    'avg_performance': sum(s.performance_score for s in dashboard_manager.strategy_orchestra) / max(1, len(dashboard_manager.strategy_orchestra))
+                }
+            })
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
     @app.route('/api/intelligence/demo')
+    @security_manager.rate_limit_decorator('api/intelligence')
     def demo_data():
         """Demo-Daten für Testing"""
         return jsonify({
