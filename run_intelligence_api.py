@@ -47,6 +47,8 @@ class MockDBConnection:
 
 # Global Enhanced Logger Instance
 enhanced_logger = None
+risk_tiered_manager = None
+portfolio_optimizer = None
 
 def create_intelligence_app():
     """Erstelle Flask App nur für Intelligence Features"""
@@ -138,6 +140,207 @@ def create_intelligence_app():
         except Exception as e:
             return jsonify({'error': str(e)}), 500
     
+    # Risk-Tiered Strategy System API Endpoints
+    @app.route('/api/risk-tiered/status')
+    def risk_tiered_status():
+        """Get Risk-Tiered Strategy System status"""
+        if not risk_tiered_manager:
+            return jsonify({
+                'status': 'inactive',
+                'message': 'Risk-Tiered System not initialized'
+            })
+        
+        try:
+            # Get current allocations and status
+            status_data = {
+                'status': 'active' if risk_tiered_manager.is_running else 'stopped',
+                'portfolio_value': float(risk_tiered_manager.portfolio_value),
+                'total_strategies': len(risk_tiered_manager.strategy_allocations),
+                'risk_categories': {
+                    category_name: {
+                        'allocation_percent': category.allocation_percent,
+                        'max_position_size': category.max_position_size_percent,
+                        'concurrent_trades': category.max_trades_concurrent,
+                        'expected_roi': category.expected_roi_percent
+                    }
+                    for category_name, category in risk_tiered_manager.risk_categories.items()
+                },
+                'strategy_allocations': [
+                    {
+                        'name': alloc.strategy_name,
+                        'risk_category': alloc.risk_category,
+                        'allocation_percent': alloc.allocation_percent,
+                        'active_positions': len(alloc.current_positions),
+                        'total_trades': alloc.performance_metrics.get('total_trades', 0),
+                        'winning_trades': alloc.performance_metrics.get('winning_trades', 0),
+                        'total_pnl': float(alloc.performance_metrics.get('total_pnl', 0)),
+                        'is_active': alloc.is_active
+                    }
+                    for alloc in risk_tiered_manager.strategy_allocations
+                ]
+            }
+            
+            return jsonify({
+                'success': True,
+                'data': status_data
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
+    @app.route('/api/risk-tiered/performance')
+    def risk_tiered_performance():
+        """Get detailed performance metrics"""
+        if not risk_tiered_manager:
+            return jsonify({'error': 'Risk-Tiered System not available'}), 503
+        
+        try:
+            # Calculate performance by risk category
+            categories = risk_tiered_manager._group_strategies_by_category()
+            performance_data = {
+                'timestamp': datetime.utcnow().isoformat(),
+                'portfolio_value': float(risk_tiered_manager.portfolio_value),
+                'categories': {},
+                'total_stats': {
+                    'total_pnl': 0.0,
+                    'total_trades': 0,
+                    'winning_trades': 0
+                }
+            }
+            
+            for category_name, strategies in categories.items():
+                category_pnl = 0.0
+                category_trades = 0
+                category_wins = 0
+                
+                strategy_details = []
+                
+                for strategy in strategies:
+                    metrics = strategy.performance_metrics
+                    pnl = float(metrics.get('total_pnl', 0))
+                    trades = metrics.get('total_trades', 0)
+                    wins = metrics.get('winning_trades', 0)
+                    
+                    category_pnl += pnl
+                    category_trades += trades
+                    category_wins += wins
+                    
+                    strategy_details.append({
+                        'name': strategy.strategy_name,
+                        'allocation': strategy.allocation_percent,
+                        'pnl': pnl,
+                        'trades': trades,
+                        'win_rate': (wins / max(1, trades)) * 100,
+                        'active_positions': len(strategy.current_positions)
+                    })
+                
+                win_rate = (category_wins / max(1, category_trades)) * 100
+                
+                performance_data['categories'][category_name] = {
+                    'total_pnl': category_pnl,
+                    'total_trades': category_trades,
+                    'win_rate': win_rate,
+                    'allocation_percent': risk_tiered_manager.risk_categories[category_name].allocation_percent,
+                    'strategies': strategy_details
+                }
+                
+                # Add to totals
+                performance_data['total_stats']['total_pnl'] += category_pnl
+                performance_data['total_stats']['total_trades'] += category_trades
+                performance_data['total_stats']['winning_trades'] += category_wins
+            
+            # Calculate overall win rate
+            total_trades = performance_data['total_stats']['total_trades']
+            performance_data['total_stats']['overall_win_rate'] = (
+                performance_data['total_stats']['winning_trades'] / max(1, total_trades)
+            ) * 100
+            
+            # Calculate portfolio return
+            performance_data['total_stats']['portfolio_return_percent'] = (
+                performance_data['total_stats']['total_pnl'] / 
+                float(risk_tiered_manager.portfolio_value)
+            ) * 100
+            
+            return jsonify({
+                'success': True,
+                'data': performance_data
+            })
+            
+        except Exception as e:
+            logger.error(f"Performance metrics error: {e}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
+    @app.route('/api/portfolio/optimization')
+    def portfolio_optimization_status():
+        """Get portfolio optimization metrics"""
+        if not portfolio_optimizer:
+            return jsonify({'error': 'Portfolio Optimizer not available'}), 503
+        
+        try:
+            # Mock optimization data for now
+            optimization_data = {
+                'timestamp': datetime.utcnow().isoformat(),
+                'status': 'active',
+                'last_rebalance': datetime.utcnow().isoformat(),
+                'optimization_methods': [
+                    {
+                        'name': 'Sharpe Ratio',
+                        'score': 1.85,
+                        'status': 'optimal'
+                    },
+                    {
+                        'name': 'Kelly Criterion',
+                        'score': 2.12,
+                        'status': 'good'
+                    },
+                    {
+                        'name': 'Risk Parity',
+                        'score': 1.76,
+                        'status': 'balanced'
+                    }
+                ],
+                'risk_metrics': {
+                    'portfolio_volatility': 0.18,
+                    'max_drawdown': 0.12,
+                    'var_95': 0.08,
+                    'sharpe_ratio': 1.85
+                },
+                'allocation_drift': {
+                    'HIGH_RISK': {
+                        'target': 15.0,
+                        'current': 14.2,
+                        'drift': -0.8
+                    },
+                    'MEDIUM_RISK': {
+                        'target': 35.0,
+                        'current': 36.1,
+                        'drift': 1.1
+                    },
+                    'LOW_RISK': {
+                        'target': 50.0,
+                        'current': 49.7,
+                        'drift': -0.3
+                    }
+                }
+            }
+            
+            return jsonify({
+                'success': True,
+                'data': optimization_data
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
     @app.route('/api/intelligence/demo')
     def demo_data():
         """Demo-Daten für Testing"""
@@ -227,6 +430,43 @@ async def initialize_enhanced_logger():
         logger.error(f"Enhanced Logger initialization failed: {e}")
         return False
 
+async def initialize_risk_tiered_system():
+    """Initialize Risk-Tiered Strategy System"""
+    global risk_tiered_manager, portfolio_optimizer
+    
+    try:
+        from decimal import Decimal
+        from risk_tiered_manager import RiskTieredStrategyManager
+        from portfolio_optimizer import PortfolioOptimizer
+        # Mock trading bot and database for demo  
+        class MockExchangeManager:
+            pass
+        
+        mock_trading_bot = MockTradingBot()
+        mock_db_pool = MockDBPool()
+        portfolio_value = Decimal('100000')  # $100k demo portfolio
+        
+        # Initialize Risk-Tiered Manager
+        risk_tiered_manager = RiskTieredStrategyManager(
+            trading_bot=mock_trading_bot,
+            db_pool=mock_db_pool,
+            portfolio_value=portfolio_value
+        )
+        
+        # Initialize Portfolio Optimizer  
+        portfolio_optimizer = PortfolioOptimizer(risk_free_rate=0.02)
+        
+        logger.info("✅ Risk-Tiered Strategy System initialized")
+        logger.info(f"💰 Portfolio Value: ${portfolio_value:,.2f}")
+        logger.info(f"📊 Strategies Discovered: {len(risk_tiered_manager.strategy_allocations)}")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Risk-Tiered System initialization failed: {e}")
+        logger.error(f"Error details: {type(e).__name__}: {str(e)}")
+        return False
+
 def run_intelligence_server(host='localhost', port=8001):
     """Run Intelligence API Server"""
     from datetime import datetime
@@ -242,11 +482,17 @@ def run_intelligence_server(host='localhost', port=8001):
     asyncio.set_event_loop(loop)
     
     logger_initialized = loop.run_until_complete(initialize_enhanced_logger())
+    risk_system_initialized = loop.run_until_complete(initialize_risk_tiered_system())
     
     if logger_initialized:
         print("✅ Enhanced Logger aktiv")
     else:
         print("⚠️  Enhanced Logger nicht verfügbar - Demo-Modus")
+    
+    if risk_system_initialized:
+        print("✅ Risk-Tiered Strategy System aktiv")
+    else:
+        print("⚠️  Risk-Tiered System nicht verfügbar - Demo-Modus")
     
     # Create Flask app
     app = create_intelligence_app()
@@ -259,6 +505,9 @@ def run_intelligence_server(host='localhost', port=8001):
     print(f"   Metrics: http://{host}:{port}/api/intelligence/metrics")
     print(f"   Export: http://{host}:{port}/api/intelligence/export/decisions")
     print(f"   Demo: http://{host}:{port}/api/intelligence/demo")
+    print(f"   🎯 Risk-Tiered Status: http://{host}:{port}/api/risk-tiered/status")
+    print(f"   📊 Risk Performance: http://{host}:{port}/api/risk-tiered/performance")
+    print(f"   ⚖️ Portfolio Optimization: http://{host}:{port}/api/portfolio/optimization")
     print("\n🎯 Test with: curl http://localhost:8001/health")
     print("🎯 Dashboard ready für mobile access!")
     print("=" * 40)
