@@ -660,43 +660,43 @@ class DashboardEnhancementManager:
             )
     
     def _check_bot_process_alerts(self, bot_status: Dict[str, Any]):
-        \"\"\"Check for bot process-specific alerts\"\"\"
+        """Check for bot process-specific alerts"""
         
         # Trading Bot offline alert
         if not bot_status['trading_bot_running']:
             self.add_notification(
-                \"🚨 TRADING BOT OFFLINE\",
-                \"Main trading bot is not running! Start main.py to begin trading.\",
+                "🚨 TRADING BOT OFFLINE",
+                "Main trading bot is not running! Start main.py to begin trading.",
                 NotificationLevel.EMERGENCY,
-                \"system\",
+                "system",
                 action_required=True
             )
         
         # Multiple bot instances warning
         elif bot_status['bot_count'] > 1:
             self.add_notification(
-                \"⚠️ Multiple Trading Bots Detected\",
-                f\"Found {bot_status['bot_count']} trading bot instances running. This may cause conflicts.\",
+                "⚠️ Multiple Trading Bots Detected",
+                f"Found {bot_status['bot_count']} trading bot instances running. This may cause conflicts.",
                 NotificationLevel.WARNING,
-                \"system\"
+                "system"
             )
         
         # Bot high resource usage
         if bot_status['total_cpu_usage'] > 80:
             self.add_notification(
-                \"💻 High Bot CPU Usage\",
-                f\"Trading bot using {bot_status['total_cpu_usage']:.1f}% CPU. Check for performance issues.\",
+                "💻 High Bot CPU Usage",
+                f"Trading bot using {bot_status['total_cpu_usage']:.1f}% CPU. Check for performance issues.",
                 NotificationLevel.WARNING,
-                \"performance\"
+                "performance"
             )
         
         # Bot recently restarted
         if bot_status['uptime_hours'] > 0 and bot_status['uptime_hours'] < 0.5:  # Less than 30 minutes
             self.add_notification(
-                \"🔄 Trading Bot Recently Started\",
-                f\"Trading bot has been running for {bot_status['uptime_hours']:.1f} hours.\",
+                "🔄 Trading Bot Recently Started",
+                f"Trading bot has been running for {bot_status['uptime_hours']:.1f} hours.",
                 NotificationLevel.INFO,
-                \"system\"
+                "system"
             )
     
     def get_dashboard_data(self) -> Dict:
