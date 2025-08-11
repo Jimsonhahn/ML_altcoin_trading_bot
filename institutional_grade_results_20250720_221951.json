@@ -1,0 +1,109 @@
+{
+  "strategy_info": {
+    "name": "InstitutionalGrade BTC Alpha",
+    "version": "1.0 Production",
+    "risk_profile": "Conservative-Aggressive",
+    "status": "active",
+    "max_drawdown_limit": 0.25,
+    "max_position_size": 0.4,
+    "current_phase": "analysis",
+    "last_signal_time": "2024-12-16 00:00:00",
+    "alerts": []
+  },
+  "performance_metrics": {
+    "strategy_name": "InstitutionalGrade BTC Alpha",
+    "strategy_version": "1.0 Production",
+    "total_return": 0.14762323985723125,
+    "annual_return": 0.07117089716131897,
+    "sharpe_ratio": 0.8515635712982377,
+    "sortino_ratio": 0.77108816713588,
+    "calmar_ratio": 1.39670100132131,
+    "information_ratio": 1.3126568268196295,
+    "max_drawdown": 0.05095643025528709,
+    "annual_volatility": 0.054218966989076176,
+    "var_95": -0.005387823450381522,
+    "cvar_95": -0.00856762751466399,
+    "tracking_error": 0.054218966989076176,
+    "win_rate": 0.19726027397260273,
+    "total_trades": 3,
+    "avg_quality_score": 0.5402777777777777,
+    "institutional_trade_rate": 1.0,
+    "emergency_stops": 0,
+    "var_breaches": 0,
+    "days_analyzed": 731,
+    "final_capital": 344286.97195716936,
+    "max_drawdown_limit": 0.25,
+    "max_position_size": 0.4,
+    "risk_profile": "Conservative-Aggressive"
+  },
+  "institutional_assessment": {
+    "grade": "C",
+    "score": 30,
+    "assessment": "NEEDS IMPROVEMENT",
+    "recommendation": "Empfehlung: Grundlegende \u00dcberarbeitung erforderlich",
+    "targets_met": {
+      "return": "False",
+      "sharpe": "False",
+      "drawdown": "True",
+      "quality": "False"
+    }
+  },
+  "dashboard_integration": {
+    "strategy_info": {
+      "name": "InstitutionalGrade BTC Alpha",
+      "version": "1.0 Production",
+      "risk_profile": "Conservative-Aggressive",
+      "status": "active",
+      "max_drawdown_limit": 0.25,
+      "max_position_size": 0.4,
+      "current_phase": "analysis",
+      "last_signal_time": "2024-12-16 00:00:00",
+      "alerts": []
+    },
+    "dashboard_data": {
+      "strategy_name": "InstitutionalGrade BTC Alpha",
+      "strategy_version": "1.0 Production",
+      "status": "active",
+      "current_capital": 344286.97195716936,
+      "current_drawdown": 0.0282380282753582,
+      "current_allocation": 0.23305647104798455,
+      "emergency_stop_active": false,
+      "total_trades": 3,
+      "last_signal_time": "2024-12-16 00:00:00",
+      "alerts_count": 0,
+      "risk_level": "LOW"
+    },
+    "current_metrics": {
+      "strategy_name": "InstitutionalGrade BTC Alpha",
+      "strategy_version": "1.0 Production",
+      "total_return": 0.14762323985723125,
+      "annual_return": 0.07117089716131897,
+      "sharpe_ratio": 0.8515635712982377,
+      "sortino_ratio": 0.77108816713588,
+      "calmar_ratio": 1.39670100132131,
+      "information_ratio": 1.3126568268196295,
+      "max_drawdown": 0.05095643025528709,
+      "annual_volatility": 0.054218966989076176,
+      "var_95": -0.005387823450381522,
+      "cvar_95": -0.00856762751466399,
+      "tracking_error": 0.054218966989076176,
+      "win_rate": 0.19726027397260273,
+      "total_trades": 3,
+      "avg_quality_score": 0.5402777777777777,
+      "institutional_trade_rate": 1.0,
+      "emergency_stops": 0,
+      "var_breaches": 0,
+      "days_analyzed": 731,
+      "final_capital": 344286.97195716936,
+      "max_drawdown_limit": 0.25,
+      "max_position_size": 0.4,
+      "risk_profile": "Conservative-Aggressive"
+    },
+    "recent_alerts": []
+  },
+  "risk_management": {
+    "emergency_stops": 0,
+    "var_breaches": 0,
+    "max_dd_control": "True"
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "lazy_billionaire_strategy": {
+    "name": "Lazy Billionaire Master Strategy",
+    "description": "Vollautomatische Master-Strategie für optimale Kapitalallokation",
+    "version": "1.0.0",
+    
+    "capital_management": {
+      "initial_capital": 300000,
+      "risk_per_trade": 0.02,
+      "max_drawdown_limit": 0.15,
+      "max_position_size": 0.05,
+      "max_correlation_positions": 3,
+      "emergency_threshold": 0.12
+    },
+    
+    "rebalancing": {
+      "rebalance_interval_minutes": 30,
+      "min_rebalance_threshold": 0.05,
+      "force_rebalance_threshold": 0.10,
+      "market_analysis_interval": 15,
+      "confidence_threshold": 0.4
+    },
+    
+    "profiles": {
+      "default": "balanced",
+      "risk_tolerance": "medium",
+      "auto_adjust_profile": true,
+      "profile_switch_threshold": 0.08
+    },
+    
+    "emergency_mode": {
+      "fear_greed_threshold": 15,
+      "volatility_threshold": 0.5,
+      "drawdown_trigger": 0.15,
+      "auto_recovery": true,
+      "recovery_conditions": {
+        "min_fear_greed": 25,
+        "max_volatility": 0.3,
+        "stability_period_hours": 4
+      }
+    },
+    
+    "performance_tracking": {
+      "benchmark": "BTC",
+      "report_interval_hours": 24,
+      "performance_history_days": 30,
+      "alert_thresholds": {
+        "negative_return": -0.05,
+        "high_volatility": 0.4,
+        "low_sharpe": 0.5
+      }
+    },
+    
+    "notifications": {
+      "enabled": true,
+      "channels": ["log", "email", "webhook"],
+      "events": {
+        "rebalance": true,
+        "emergency_mode": true,
+        "performance_milestone": true,
+        "risk_threshold": true
+      }
+    },
+    
+    "strategy_weights": {
+      "profile_override": false,
+      "custom_weights": {
+        "sideways": {
+          "arbitrage": 0.60,
+          "grid_trading": 0.30,
+          "defi_farming": 0.10
+        },
+        "bull": {
+          "momentum": 0.70,
+          "grid_trading": 0.20,
+          "copy_trading": 0.10
+        },
+        "volatile": {
+          "arbitrage": 0.50,
+          "grid_trading": 0.30,
+          "mean_reversion": 0.20
+        },
+        "bear": {
+          "arbitrage": 0.80,
+          "defi_farming": 0.20
+        },
+        "extreme_fear": {
+          "stablecoin_parking": 1.00
+        }
+      }
+    },
+    
+    "sub_strategies": {
+      "arbitrage": {
+        "enabled": true,
+        "max_allocation": 0.8,
+        "min_profit_threshold": 0.003,
+        "max_execution_time": 30
+      },
+      "grid_trading": {
+        "enabled": true,
+        "max_allocation": 0.4,
+        "grid_levels": 10,
+        "profit_per_grid": 0.005
+      },
+      "momentum": {
+        "enabled": true,
+        "max_allocation": 0.7,
+        "lookback_period": 20,
+        "momentum_threshold": 0.02
+      },
+      "mean_reversion": {
+        "enabled": true,
+        "max_allocation": 0.3,
+        "deviation_threshold": 2.0,
+        "reversion_period": 14
+      },
+      "defi_farming": {
+        "enabled": true,
+        "max_allocation": 0.3,
+        "min_apy": 0.05,
+        "max_lock_period": 30
+      },
+      "copy_trading": {
+        "enabled": true,
+        "max_allocation": 0.2,
+        "min_trader_score": 0.7,
+        "max_drawdown": 0.1
+      },
+      "stablecoin_parking": {
+        "enabled": true,
+        "max_allocation": 1.0,
+        "preferred_stablecoin": "USDT",
+        "yield_farming": true
+      }
+    },
+    
+    "market_analysis": {
+      "symbols": ["BTCUSDT", "ETHUSDT", "ADAUSDT", "SOLUSDT", "DOTUSDT"],
+      "timeframes": ["1h", "4h", "1d"],
+      "indicators": {
+        "fear_greed_weight": 0.3,
+        "volatility_weight": 0.25,
+        "trend_weight": 0.25,
+        "volume_weight": 0.2
+      },
+      "confidence_multiplier": 1.2,
+      "min_data_points": 100
+    },
+    
+    "risk_management": {
+      "max_open_positions": 10,
+      "max_correlated_positions": 3,
+      "stop_loss_multiplier": 2.0,
+      "take_profit_multiplier": 3.0,
+      "position_sizing": "kelly_criterion",
+      "risk_parity": true
+    },
+    
+    "backtesting": {
+      "start_date": "2022-01-01",
+      "end_date": "2024-12-31",
+      "initial_capital": 100000,
+      "commission": 0.001,
+      "slippage": 0.0005,
+      "benchmark": "BTC"
+    },
+    
+    "logging": {
+      "level": "INFO",
+      "detailed_trades": true,
+      "performance_metrics": true,
+      "allocation_changes": true,
+      "market_analysis": false
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "initial_capital": 10000,
+  "final_capital": 12966.890201599588,
+  "total_return": 0.2966890201599588,
+  "annualized_return": 0.13872253870728257,
+  "sharpe_ratio": 15.709447672508999,
+  "max_drawdown": 0.0015737785720237873,
+  "win_rate": 0.6525601679857859,
+  "total_trades": 6191,
+  "winning_trades": 4040,
+  "losing_trades": 2151,
+  "avg_trade_return": 0.0044981790795286915,
+  "best_trade": 7.024110246476938,
+  "worst_trade": -5.54552814160549,
+  "total_days": 730,
+  "profitable_days": 576,
+  "strategy_allocations": {
+    "lazy_billionaire": 0.22,
+    "ml_strategy": 0.16,
+    "arbitrage": 0.14,
+    "mean_reversion": 0.12,
+    "momentum": 0.1,
+    "grid": 0.08,
+    "liquidation_hunter": 0.06,
+    "defi_yield": 0.05,
+    "stablecoin_parking": 0.04,
+    "autopilot": 0.02,
+    "scalping": 0.01
+  }
+}

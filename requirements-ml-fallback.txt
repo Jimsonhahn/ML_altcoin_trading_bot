@@ -1,0 +1,21 @@
+# ML Dependencies mit Fallbacks
+# Primäre ML Library
+lightgbm>=3.3.0
+
+# Fallback Libraries
+scikit-learn>=1.0.0
+numpy>=1.21.0
+pandas>=1.3.0
+
+# Alternative ML Libraries (bei Bedarf)
+xgboost>=1.5.0
+catboost>=1.0.0
+
+# Für macOS LightGBM Support
+# Run: brew install libomp
+
+# Für Linux LightGBM Support  
+# Meist automatisch verfügbar
+
+# Für Windows LightGBM Support
+# Visual Studio Build Tools erforderlich

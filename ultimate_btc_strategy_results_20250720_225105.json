@@ -1,0 +1,68 @@
+{
+  "strategy_info": {
+    "name": "Ultimate BTC Strategy",
+    "version": "Final Optimization",
+    "period": "2024-01-01 to 2024-12-31",
+    "initial_capital": 1000000.0
+  },
+  "performance": {
+    "total_return": 1.785529964745486,
+    "annual_return": 1.7777441362004813,
+    "sharpe_ratio": 2.1442746481506125,
+    "sortino_ratio": 2.1815346549250543,
+    "calmar_ratio": 5.223826316939842,
+    "max_drawdown": 0.3403145564843162,
+    "annual_volatility": 0.8197383379580107,
+    "var_95": -0.0704362458789466,
+    "cvar_95": -0.11632302164123406,
+    "win_rate": 0.0,
+    "profit_factor": 1.4521432135227716,
+    "total_trades": 3,
+    "avg_trade_strength": 0.5683333333333332,
+    "days_analyzed": 366,
+    "phase_performance": {
+      "etf_rally": {
+        "avg_daily_return": 0.0,
+        "volatility": 0.0,
+        "days": 54
+      },
+      "correction": {
+        "avg_daily_return": 0.0,
+        "volatility": 0.0,
+        "days": 74
+      },
+      "accumulation": {
+        "avg_daily_return": 0.0,
+        "volatility": 0.0,
+        "days": 73
+      },
+      "pre_halving": {
+        "avg_daily_return": 0.010483916970811382,
+        "volatility": 0.05970035748649348,
+        "days": 73
+      },
+      "institutional_fomo": {
+        "avg_daily_return": 0.008007336393317282,
+        "volatility": 0.08787477498423132,
+        "days": 91
+      }
+    }
+  },
+  "target_achievement": {
+    "return_target_40pct": "True",
+    "sharpe_target_1_5": "True",
+    "drawdown_target_15pct": "False",
+    "all_targets_met": "False"
+  },
+  "alpha_analysis": {
+    "btc_buy_hold_return": 1.7277769297951169,
+    "strategy_alpha": 0.04996720640536445,
+    "information_ratio": 0.060955068332943965
+  },
+  "signals_analysis": {
+    "total_signals": 18,
+    "signal_frequency": 0.04918032786885246,
+    "avg_signal_strength": 0.5458333333333333,
+    "avg_position_size": 0.6429333333333331
+  }
+}

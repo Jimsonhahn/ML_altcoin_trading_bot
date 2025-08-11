@@ -1,0 +1,180 @@
+{
+  "trading_mode": {
+    "default": "paper",
+    "available_modes": ["paper", "live", "hybrid"],
+    "paper_to_live_requirements": {
+      "min_trades": 20,
+      "min_win_rate": 0.5,
+      "min_profit": 0.0,
+      "test_duration_days": 7
+    },
+    "hybrid_rules": {
+      "new_strategies_start_paper": true,
+      "proven_strategies_go_live": true,
+      "performance_review_days": 30
+    }
+  },
+  
+  "portfolio_management": {
+    "initial_capital": 10000.0,
+    "max_positions": 20,
+    "max_position_size": 0.1,
+    "max_strategy_allocation": 0.3,
+    "correlation_limit": 0.7,
+    "cash_reserve": 0.05,
+    "rebalance_threshold": 0.02,
+    "risk_per_trade": 0.02,
+    "stop_loss_default": 0.05,
+    "take_profit_default": 0.1
+  },
+  
+  "orchestrator_settings": {
+    "discovery": {
+      "strategy_directories": ["strategies"],
+      "recursive_search": true,
+      "ignore_patterns": ["__pycache__", "*.pyc", "test_*", "*_test.py"],
+      "cache_discovery": true,
+      "cache_ttl_minutes": 60
+    },
+    
+    "orchestration": {
+      "risk_budget": 100.0,
+      "max_concurrent_strategies": 5,
+      "min_strategy_weight": 0.05,
+      "rebalance_frequency_minutes": 15,
+      "emergency_stop_threshold": 0.25,
+      "correlation_limit": 0.7
+    },
+    
+    "health_monitoring": {
+      "alert_thresholds": {
+        "min_win_rate": 0.45,
+        "max_drawdown": 0.15,
+        "min_sharpe": 0.5,
+        "max_error_rate": 0.05,
+        "min_health_score": 0.6
+      },
+      "monitoring_frequency_seconds": 30,
+      "performance_window_hours": 24,
+      "degradation_detection_enabled": true
+    },
+    
+    "ab_testing": {
+      "auto_test_enabled": true,
+      "auto_test_threshold": 0.6,
+      "min_test_duration_days": 7,
+      "min_sample_size": 50,
+      "significance_level": 0.05,
+      "max_concurrent_tests_per_strategy": 2,
+      "variation_types": [
+        "parameter_optimization",
+        "signal_enhancement",
+        "risk_adjustment"
+      ]
+    },
+    
+    "market_regimes": {
+      "detection_window_hours": 48,
+      "regime_change_threshold": 0.2,
+      "volatility_percentiles": {
+        "low": 0.3,
+        "high": 0.7,
+        "extreme": 0.95
+      }
+    },
+    
+    "genetic_optimization": {
+      "population_size": 50,
+      "generations": 20,
+      "mutation_rate": 0.1,
+      "crossover_rate": 0.7,
+      "elite_size": 5,
+      "fitness_metrics": [
+        "sharpe_ratio",
+        "max_drawdown",
+        "win_rate",
+        "profit_factor"
+      ]
+    },
+    
+    "logging": {
+      "level": "INFO",
+      "log_file": "logs/orchestrator.log",
+      "max_file_size_mb": 100,
+      "backup_count": 5,
+      "performance_logging": true,
+      "decision_logging": true
+    },
+    
+    "notifications": {
+      "enabled": true,
+      "channels": ["console", "file"],
+      "alert_levels": {
+        "emergency_stop": "CRITICAL",
+        "performance_degradation": "WARNING",
+        "new_strategy_discovered": "INFO",
+        "ab_test_complete": "INFO"
+      }
+    }
+  },
+  
+  "strategy_profiles": {
+    "conservative": {
+      "max_risk_per_strategy": 0.1,
+      "preferred_timeframes": ["swing", "position"],
+      "avoid_strategies": ["scalping", "high_frequency"],
+      "min_win_rate": 0.55
+    },
+    
+    "moderate": {
+      "max_risk_per_strategy": 0.2,
+      "preferred_timeframes": ["intraday", "swing"],
+      "min_win_rate": 0.5
+    },
+    
+    "aggressive": {
+      "max_risk_per_strategy": 0.3,
+      "preferred_timeframes": ["scalping", "intraday"],
+      "min_win_rate": 0.45
+    },
+    
+    "extreme": {
+      "max_risk_per_strategy": 0.5,
+      "preferred_timeframes": ["any"],
+      "min_win_rate": 0.4
+    }
+  },
+  
+  "market_conditions": {
+    "bull": {
+      "preferred_strategies": ["trend_following", "momentum", "breakout"],
+      "risk_multiplier": 1.2,
+      "position_size_multiplier": 1.1
+    },
+    
+    "bear": {
+      "preferred_strategies": ["mean_reversion", "defensive", "hedging"],
+      "risk_multiplier": 0.8,
+      "position_size_multiplier": 0.9
+    },
+    
+    "volatile": {
+      "preferred_strategies": ["volatility_capture", "range_trading", "arbitrage"],
+      "risk_multiplier": 0.9,
+      "position_size_multiplier": 0.8
+    },
+    
+    "crash": {
+      "preferred_strategies": ["defensive", "cash"],
+      "risk_multiplier": 0.3,
+      "position_size_multiplier": 0.5,
+      "emergency_mode": true
+    },
+    
+    "euphoria": {
+      "preferred_strategies": ["contrarian", "profit_taking"],
+      "risk_multiplier": 0.7,
+      "position_size_multiplier": 0.7
+    }
+  }
+}

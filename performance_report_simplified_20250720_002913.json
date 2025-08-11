@@ -1,0 +1,70 @@
+{
+  "timestamp": "2025-07-20T00:29:13.614959",
+  "test_type": "simplified_performance",
+  "summary": {
+    "total_tests": 6,
+    "passed_tests": 4,
+    "success_rate": 66.7
+  },
+  "detailed_results": {
+    "import_performance": {
+      "import_times_ms": {
+        "config.environment": 25.19,
+        "data_sources.data_manager": 1813.24,
+        "core.safety_manager": 1037.08,
+        "utils.notifier": "ERROR: module 'utils.notifier' has no attribute 'Notifier'"
+      },
+      "avg_import_time_ms": 958.5,
+      "total_import_time_ms": 2875.51,
+      "status": "SLOW"
+    },
+    "data_processing": {
+      "error": "DataManager.__init__() missing 1 required positional argument: 'settings'",
+      "status": "FAIL"
+    },
+    "config_performance": {
+      "config_load_time_ms": 0.0,
+      "config_access_time_ms": 0.0,
+      "access_operations": 0,
+      "status": "PASS"
+    },
+    "concurrent_ops": {
+      "concurrent_workers": 4,
+      "total_operations": 12,
+      "successful_operations": 12,
+      "total_time_seconds": 0.04,
+      "avg_ops_per_second": 591.76,
+      "overall_throughput": 2299.36,
+      "status": "PASS"
+    },
+    "memory_simulation": {
+      "data_creation_time_ms": 2.15,
+      "data_processing_time_ms": 0.19,
+      "processed_operations": 28,
+      "symbols_processed": 4,
+      "processing_rate": 145167.51,
+      "status": "PASS"
+    },
+    "api_simulation": {
+      "response_times_ms": {
+        "health_check": 11.04,
+        "trading_status": 24.19,
+        "positions": 54.59,
+        "market_data": 86.82,
+        "strategy_signals": 129.06,
+        "backtest": 260.84
+      },
+      "avg_response_time_ms": 94.42,
+      "max_response_time_ms": 260.84,
+      "min_response_time_ms": 11.04,
+      "endpoints_tested": 6,
+      "status": "PASS"
+    }
+  },
+  "recommendations": [
+    "\u2022 System performance is good with minor issues",
+    "\u2022 Address slow components before production",
+    "\u2022 Monitor performance in production environment",
+    "\u2022 Consider implementing performance metrics collection"
+  ]
+}

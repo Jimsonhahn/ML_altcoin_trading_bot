@@ -1,0 +1,70 @@
+{
+  "timestamp": "2025-07-20T14:49:11.334407",
+  "backtest_results": {
+    "initial_capital": 10000,
+    "final_capital": 12966.890201599588,
+    "total_return": 0.2966890201599588,
+    "annualized_return": 0.13872253870728257,
+    "sharpe_ratio": 15.709447672508999,
+    "max_drawdown": 0.0015737785720237873,
+    "win_rate": 0.6525601679857859,
+    "total_trades": 6191,
+    "winning_trades": 4040,
+    "losing_trades": 2151,
+    "avg_trade_return": 0.0044981790795286915,
+    "best_trade": 7.024110246476938,
+    "worst_trade": -5.54552814160549,
+    "total_days": 730,
+    "profitable_days": 576,
+    "strategy_allocations": {
+      "lazy_billionaire": 0.22,
+      "ml_strategy": 0.16,
+      "arbitrage": 0.14,
+      "mean_reversion": 0.12,
+      "momentum": 0.1,
+      "grid": 0.08,
+      "liquidation_hunter": 0.06,
+      "defi_yield": 0.05,
+      "stablecoin_parking": 0.04,
+      "autopilot": 0.02,
+      "scalping": 0.01
+    }
+  },
+  "verification_results": {
+    "timestamp": "20250720_143004",
+    "goal": "Improve average Sharpe ratio from 1.8 to 2.5 (+0.7)",
+    "total_improvement_achieved": 0.538,
+    "goal_achievement": "False",
+    "individual_improvements": {
+      "momentum_strategy": {
+        "avg_sharpe_improvement": 0.491111111111111,
+        "avg_return_improvement": 0.084
+      },
+      "mean_reversion_strategy": {
+        "avg_sharpe_improvement": 0.5388888888888889,
+        "avg_return_improvement": 0.07822222222222222
+      },
+      "ml_strategy": {
+        "avg_sharpe_improvement": 0.46888888888888886,
+        "avg_return_improvement": 0.044
+      },
+      "lazy_billionaire_strategy": {
+        "avg_sharpe_improvement": 0.7566666666666667,
+        "avg_return_improvement": 0.14044444444444446
+      },
+      "super_lazy_billionaire_strategy": {
+        "avg_sharpe_improvement": 0.4344444444444445,
+        "avg_return_improvement": 0.08055555555555555
+      }
+    },
+    "recommendations": {
+      "best_strategy": "lazy_billionaire_strategy",
+      "implementation_ready": "True",
+      "further_optimization_needed": "True"
+    }
+  },
+  "recommendation": "IMPLEMENT",
+  "risk_rating": "\ud83d\udfe2 NIEDRIG",
+  "return_rating": "\ud83d\udfe1 MITTEL",
+  "sharpe_rating": "\ud83d\udfe2 EXCELLENT"
+}

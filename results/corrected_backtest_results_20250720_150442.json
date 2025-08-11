@@ -1,0 +1,54 @@
+{
+  "initial_capital": 10000,
+  "final_capital": NaN,
+  "total_return": NaN,
+  "annual_return": NaN,
+  "corrected_sharpe_ratio": 0.0,
+  "max_drawdown": NaN,
+  "win_rate": 0.0003419972640218878,
+  "total_trades": 2924,
+  "profit_factor": 0.0008447266737272553,
+  "annual_volatility": NaN,
+  "total_costs": NaN,
+  "days_analyzed": 730,
+  "strategy_allocations": {
+    "lazy_billionaire": 0.22,
+    "ml_strategy": 0.16,
+    "arbitrage": 0.14,
+    "mean_reversion": 0.12,
+    "momentum": 0.1,
+    "grid": 0.08,
+    "liquidation_hunter": 0.06,
+    "defi_yield": 0.05,
+    "stablecoin_parking": 0.04,
+    "autopilot": 0.02,
+    "scalping": 0.01
+  },
+  "realistic_constraints": {
+    "exchange_fee_rate": 0.001,
+    "min_spread_percent": 0.05,
+    "avg_spread_percent": 0.08,
+    "base_slippage": 0.0003,
+    "slippage_factor": 0.001,
+    "market_impact_factor": 0.0001,
+    "max_volume_percent": 0.05,
+    "min_latency_ms": 50,
+    "avg_latency_ms": 120,
+    "max_latency_ms": 800,
+    "liquidity_factor": 0.85,
+    "partial_fill_probability": 0.25,
+    "risk_free_rate": 0.02
+  },
+  "correction_summary": {
+    "unrealistic_original_sharpe": 15.71,
+    "corrected_sharpe": 0.0,
+    "sharpe_correction_factor": 157.1,
+    "realistic_range_check": false
+  },
+  "evaluation": {
+    "sharpe_rating": "\ud83d\udd34 SCHLECHT",
+    "return_rating": "\ud83d\udd34 NIEDRIG",
+    "risk_rating": "\ud83d\udd34 HOCH",
+    "recommendation": "REDESIGN"
+  }
+}

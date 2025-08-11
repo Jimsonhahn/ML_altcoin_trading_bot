@@ -1,0 +1,453 @@
+# Konsolidierte Konfiguration für Altcoin Trading Bot
+# Alle verstreuten Parameter in einer zentralen Datei
+
+# =====================================================
+# UMGEBUNGSEINSTELLUNGEN
+# =====================================================
+environment:
+  name: "development"  # development, staging, production
+  trading_mode: "paper"  # paper, live, backtest
+  debug: true
+  log_level: "INFO"
+
+# =====================================================
+# TRADING KONFIGURATION
+# =====================================================
+trading:
+  initial_capital: 100000.0
+  max_portfolio_risk: 0.20  # 20% max Portfolio-Risiko
+  max_position_size: 0.10   # 10% max Position pro Trade
+  min_trade_amount: 50.0
+  
+  # Standard-Strategie und Profile
+  default_strategy: "momentum"
+  default_strategy_profile: "balanced"
+  
+  # Rebalancing
+  rebalance_frequency_hours: 6
+  
+  # Zeitrahmen
+  timeframes:
+    analysis: "1h"
+    check_interval: 300  # 5 Minuten in Sekunden
+    data_retention_days: 365
+
+# =====================================================
+# RISIKO-MANAGEMENT
+# =====================================================
+risk:
+  # Verlustbegrenzung
+  max_drawdown: 0.20           # 20% max Drawdown
+  stop_loss_percentage: 0.05   # 5% Stop Loss
+  take_profit_percentage: 0.15 # 15% Take Profit
+  risk_per_trade: 0.02         # 2% Risiko pro Trade
+  
+  # Portfolio-Diversifikation
+  max_correlation: 0.7
+  max_positions: 10
+  position_concentration_limit: 0.25
+  
+  # Dynamisches Risiko-Management
+  volatility_scaling: true
+  kelly_criterion: false
+  
+  # Risk Parity Settings
+  risk_parity:
+    enabled: false
+    rebalance_threshold: 0.05
+    lookback_days: 60
+
+# =====================================================
+# EXCHANGE KONFIGURATION
+# =====================================================
+exchange:
+  name: "binance"
+  testnet: true
+  
+  # Gebühren
+  maker_fee: 0.001   # 0.1%
+  taker_fee: 0.001   # 0.1%
+  
+  # Rate Limiting
+  rate_limit: 1200  # Requests pro Minute
+  burst_limit: 10
+  
+  # Order Settings
+  order_timeout: 30  # Sekunden
+  max_retries: 3
+  retry_delay: 1.0
+
+# =====================================================
+# SYMBOLE UND MÄRKTE
+# =====================================================
+symbols:
+  - "BTC/USDT"
+  - "ETH/USDT"
+  - "BNB/USDT"
+  - "ADA/USDT"
+  - "SOL/USDT"
+
+# Symbol-spezifische Einstellungen
+symbol_configs:
+  "BTC/USDT":
+    max_position_size: 0.15
+    min_order_size: 0.001
+    price_precision: 2
+    quantity_precision: 6
+  
+  "ETH/USDT":
+    max_position_size: 0.12
+    min_order_size: 0.01
+    price_precision: 2
+    quantity_precision: 5
+  
+  "BNB/USDT":
+    max_position_size: 0.08
+    min_order_size: 0.1
+    price_precision: 2
+    quantity_precision: 3
+
+# =====================================================
+# DATENMANAGEMENT
+# =====================================================
+data:
+  # Historische Daten
+  min_candles: 200
+  cache_dir: "data/market_data"
+  cache_duration_hours: 24
+  
+  # Datenquellen
+  primary_source: "binance"
+  backup_sources: ["coingecko"]
+  
+  # Datenvalidierung
+  max_missing_data_percent: 0.05
+  outlier_detection: true
+  
+  # Storage
+  database_url: "sqlite:///data/trading_bot.db"
+  backup_enabled: true
+  backup_interval_hours: 6
+
+# =====================================================
+# ML UND KI KONFIGURATION
+# =====================================================
+ml:
+  enabled: true
+  models_dir: "data/ml_models"
+  output_dir: "data/ml_analysis"
+  
+  # Training
+  auto_train: false
+  retrain_interval_days: 7
+  min_data_points_for_ml: 200
+  
+  # Market Regime Detection
+  regime_core_symbols: ["BTC/USDT", "ETH/USDT"]
+  regime_check_interval: 1800  # 30 Minuten
+  
+  # Feature Engineering
+  feature_sets:
+    - "technical_indicators"
+    - "price_action"
+    - "volume_profile"
+    - "market_microstructure"
+  
+  # Model Configuration
+  models:
+    market_regime:
+      type: "random_forest"
+      lookback_periods: [14, 30, 60]
+      retrain_threshold: 0.1
+    
+    alpha_extraction:
+      type: "lightgbm"
+      features: 50
+      validation_split: 0.2
+
+# =====================================================
+# STRATEGIEN KONFIGURATION
+# =====================================================
+strategies:
+  # Strategy Router
+  strategy_router:
+    enabled: false
+    regime_based: true
+    performance_based: true
+    allocation_method: "risk_parity"
+  
+  # Einzelne Strategien
+  strategy_configs:
+    momentum:
+      lookback_period: 20
+      momentum_threshold: 0.02
+      volatility_filter: true
+      max_holding_period: 168  # Stunden
+    
+    mean_reversion:
+      lookback_period: 14
+      std_dev_threshold: 2.0
+      reversion_timeout: 72  # Stunden
+    
+    arbitrage:
+      min_spread: 0.001
+      max_exposure: 0.05
+      execution_timeout: 10  # Sekunden
+    
+    grid_trading:
+      grid_levels: 10
+      grid_spacing: 0.005
+      rebalance_threshold: 0.02
+    
+    ultimate_btc:
+      aggressive_mode: false
+      btc_correlation_threshold: 0.8
+      regime_adaptation: true
+    
+    lazy_billionaire:
+      lazy_mode: true
+      min_confidence: 0.7
+      max_trades_per_day: 5
+    
+    # Neue defensive Strategien
+    advanced_portfolio:
+      rebalance_threshold: 0.05      # 5% Abweichung für Rebalancing
+      max_position_size: 0.25        # 25% maximale Position
+      lookback_period: 60            # 60 Tage für Risiko-Analyse
+      risk_target: 0.15              # 15% Ziel-Volatilität
+      assets:
+        - "BTC/USDT"
+        - "ETH/USDT"
+        - "BNB/USDT"
+        - "ADA/USDT"
+        - "SOL/USDT"
+    
+    defensive_volatility:
+      vol_lookback: 30               # 30 Tage Volatilitäts-Lookback
+      vol_percentile_period: 252     # 1 Jahr für Perzentile
+      extreme_vol_threshold: 0.95    # 95. Perzentil als extrem
+      high_vol_threshold: 0.80       # 80. Perzentil als hoch
+      base_position_size: 0.05       # 5% Basis-Position
+      max_position_size: 0.15        # 15% maximale Position
+      min_position_size: 0.01        # 1% minimale Position
+      vol_target: 0.20               # 20% Ziel-Volatilität
+      max_drawdown_threshold: 0.10   # 10% max Drawdown
+      stop_loss_multiplier: 2.0      # 2x Volatilität für Stop Loss
+      reversion_period: 14           # 14 Tage für Mean Reversion
+      reversion_threshold: 2.0       # 2 Std Dev für Reversion
+    
+    smart_rebalancing:
+      target_weights:                # Standard gleichgewichtet
+        "BTC/USDT": 0.20
+        "ETH/USDT": 0.20
+        "BNB/USDT": 0.20
+        "ADA/USDT": 0.20
+        "SOL/USDT": 0.20
+      rebalance_threshold: 0.05      # 5% Abweichung
+      min_rebalance_interval: 6      # 6 Stunden minimum
+      max_rebalance_interval: 168    # 1 Woche maximum
+      transaction_cost_rate: 0.001   # 0.1% Transaktionskosten
+      min_trade_amount: 50.0         # $50 Minimum-Trade
+      cost_benefit_threshold: 2.0    # 2:1 Nutzen-Kosten-Verhältnis
+      vol_lookback: 24               # 24 Stunden für Volatilität
+      low_vol_multiplier: 0.7        # 70% bei niedriger Vol
+      high_vol_multiplier: 1.5       # 150% bei hoher Vol
+      momentum_lookback: 72          # 3 Tage für Momentum
+      momentum_threshold: 0.02       # 2% Momentum-Schwelle
+      momentum_adjustment: 0.2       # 20% Momentum-Anpassung
+
+# =====================================================
+# SICHERHEIT UND SAFETY
+# =====================================================
+safety:
+  # Killswitch
+  killswitch_enabled: true
+  max_daily_loss: 0.05      # 5% Tagesverlust
+  max_drawdown_trigger: 0.15 # 15% Drawdown Trigger
+  
+  # Circuit Breaker
+  circuit_breaker:
+    enabled: true
+    consecutive_losses: 5
+    loss_threshold: 0.02
+    cooldown_minutes: 60
+  
+  # Position Limits
+  max_open_positions: 8
+  max_position_value: 10000.0
+  
+  # Error Handling
+  max_api_errors: 10
+  error_cooldown_seconds: 300
+
+# =====================================================
+# MONITORING UND ALERTS
+# =====================================================
+monitoring:
+  # Performance Tracking
+  track_performance: true
+  performance_update_interval: 3600  # Stunden
+  
+  # Health Checks
+  health_check_interval: 300  # Sekunden
+  api_health_timeout: 10
+  
+  # Metrics
+  metrics_enabled: true
+  metrics_retention_days: 30
+  
+  # Advanced Monitoring
+  advanced_monitoring:
+    enabled: true
+    correlation_tracking: true
+    regime_tracking: true
+    alpha_decay_monitoring: true
+
+# =====================================================
+# BENACHRICHTIGUNGEN
+# =====================================================
+notifications:
+  enabled: true
+  min_level: "info"  # info, warning, error, critical
+  
+  # Aktivierte Alert-Typen
+  enabled_alerts:
+    - "trade_executed"
+    - "system_error"
+    - "safety_trigger"
+    - "performance_update"
+    - "regime_change"
+  
+  # Telegram Settings
+  telegram:
+    enabled: true
+    rate_limit_window: 30  # Sekunden
+    batch_size: 5
+    batch_timeout: 60  # Sekunden
+  
+  # E-Mail Settings (falls implementiert)
+  email:
+    enabled: false
+    smtp_server: "smtp.gmail.com"
+    smtp_port: 587
+
+# =====================================================
+# API UND WEBSERVER
+# =====================================================
+api:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8000
+  
+  # Security
+  cors_enabled: true
+  rate_limiting: true
+  rate_limit_per_minute: 60
+  
+  # Authentication
+  auth_enabled: false
+  jwt_secret: "change_this_in_production"
+  session_timeout_hours: 24
+
+# =====================================================
+# DASHBOARD KONFIGURATION
+# =====================================================
+dashboard:
+  enabled: true
+  auto_refresh_interval: 30  # Sekunden
+  
+  # Features
+  real_time_updates: true
+  historical_charts: true
+  trade_history: true
+  performance_analytics: true
+  
+  # Themes
+  default_theme: "dark"
+  theme_options: ["light", "dark", "auto"]
+
+# =====================================================
+# BACKTESTING KONFIGURATION
+# =====================================================
+backtesting:
+  # Standard-Einstellungen
+  initial_capital: 100000.0
+  commission: 0.001
+  slippage: 0.0001
+  
+  # Performance-Metriken
+  benchmark: "BTC/USDT"
+  risk_free_rate: 0.02
+  
+  # Validierung
+  walk_forward_analysis: true
+  cross_validation_folds: 5
+  out_of_sample_ratio: 0.2
+  
+  # Output
+  save_results: true
+  generate_reports: true
+  plot_results: true
+
+# =====================================================
+# LOGGING KONFIGURATION
+# =====================================================
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # File Logging
+  file_logging: true
+  log_file: "logs/trading_bot.log"
+  max_file_size: "10MB"
+  backup_count: 5
+  
+  # Console Logging
+  console_logging: true
+  color_output: true
+  
+  # Logger-spezifische Level
+  loggers:
+    ccxt: "WARNING"
+    urllib3: "WARNING"
+    websocket: "WARNING"
+    requests: "WARNING"
+
+# =====================================================
+# ENTWICKLUNG UND DEBUG
+# =====================================================
+development:
+  # Debug-Modi
+  debug_trading: false
+  dry_run: false
+  paper_trading: true
+  
+  # Profiling
+  enable_profiling: false
+  profile_output: "logs/profile.txt"
+  
+  # Testing
+  unit_tests: true
+  integration_tests: true
+  load_testing: false
+
+# =====================================================
+# ERWEITERTE EINSTELLUNGEN
+# =====================================================
+advanced:
+  # Threading
+  max_threads: 4
+  thread_pool_size: 10
+  
+  # Memory Management
+  max_memory_usage: "1GB"
+  gc_threshold: 0.8
+  
+  # Caching
+  redis_cache: false
+  cache_ttl: 3600
+  
+  # Networking
+  connection_timeout: 30
+  read_timeout: 60
+  max_retries: 3

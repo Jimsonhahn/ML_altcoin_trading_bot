@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🧪 Complete API Endpoint Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .endpoint { margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4f6d4; border-color: #4a934a; }
+        .error { background: #f6d4d4; border-color: #934a4a; }
+        .pending { background: #f6f6d4; border-color: #94944a; }
+        button { padding: 8px 16px; margin: 5px; }
+        pre { background: #f5f5f5; padding: 10px; margin: 5px 0; overflow-x: auto; }
+        .summary { background: #e6f3ff; padding: 15px; margin: 20px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Complete Dashboard API Test</h1>
+    <div class="summary" id="summary">
+        <h3>Test Summary</h3>
+        <p>Click "Test All Endpoints" to run comprehensive API tests</p>
+    </div>
+    
+    <button onclick="testAllEndpoints()">🚀 Test All Endpoints</button>
+    <button onclick="clearResults()">🗑️ Clear Results</button>
+    
+    <div id="results"></div>
+
+    <script>
+        const API_URL = 'http://localhost:5001';
+        
+        const endpoints = [
+            // Basic health
+            { name: 'Health Check', method: 'GET', path: '/health' },
+            
+            // Trading endpoints
+            { name: 'Trading Status', method: 'GET', path: '/api/v1/trading/status' },
+            { name: 'Trading Positions', method: 'GET', path: '/api/v1/trading/positions' },
+            { name: 'Trading Performance', method: 'GET', path: '/api/v1/trading/performance?period=day' },
+            { name: 'Start Trading', method: 'POST', path: '/api/v1/trading/start', 
+              body: {strategy: 'super_lazy_billionaire', mode: 'paper'} },
+            { name: 'Stop Trading', method: 'POST', path: '/api/v1/trading/stop' },
+            { name: 'Force Stop Trading', method: 'POST', path: '/api/v1/trading/force-stop' },
+            { name: 'Restart Trading', method: 'POST', path: '/api/v1/trading/restart', 
+              body: {strategy: 'super_lazy_billionaire'} },
+            
+            // Strategy endpoints
+            { name: 'Strategies List', method: 'GET', path: '/api/v1/strategies/list' },
+            { name: 'SuperLazy Strategy Details', method: 'GET', path: '/api/v1/strategies/super_lazy_billionaire' },
+            
+            // ML/Analytics endpoints
+            { name: 'Market Regime', method: 'GET', path: '/api/v1/market/regime' },
+            { name: 'Position Sizing', method: 'GET', path: '/api/v1/risk/position-sizing' },
+            { name: 'ML Analysis', method: 'GET', path: '/api/v1/ml/analysis' },
+            { name: 'Advanced Analytics', method: 'GET', path: '/api/v1/analytics/advanced' },
+            
+            // Monitoring endpoints
+            { name: 'System Health', method: 'GET', path: '/api/v1/monitoring/health' },
+            { name: 'System Metrics', method: 'GET', path: '/api/v1/monitoring/metrics' }
+        ];
+        
+        async function testEndpoint(endpoint) {
+            const startTime = performance.now();
+            
+            try {
+                const options = {
+                    method: endpoint.method,
+                    headers: { 'Content-Type': 'application/json' }
+                };
+                
+                if (endpoint.body) {
+                    options.body = JSON.stringify(endpoint.body);
+                }
+                
+                const response = await fetch(`${API_URL}${endpoint.path}`, options);
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                return {
+                    success: true,
+                    status: response.status,
+                    responseTime,
+                    dataSize: JSON.stringify(data).length,
+                    data: data
+                };
+                
+            } catch (error) {
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                return {
+                    success: false,
+                    error: error.message,
+                    responseTime
+                };
+            }
+        }
+        
+        async function testAllEndpoints() {
+            const resultsDiv = document.getElementById('results');
+            const summaryDiv = document.getElementById('summary');
+            
+            resultsDiv.innerHTML = '<h2>🔄 Running Tests...</h2>';
+            
+            let successCount = 0;
+            let totalTests = endpoints.length;
+            let results = [];
+            
+            for (const endpoint of endpoints) {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'endpoint pending';
+                resultDiv.innerHTML = `
+                    <strong>${endpoint.name}</strong> - ${endpoint.method} ${endpoint.path}<br>
+                    <span>Testing...</span>
+                `;
+                resultsDiv.appendChild(resultDiv);
+                
+                const result = await testEndpoint(endpoint);
+                
+                if (result.success) {
+                    successCount++;
+                    resultDiv.className = 'endpoint success';
+                    resultDiv.innerHTML = `
+                        <strong>✅ ${endpoint.name}</strong> - ${endpoint.method} ${endpoint.path}<br>
+                        <small>Status: ${result.status} | Response Time: ${result.responseTime}ms | Size: ${result.dataSize} bytes</small>
+                        <details>
+                            <summary>Response Data</summary>
+                            <pre>${JSON.stringify(result.data, null, 2)}</pre>
+                        </details>
+                    `;
+                } else {
+                    resultDiv.className = 'endpoint error';
+                    resultDiv.innerHTML = `
+                        <strong>❌ ${endpoint.name}</strong> - ${endpoint.method} ${endpoint.path}<br>
+                        <small>Error: ${result.error} | Response Time: ${result.responseTime}ms</small>
+                    `;
+                }
+                
+                results.push({endpoint, result});
+                
+                // Update summary
+                const percentage = Math.round((successCount / totalTests) * 100);
+                summaryDiv.innerHTML = `
+                    <h3>📊 Test Results Summary</h3>
+                    <p><strong>Success Rate:</strong> ${successCount}/${totalTests} (${percentage}%)</p>
+                    <p><strong>Status:</strong> ${successCount === totalTests ? '🟢 All Tests Passed!' : '🟡 Some Tests Failed'}</p>
+                `;
+            }
+            
+            // Add final summary
+            const finalSummary = document.createElement('div');
+            finalSummary.className = successCount === totalTests ? 'endpoint success' : 'endpoint error';
+            finalSummary.innerHTML = `
+                <h3>🏁 Final Results</h3>
+                <p><strong>Total Endpoints Tested:</strong> ${totalTests}</p>
+                <p><strong>Successful:</strong> ${successCount}</p>
+                <p><strong>Failed:</strong> ${totalTests - successCount}</p>
+                <p><strong>Success Rate:</strong> ${Math.round((successCount / totalTests) * 100)}%</p>
+                ${successCount === totalTests ? 
+                    '<p>🎉 <strong>All API endpoints are working correctly!</strong></p>' : 
+                    '<p>⚠️ Some endpoints need attention. Check failed tests above.</p>'
+                }
+            `;
+            resultsDiv.appendChild(finalSummary);
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('summary').innerHTML = `
+                <h3>Test Summary</h3>
+                <p>Click "Test All Endpoints" to run comprehensive API tests</p>
+            `;
+        }
+    </script>
+</body>
+</html>

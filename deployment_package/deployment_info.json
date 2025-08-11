@@ -1,0 +1,24 @@
+{
+  "created": "2025-08-11 14:36:12.000686",
+  "total_files": 114,
+  "core_files": [
+    "main.py",
+    "core/enhanced_decision_logger.py",
+    "api/routes/intelligence.py",
+    "run_intelligence_api.py",
+    "start_enhanced_bot.py",
+    "mobile_dashboard.html",
+    "requirements_simple.txt",
+    ".env_simple_example"
+  ],
+  "windows_scripts": [
+    "install_dependencies_windows.bat",
+    "start_bot_windows.bat",
+    "stop_bot_windows.bat",
+    "status_bot_windows.bat",
+    "mobile_dashboard_server.html"
+  ],
+  "target_server": "85.215.183.30",
+  "target_path": "C:\\TradingBot",
+  "status": "Ready for deployment"
+}

@@ -1,0 +1,229 @@
+{
+  "risk_profiles": {
+    "conservative": {
+      "name": "Conservative",
+      "description": "Low risk, steady returns for capital preservation",
+      "parameters": {
+        "max_drawdown": 0.10,
+        "target_sharpe": 2.0,
+        "max_risk_per_trade": 0.01,
+        "max_total_risk": 0.05,
+        "kelly_fraction": 0.15,
+        "max_position_size": 0.10,
+        "min_position_size": 0.005,
+        "max_correlation_adjustment": 0.7,
+        "var_confidence": 0.99,
+        "portfolio": {
+          "max_positions": 8,
+          "min_weight": 0.08,
+          "max_weight": 0.20,
+          "rebalance_threshold": 0.03,
+          "max_correlation": 0.6,
+          "target_volatility": 0.08
+        },
+        "market_regime_adjustments": {
+          "bull": 1.0,
+          "bear": 0.4,
+          "sideways": 0.6,
+          "volatile": 0.3,
+          "extreme_fear": 0.2,
+          "unknown": 0.5
+        },
+        "volatility_thresholds": {
+          "high_volatility_percentile": 0.7,
+          "high_volatility_factor": 0.3,
+          "elevated_volatility_percentile": 0.5,
+          "elevated_volatility_factor": 0.6
+        }
+      }
+    },
+    "balanced": {
+      "name": "Balanced",
+      "description": "Moderate risk-reward balance for steady growth",
+      "parameters": {
+        "max_drawdown": 0.20,
+        "target_sharpe": 1.5,
+        "max_risk_per_trade": 0.02,
+        "max_total_risk": 0.10,
+        "kelly_fraction": 0.25,
+        "max_position_size": 0.20,
+        "min_position_size": 0.001,
+        "max_correlation_adjustment": 0.5,
+        "var_confidence": 0.95,
+        "portfolio": {
+          "max_positions": 10,
+          "min_weight": 0.05,
+          "max_weight": 0.25,
+          "rebalance_threshold": 0.05,
+          "max_correlation": 0.8,
+          "target_volatility": 0.15
+        },
+        "market_regime_adjustments": {
+          "bull": 1.2,
+          "bear": 0.6,
+          "sideways": 0.8,
+          "volatile": 0.5,
+          "extreme_fear": 0.3,
+          "unknown": 0.8
+        },
+        "volatility_thresholds": {
+          "high_volatility_percentile": 0.8,
+          "high_volatility_factor": 0.5,
+          "elevated_volatility_percentile": 0.6,
+          "elevated_volatility_factor": 0.75
+        }
+      }
+    },
+    "aggressive": {
+      "name": "Aggressive",
+      "description": "High risk, high reward for maximum growth potential",
+      "parameters": {
+        "max_drawdown": 0.35,
+        "target_sharpe": 1.0,
+        "max_risk_per_trade": 0.05,
+        "max_total_risk": 0.20,
+        "kelly_fraction": 0.40,
+        "max_position_size": 0.30,
+        "min_position_size": 0.001,
+        "max_correlation_adjustment": 0.3,
+        "var_confidence": 0.90,
+        "portfolio": {
+          "max_positions": 15,
+          "min_weight": 0.03,
+          "max_weight": 0.35,
+          "rebalance_threshold": 0.08,
+          "max_correlation": 0.9,
+          "target_volatility": 0.25
+        },
+        "market_regime_adjustments": {
+          "bull": 1.5,
+          "bear": 0.8,
+          "sideways": 1.0,
+          "volatile": 0.7,
+          "extreme_fear": 0.4,
+          "unknown": 1.0
+        },
+        "volatility_thresholds": {
+          "high_volatility_percentile": 0.9,
+          "high_volatility_factor": 0.7,
+          "elevated_volatility_percentile": 0.7,
+          "elevated_volatility_factor": 0.9
+        }
+      }
+    },
+    "scalping": {
+      "name": "Scalping",
+      "description": "High-frequency, low-risk trades for consistent small profits",
+      "parameters": {
+        "max_drawdown": 0.05,
+        "target_sharpe": 3.0,
+        "max_risk_per_trade": 0.005,
+        "max_total_risk": 0.03,
+        "kelly_fraction": 0.10,
+        "max_position_size": 0.05,
+        "min_position_size": 0.001,
+        "max_correlation_adjustment": 0.8,
+        "var_confidence": 0.99,
+        "portfolio": {
+          "max_positions": 5,
+          "min_weight": 0.15,
+          "max_weight": 0.30,
+          "rebalance_threshold": 0.02,
+          "max_correlation": 0.5,
+          "target_volatility": 0.05
+        },
+        "market_regime_adjustments": {
+          "bull": 1.1,
+          "bear": 0.3,
+          "sideways": 1.0,
+          "volatile": 0.2,
+          "extreme_fear": 0.1,
+          "unknown": 0.4
+        },
+        "volatility_thresholds": {
+          "high_volatility_percentile": 0.6,
+          "high_volatility_factor": 0.2,
+          "elevated_volatility_percentile": 0.4,
+          "elevated_volatility_factor": 0.5
+        }
+      }
+    },
+    "swing": {
+      "name": "Swing Trading",
+      "description": "Medium-term positions with moderate risk for trend following",
+      "parameters": {
+        "max_drawdown": 0.25,
+        "target_sharpe": 1.3,
+        "max_risk_per_trade": 0.03,
+        "max_total_risk": 0.15,
+        "kelly_fraction": 0.30,
+        "max_position_size": 0.25,
+        "min_position_size": 0.002,
+        "max_correlation_adjustment": 0.4,
+        "var_confidence": 0.93,
+        "portfolio": {
+          "max_positions": 12,
+          "min_weight": 0.04,
+          "max_weight": 0.28,
+          "rebalance_threshold": 0.06,
+          "max_correlation": 0.85,
+          "target_volatility": 0.18
+        },
+        "market_regime_adjustments": {
+          "bull": 1.3,
+          "bear": 0.7,
+          "sideways": 0.9,
+          "volatile": 0.6,
+          "extreme_fear": 0.4,
+          "unknown": 0.9
+        },
+        "volatility_thresholds": {
+          "high_volatility_percentile": 0.85,
+          "high_volatility_factor": 0.6,
+          "elevated_volatility_percentile": 0.65,
+          "elevated_volatility_factor": 0.8
+        }
+      }
+    }
+  },
+  "profile_selection": {
+    "default": "balanced",
+    "auto_switch": {
+      "enabled": false,
+      "conditions": {
+        "switch_to_conservative": {
+          "max_drawdown_exceeded": 0.15,
+          "sharpe_below": 0.5,
+          "volatility_above_percentile": 0.9
+        },
+        "switch_to_aggressive": {
+          "performance_above": 0.2,
+          "sharpe_above": 2.0,
+          "low_volatility_period": 30
+        }
+      }
+    }
+  },
+  "risk_monitoring": {
+    "check_frequency_minutes": 15,
+    "alert_thresholds": {
+      "drawdown_warning": 0.8,
+      "drawdown_critical": 0.95,
+      "var_breach_warning": 1.2,
+      "var_breach_critical": 1.5,
+      "correlation_warning": 0.85,
+      "concentration_warning": 0.4
+    },
+    "auto_reduce_positions": {
+      "enabled": true,
+      "drawdown_threshold": 0.9,
+      "reduction_factor": 0.5
+    }
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-01-19",
+    "description": "Risk profile configurations for altcoin trading bot",
+    "author": "Advanced Risk Management System"
+  }
+}

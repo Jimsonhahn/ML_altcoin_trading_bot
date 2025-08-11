@@ -1,0 +1,53 @@
+{
+  "strategy_info": {
+    "name": "Optimized ML-Powered BTC Strategy",
+    "period": "2024-01-01 to 2024-12-31",
+    "initial_capital": 1000000.0
+  },
+  "performance": {
+    "total_return": 0.14921030112439881,
+    "annual_return": 0.1487736998289828,
+    "sharpe_ratio": 0.6698682665136168,
+    "sortino_ratio": 0.7727275808474463,
+    "calmar_ratio": 0.9891822048399876,
+    "max_drawdown": 0.15040070383499143,
+    "annual_volatility": 0.19223734914208715,
+    "var_95": -0.017361884002902322,
+    "cvar_95": -0.02811765205062055,
+    "win_rate": 0.4410958904109589,
+    "profit_factor": 1.1584561626177572,
+    "total_trades": 28,
+    "avg_trade_return": 0.68790423500258,
+    "days_analyzed": 366
+  },
+  "ml_performance": {
+    "signal_accuracy": 0.2857142857142857,
+    "avg_confidence_profitable": 0.735673335517153,
+    "avg_confidence_unprofitable": 0.6687965947967509,
+    "confidence_edge": 0.06687674072040206,
+    "top_features": {
+      "return_lag_1": 0.024881538492486432,
+      "order_book_imbalance": 0.02421929182161771,
+      "volume": 0.022042592399884958,
+      "return_10d": 0.02161411202773021,
+      "volume_lag_1": 0.021333812914499012,
+      "return_lag_2": 0.02092025300380997,
+      "orderbook_momentum": 0.020732105429655655,
+      "volume_ratio_5": 0.020710774447448604,
+      "sentiment": 0.02000888750376871,
+      "return_3d": 0.019759096021050717
+    },
+    "total_features_used": 74
+  },
+  "target_achievement": {
+    "return_target": "False",
+    "sharpe_target": "False",
+    "drawdown_target": "False",
+    "all_targets_met": "False"
+  },
+  "alpha_analysis": {
+    "btc_buy_hold_return": 0.22671062152027166,
+    "strategy_alpha": -0.07793692169128885,
+    "risk_adjusted_alpha": -0.40542028923673845
+  }
+}

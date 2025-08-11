@@ -1,0 +1,84 @@
+{
+  "step": "1.1",
+  "optimization_focus": "Balanced Signal Enhancement with Risk Control",
+  "strategy_info": {
+    "name": "Balanced Institutional BTC Elite",
+    "version": "1.2 Risk-Balanced",
+    "risk_profile": "Balanced Institutional",
+    "status": "active",
+    "max_drawdown_limit": 0.2,
+    "max_position_size": 0.35,
+    "min_signal_strength": 0.66,
+    "quality_threshold": 0.75,
+    "current_phase": "balanced_analysis",
+    "last_signal_time": "2024-11-15 00:00:00",
+    "signal_stats": {
+      "generated": 50,
+      "executed": 2,
+      "quality_avg": 0.7996363636363638,
+      "top_quality": 0
+    },
+    "alerts": []
+  },
+  "performance_metrics": {
+    "strategy_name": "Balanced Institutional BTC Elite",
+    "strategy_version": "1.2 Risk-Balanced",
+    "risk_profile": "Balanced Institutional",
+    "total_return": 0.14989773816821317,
+    "annual_return": 0.07233284859143119,
+    "sharpe_ratio": 0.6270017174865994,
+    "sortino_ratio": 0.6948046168230277,
+    "calmar_ratio": 0.628710256365665,
+    "max_drawdown": 0.11504957626993377,
+    "annual_volatility": 0.0754907798038732,
+    "total_trades": 2,
+    "signal_generation_rate": 0.0684931506849315,
+    "signal_execution_rate": 0.04,
+    "avg_signal_quality": 0.7996363636363638,
+    "avg_trade_quality": 0.8015151515151515,
+    "top_quality_rate": 0.0,
+    "balanced_trade_rate": 1.0,
+    "top_quality_signals": 0,
+    "days_analyzed": 730,
+    "final_capital": 344969.32145046396,
+    "balanced_optimization": true,
+    "drawdown_limit": 0.2,
+    "quality_threshold": 0.75
+  },
+  "balance_summary": {
+    "total_signals_generated": 50,
+    "top_quality_signals": 0,
+    "top_quality_rate": 0.0,
+    "avg_quality_score": 0.7996363636363638,
+    "quality_distribution": {
+      "ultra_high": 0.0,
+      "high": 0.94,
+      "medium": 0.06,
+      "filtered_out": 0.0
+    },
+    "balance_improvements": {
+      "conservative_sizing": true,
+      "progressive_dd_control": true,
+      "quality_first_execution": true,
+      "stricter_risk_limits": true
+    }
+  },
+  "signal_statistics": {
+    "generated": 50,
+    "executed": 2,
+    "quality_avg": 0.7996363636363638,
+    "top_quality": 0
+  },
+  "step1_1_assessment": {
+    "score": 45,
+    "status": "\u274c WEITERE BALANCE-OPTIMIERUNG ERFORDERLICH",
+    "improvements": {
+      "signal_improvement": false,
+      "return_improvement": "False",
+      "risk_controlled": "True",
+      "quality_maintained": "True"
+    },
+    "next_action": "Iterate on balance parameters",
+    "balance_achieved": false
+  }
+}

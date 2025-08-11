@@ -1,0 +1,23 @@
+{
+  "analysis_date": "2025-07-21T22:12:30.049871",
+  "original_metrics": {
+    "annual_return": 5.309,
+    "sharpe_ratio": 3.33,
+    "max_drawdown": 0.008,
+    "win_rate": 0.455,
+    "total_trades": 11
+  },
+  "realistic_metrics": {
+    "error": "No completed trades",
+    "rejected_trades": 0,
+    "signals_generated": 0
+  },
+  "problems_found": [
+    "1. Synthetische Daten",
+    "2. Zu niedrige Trading-Kosten",
+    "3. Perfekte Ausf\u00fchrung",
+    "4. Position Sizing mit unrealistischen Annahmen",
+    "5. Fehlender Spread"
+  ],
+  "data_period": "2022-01-01 00:00:00 to 2024-01-01 00:00:00"
+}

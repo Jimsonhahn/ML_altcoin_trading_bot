@@ -1,0 +1,43 @@
+{
+  "report_id": "learning_report_20250811_115359",
+  "generation_time": "2025-08-11T11:53:59.498030",
+  "analysis_period_days": 1,
+  "session_id": "619df0c6-69ab-4954-bd91-ee12f77a83aa",
+  "data_quality_score": 0.95,
+  "key_insights": {
+    "performance_patterns": {
+      "analysis": "placeholder",
+      "patterns_found": []
+    },
+    "strategy_effectiveness": {
+      "top_strategies": [],
+      "underperformers": []
+    },
+    "market_adaptation": {
+      "adaptation_score": 0.8,
+      "regime_performance": {}
+    },
+    "risk_management_efficiency": {
+      "risk_score": 0.85,
+      "improvements_needed": []
+    },
+    "decision_quality_trends": {
+      "quality_trend": "improving",
+      "confidence_accuracy": 0.82
+    }
+  },
+  "optimization_recommendations": [
+    {
+      "category": "strategy_allocation",
+      "recommendation": "Increase allocation to momentum strategy",
+      "confidence": 0.85,
+      "expected_improvement": "12%"
+    }
+  ],
+  "data_exports": {
+    "decisions_export": "intelligence_exports_test/decisions_last_1d.json",
+    "performance_export": "intelligence_exports_test/performance_last_1d.json",
+    "patterns_export": "intelligence_exports_test/patterns_last_1d.json",
+    "anomalies_export": "intelligence_exports_test/anomalies_last_1d.json"
+  }
+}

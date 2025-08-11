@@ -1,0 +1,73 @@
+# =============================================================================
+# SYSTEMD SERVICE CONFIGURATION
+# =============================================================================
+# Trading Bot Systemd Service for 24/7 Operation
+# File: /etc/systemd/system/trading-bot.service
+
+[Unit]
+Description=Altcoin Trading Bot - 24/7 Automated Trading
+Documentation=https://github.com/your-repo/altcoin-trading-bot
+After=network-online.target postgresql.service redis.service
+Wants=network-online.target
+RequiresMountsFor=/var/log/trading-bot
+
+[Service]
+# Service Configuration
+Type=notify
+ExecStart=/usr/local/bin/python3 /opt/trading-bot/main.py
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=60
+
+# Restart Configuration
+Restart=always
+RestartSec=10
+StartLimitInterval=120
+StartLimitBurst=5
+
+# User and Security
+User=trading-bot
+Group=trading-bot
+WorkingDirectory=/opt/trading-bot
+
+# Environment
+Environment=NODE_ENV=production
+Environment=PYTHONPATH=/opt/trading-bot
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=/opt/trading-bot/.env.production
+
+# Security Measures
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/trading-bot/logs /opt/trading-bot/data /var/log/trading-bot
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+# Resource Limits
+MemoryMax=4G
+CPUQuota=80%
+TasksMax=1000
+LimitNOFILE=65536
+LimitNPROC=32768
+
+# Health Monitoring
+# Systemd will monitor the service health via notify
+WatchdogSec=30
+NotifyAccess=main
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=trading-bot
+
+[Install]
+WantedBy=multi-user.target
+Alias=trading-bot.service

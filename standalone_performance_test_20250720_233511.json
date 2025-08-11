@@ -1,0 +1,33 @@
+{
+  "timestamp": "2025-07-20T23:35:11.880797",
+  "test_type": "standalone_performance_test",
+  "market_data": {
+    "days": 365,
+    "data_points": 8760,
+    "start_price": 45184.37943343444,
+    "end_price": 58589.428281409164,
+    "buyhold_return": 0.2966744042091587
+  },
+  "trading_results": {
+    "signals_generated": 5081,
+    "trades_executed": 2549,
+    "signal_to_trade_ratio": 0.501672899035623
+  },
+  "performance_metrics": {
+    "total_return": 2.3702856108003987e+198,
+    "annual_return": 2.3702856108003987e+198,
+    "sharpe_ratio": 9.289409480440801,
+    "max_drawdown": 0.01782549880024013,
+    "win_rate": 0.4440957238132601,
+    "profit_factor": 0.17278593178150564,
+    "total_trades": 2549,
+    "winning_trades": 1132,
+    "avg_trade_return": -0.0014786557170424063
+  },
+  "conclusion": {
+    "realistic": false,
+    "profitable": true,
+    "outperformed_buyhold": true,
+    "risk_adjusted_good": "True"
+  }
+}

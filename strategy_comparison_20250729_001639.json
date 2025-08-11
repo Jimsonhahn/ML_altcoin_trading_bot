@@ -1,0 +1,62 @@
+{
+  "timestamp": "20250729_001639",
+  "test_period_days": 365,
+  "original_strategy": {
+    "strategy": "Original Volume-Based",
+    "total_pnl": 164.04750669162732,
+    "roi_percent": 1.4981507460422587,
+    "total_trades": 248,
+    "win_rate": 58.87096774193549,
+    "avg_trades_per_day": 0.6794520547945205
+  },
+  "enhanced_strategy": {
+    "strategy": "Enhanced Multi-Source",
+    "total_pnl": 1067.7897288237311,
+    "roi_percent": 9.751504372819463,
+    "total_trades": 739,
+    "win_rate": 67.65899864682002,
+    "avg_trades_per_day": 2.0246575342465754,
+    "source_performance": {
+      "volume_spike": {
+        "trades": 174,
+        "win_rate": 59.77011494252874,
+        "avg_pnl_per_trade": 0.9488416798420497,
+        "total_contribution": 165.09845229251664
+      },
+      "social_sentiment": {
+        "trades": 164,
+        "win_rate": 57.3170731707317,
+        "avg_pnl_per_trade": 0.9436000229625329,
+        "total_contribution": 154.7504037658554
+      },
+      "ml_prediction": {
+        "trades": 161,
+        "win_rate": 74.53416149068323,
+        "avg_pnl_per_trade": 2.0466465286128135,
+        "total_contribution": 329.51009110666297
+      },
+      "news_analysis": {
+        "trades": 146,
+        "win_rate": 69.17808219178082,
+        "avg_pnl_per_trade": 2.121814510750321,
+        "total_contribution": 309.78491856954685
+      },
+      "arbitrage": {
+        "trades": 94,
+        "win_rate": 86.17021276595744,
+        "avg_pnl_per_trade": 1.1558070541398935,
+        "total_contribution": 108.64586308914998
+      }
+    }
+  },
+  "comparison_analysis": {
+    "improvement_percent": 8.253353626777205,
+    "improvement_factor": 6.5090274784299975,
+    "assessment": "\ud83d\udc4d GOOD - Notable improvement",
+    "key_metrics": {
+      "roi_improvement": 8.253353626777205,
+      "trade_frequency_increase": 1.345205479452055,
+      "win_rate_improvement": 8.788030904884536
+    }
+  }
+}

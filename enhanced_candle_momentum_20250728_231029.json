@@ -1,0 +1,278 @@
+{
+  "strategy": "enhanced_candle_momentum",
+  "backtest_period": "2021-2024",
+  "initial_investment": 10000,
+  "optimization_results": {
+    "combo_1": {
+      "params": {
+        "lookback_period": 8,
+        "sma_period": 15,
+        "min_momentum_ratio": 1.1,
+        "min_confidence": 0.3,
+        "use_rsi": true
+      },
+      "total_return": 3.5471834784040075,
+      "win_rate": 0.4606741573033708,
+      "sharpe": 0.17242366917376423,
+      "score": 1.6088027393047435,
+      "trades": 178
+    },
+    "combo_2": {
+      "params": {
+        "lookback_period": 10,
+        "sma_period": 18,
+        "min_momentum_ratio": 1.15,
+        "min_confidence": 0.35,
+        "use_rsi": true
+      },
+      "total_return": 1.2279378221380925,
+      "win_rate": 0.40828402366863903,
+      "sharpe": 0.11100392863466331,
+      "score": 0.6469615145462277,
+      "trades": 169
+    },
+    "combo_3": {
+      "params": {
+        "lookback_period": 12,
+        "sma_period": 22,
+        "min_momentum_ratio": 1.2,
+        "min_confidence": 0.4,
+        "use_rsi": true
+      },
+      "total_return": -0.24224543481428307,
+      "win_rate": 0.345679012345679,
+      "sharpe": -0.0012088819399803732,
+      "score": 0.00644286519599635,
+      "trades": 162
+    },
+    "combo_4": {
+      "params": {
+        "lookback_period": 15,
+        "sma_period": 25,
+        "min_momentum_ratio": 1.25,
+        "min_confidence": 0.45,
+        "use_rsi": true
+      },
+      "total_return": -0.09794908210143904,
+      "win_rate": 0.3904109589041096,
+      "sharpe": 0.018973071071578796,
+      "score": 0.08363557615213088,
+      "trades": 146
+    },
+    "combo_5": {
+      "params": {
+        "lookback_period": 18,
+        "sma_period": 30,
+        "min_momentum_ratio": 1.3,
+        "min_confidence": 0.5,
+        "use_rsi": true
+      },
+      "total_return": -0.025187783373103567,
+      "win_rate": 0.39344262295081966,
+      "sharpe": 0.02921035097900056,
+      "score": 0.11672077882970464,
+      "trades": 122
+    },
+    "combo_6": {
+      "params": {
+        "lookback_period": 10,
+        "sma_period": 20,
+        "min_momentum_ratio": 1.15,
+        "min_confidence": 0.35,
+        "use_rsi": false
+      },
+      "total_return": 0.935178978157976,
+      "win_rate": 0.4010989010989011,
+      "sharpe": 0.0918931682966116,
+      "score": 0.5219692120818442,
+      "trades": 182
+    },
+    "combo_7": {
+      "params": {
+        "lookback_period": 15,
+        "sma_period": 25,
+        "min_momentum_ratio": 1.2,
+        "min_confidence": 0.4,
+        "use_rsi": false
+      },
+      "total_return": 0.5176274585380449,
+      "win_rate": 0.41509433962264153,
+      "sharpe": 0.07100154652328658,
+      "score": 0.35287974925899646,
+      "trades": 159
+    }
+  },
+  "best_parameters": {
+    "lookback_period": 8,
+    "sma_period": 15,
+    "min_momentum_ratio": 1.1,
+    "min_confidence": 0.3,
+    "use_rsi": true
+  },
+  "performance_metrics": {
+    "total_return": 0.2360444726707814,
+    "annual_return": 0.07319349671583164,
+    "win_rate": 0.5036968576709797,
+    "avg_win": 0.0023411469873385756,
+    "avg_loss": -0.0004018506676022799,
+    "sharpe_ratio": 2.5267886147696674,
+    "max_drawdown": 0.0007857568443925763,
+    "total_trades": 1082,
+    "avg_hold_hours": 21.909426987061,
+    "profit_factor": 5.923736062039951,
+    "best_trade": 0.020694037995580027,
+    "worst_trade": -0.0017189351254005341
+  },
+  "sample_trades": [
+    {
+      "entry_time": "2021-01-03 16:00:00",
+      "exit_time": "2021-01-04 02:00:00",
+      "type": "sell",
+      "return_pct": -0.0005246071798050011,
+      "pnl": -1.0492143596100023,
+      "confidence": 0.3955617356842108,
+      "exit_reason": "signal_change",
+      "bars_held": 5
+    },
+    {
+      "entry_time": "2021-01-04 04:00:00",
+      "exit_time": "2021-01-07 16:00:00",
+      "type": "buy",
+      "return_pct": 0.008617003586599347,
+      "pnl": 17.23219895641872,
+      "confidence": 0.7155158949633131,
+      "exit_reason": "signal_change",
+      "bars_held": 42
+    },
+    {
+      "entry_time": "2021-01-07 22:00:00",
+      "exit_time": "2021-01-10 12:00:00",
+      "type": "buy",
+      "return_pct": 0.005427623093184338,
+      "pnl": 10.872813214551535,
+      "confidence": 0.6,
+      "exit_reason": "signal_change",
+      "bars_held": 31
+    },
+    {
+      "entry_time": "2021-01-10 14:00:00",
+      "exit_time": "2021-01-17 00:00:00",
+      "type": "buy",
+      "return_pct": 0.014443051384403553,
+      "pnl": 28.964256424414213,
+      "confidence": 0.6,
+      "exit_reason": "signal_change",
+      "bars_held": 77
+    },
+    {
+      "entry_time": "2021-01-17 02:00:00",
+      "exit_time": "2021-01-17 04:00:00",
+      "type": "sell",
+      "return_pct": -0.00015406390854057726,
+      "pnl": -0.3098539507835983,
+      "confidence": 0.568336346621404,
+      "exit_reason": "signal_change",
+      "bars_held": 1
+    },
+    {
+      "entry_time": "2021-01-17 06:00:00",
+      "exit_time": "2021-01-20 02:00:00",
+      "type": "buy",
+      "return_pct": 0.004486856204006204,
+      "pnl": 9.023705139567438,
+      "confidence": 0.6,
+      "exit_reason": "signal_change",
+      "bars_held": 34
+    },
+    {
+      "entry_time": "2021-01-20 04:00:00",
+      "exit_time": "2021-01-20 08:00:00",
+      "type": "sell",
+      "return_pct": -0.0001733583228606199,
+      "pnl": -0.3489610779765637,
+      "confidence": 0.6,
+      "exit_reason": "signal_change",
+      "bars_held": 2
+    },
+    {
+      "entry_time": "2021-01-20 10:00:00",
+      "exit_time": "2021-01-20 12:00:00",
+      "type": "sell",
+      "return_pct": -0.00019823922284130372,
+      "pnl": -0.3990311699485969,
+      "confidence": 0.6,
+      "exit_reason": "signal_change",
+      "bars_held": 1
+    },
+    {
+      "entry_time": "2021-01-20 14:00:00",
+      "exit_time": "2021-01-21 20:00:00",
+      "type": "buy",
+      "return_pct": 0.002320034483974967,
+      "pnl": 4.669758872961619,
+      "confidence": 0.8,
+      "exit_reason": "signal_change",
+      "bars_held": 15
+    },
+    {
+      "entry_time": "2021-01-22 00:00:00",
+      "exit_time": "2021-01-24 04:00:00",
+      "type": "buy",
+      "return_pct": 0.004854985236992647,
+      "pnl": 9.776634928832614,
+      "confidence": 0.6,
+      "exit_reason": "signal_change",
+      "bars_held": 26
+    },
+    {
+      "entry_time": "2021-01-24 06:00:00",
+      "exit_time": "2021-01-24 16:00:00",
+      "type": "sell",
+      "return_pct": 0.00023850006530327334,
+      "pnl": 0.48074135267379503,
+      "confidence": 0.40029532389233397,
+      "exit_reason": "signal_change",
+      "bars_held": 5
+    },
+    {
+      "entry_time": "2021-01-24 18:00:00",
+      "exit_time": "2021-01-25 02:00:00",
+      "type": "sell",
+      "return_pct": -0.0001838026317610729,
+      "pnl": -0.3705061487148549,
+      "confidence": 0.6,
+      "exit_reason": "signal_change",
+      "bars_held": 4
+    },
+    {
+      "entry_time": "2021-01-25 04:00:00",
+      "exit_time": "2021-02-01 06:00:00",
+      "type": "buy",
+      "return_pct": 0.013816116770128626,
+      "pnl": 27.84926412710018,
+      "confidence": 0.7346815501259295,
+      "exit_reason": "time_limit",
+      "bars_held": 85
+    },
+    {
+      "entry_time": "2021-02-01 10:00:00",
+      "exit_time": "2021-02-01 12:00:00",
+      "type": "sell",
+      "return_pct": -0.0002642536138096845,
+      "pnl": -0.5341301114787735,
+      "confidence": 0.37750947145242214,
+      "exit_reason": "signal_change",
+      "bars_held": 1
+    },
+    {
+      "entry_time": "2021-02-01 14:00:00",
+      "exit_time": "2021-02-04 02:00:00",
+      "type": "buy",
+      "return_pct": 0.003932250514197683,
+      "pnl": 7.947752808727646,
+      "confidence": 0.8,
+      "exit_reason": "signal_change",
+      "bars_held": 30
+    }
+  ]
+}

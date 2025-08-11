@@ -1,0 +1,410 @@
+{
+  "Bull Strong": {
+    "lazy_billionaire": {
+      "confidence": 0.7660000000000001,
+      "base_allocation": 0.22,
+      "adjusted_allocation": 0.16852000000000003,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "ml_strategy": {
+      "confidence": 0.7260000000000001,
+      "base_allocation": 0.16,
+      "adjusted_allocation": 0.11616000000000001,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "arbitrage": {
+      "confidence": 0.6300000000000001,
+      "base_allocation": 0.14,
+      "adjusted_allocation": 0.08820000000000003,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "mean_reversion": {
+      "confidence": 0.31,
+      "base_allocation": 0.12,
+      "adjusted_allocation": 0.0372,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "momentum": {
+      "confidence": 0.79,
+      "base_allocation": 0.1,
+      "adjusted_allocation": 0.07900000000000001,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "grid": {
+      "confidence": 0.43000000000000005,
+      "base_allocation": 0.08,
+      "adjusted_allocation": 0.03440000000000001,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "liquidation_hunter": {
+      "confidence": 0.39000000000000007,
+      "base_allocation": 0.06,
+      "adjusted_allocation": 0.023400000000000004,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "defi_yield": {
+      "confidence": 0.7100000000000001,
+      "base_allocation": 0.05,
+      "adjusted_allocation": 0.035500000000000004,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "stablecoin_parking": {
+      "confidence": 0.51,
+      "base_allocation": 0.04,
+      "adjusted_allocation": 0.0204,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "autopilot": {
+      "confidence": 0.43000000000000005,
+      "base_allocation": 0.02,
+      "adjusted_allocation": 0.008600000000000002,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "scalping": {
+      "confidence": 0.43000000000000005,
+      "base_allocation": 0.01,
+      "adjusted_allocation": 0.004300000000000001,
+      "status": "\ud83d\udfe1 STANDBY"
+    }
+  },
+  "Bear Strong": {
+    "lazy_billionaire": {
+      "confidence": 0.6560000000000001,
+      "base_allocation": 0.22,
+      "adjusted_allocation": 0.14432000000000003,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "ml_strategy": {
+      "confidence": 0.6160000000000001,
+      "base_allocation": 0.16,
+      "adjusted_allocation": 0.09856000000000002,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "arbitrage": {
+      "confidence": 0.66,
+      "base_allocation": 0.14,
+      "adjusted_allocation": 0.09240000000000001,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "mean_reversion": {
+      "confidence": 0.25999999999999995,
+      "base_allocation": 0.12,
+      "adjusted_allocation": 0.03119999999999999,
+      "status": "\ud83d\udd34 INACTIVE"
+    },
+    "momentum": {
+      "confidence": 0.7200000000000001,
+      "base_allocation": 0.1,
+      "adjusted_allocation": 0.07200000000000001,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "grid": {
+      "confidence": 0.38,
+      "base_allocation": 0.08,
+      "adjusted_allocation": 0.0304,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "liquidation_hunter": {
+      "confidence": 0.6200000000000001,
+      "base_allocation": 0.06,
+      "adjusted_allocation": 0.037200000000000004,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "defi_yield": {
+      "confidence": 0.21999999999999997,
+      "base_allocation": 0.05,
+      "adjusted_allocation": 0.011,
+      "status": "\ud83d\udd34 INACTIVE"
+    },
+    "stablecoin_parking": {
+      "confidence": 0.74,
+      "base_allocation": 0.04,
+      "adjusted_allocation": 0.0296,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "autopilot": {
+      "confidence": 0.38,
+      "base_allocation": 0.02,
+      "adjusted_allocation": 0.0076,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "scalping": {
+      "confidence": 0.38,
+      "base_allocation": 0.01,
+      "adjusted_allocation": 0.0038,
+      "status": "\ud83d\udfe1 STANDBY"
+    }
+  },
+  "Sideways Low Vol": {
+    "lazy_billionaire": {
+      "confidence": 0.7220000000000001,
+      "base_allocation": 0.22,
+      "adjusted_allocation": 0.15884,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "ml_strategy": {
+      "confidence": 0.762,
+      "base_allocation": 0.16,
+      "adjusted_allocation": 0.12192,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "arbitrage": {
+      "confidence": 0.49,
+      "base_allocation": 0.14,
+      "adjusted_allocation": 0.06860000000000001,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "mean_reversion": {
+      "confidence": 0.6900000000000001,
+      "base_allocation": 0.12,
+      "adjusted_allocation": 0.0828,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "momentum": {
+      "confidence": 0.21000000000000002,
+      "base_allocation": 0.1,
+      "adjusted_allocation": 0.021000000000000005,
+      "status": "\ud83d\udd34 INACTIVE"
+    },
+    "grid": {
+      "confidence": 0.41000000000000003,
+      "base_allocation": 0.08,
+      "adjusted_allocation": 0.0328,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "liquidation_hunter": {
+      "confidence": 0.37000000000000005,
+      "base_allocation": 0.06,
+      "adjusted_allocation": 0.0222,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "defi_yield": {
+      "confidence": 0.49,
+      "base_allocation": 0.05,
+      "adjusted_allocation": 0.0245,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "stablecoin_parking": {
+      "confidence": 0.6900000000000001,
+      "base_allocation": 0.04,
+      "adjusted_allocation": 0.027600000000000003,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "autopilot": {
+      "confidence": 0.41000000000000003,
+      "base_allocation": 0.02,
+      "adjusted_allocation": 0.0082,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "scalping": {
+      "confidence": 0.41000000000000003,
+      "base_allocation": 0.01,
+      "adjusted_allocation": 0.0041,
+      "status": "\ud83d\udfe1 STANDBY"
+    }
+  },
+  "Extreme Volatility": {
+    "lazy_billionaire": {
+      "confidence": 0.7880000000000001,
+      "base_allocation": 0.22,
+      "adjusted_allocation": 0.17336000000000004,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "ml_strategy": {
+      "confidence": 0.508,
+      "base_allocation": 0.16,
+      "adjusted_allocation": 0.08128,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "arbitrage": {
+      "confidence": 0.8,
+      "base_allocation": 0.14,
+      "adjusted_allocation": 0.11200000000000002,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "mean_reversion": {
+      "confidence": 0.6400000000000001,
+      "base_allocation": 0.12,
+      "adjusted_allocation": 0.07680000000000001,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "momentum": {
+      "confidence": 0.4800000000000001,
+      "base_allocation": 0.1,
+      "adjusted_allocation": 0.048000000000000015,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "grid": {
+      "confidence": 0.44000000000000006,
+      "base_allocation": 0.08,
+      "adjusted_allocation": 0.0352,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "liquidation_hunter": {
+      "confidence": 0.8,
+      "base_allocation": 0.06,
+      "adjusted_allocation": 0.048,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "defi_yield": {
+      "confidence": 0.28,
+      "base_allocation": 0.05,
+      "adjusted_allocation": 0.014000000000000002,
+      "status": "\ud83d\udd34 INACTIVE"
+    },
+    "stablecoin_parking": {
+      "confidence": 0.8240000000000001,
+      "base_allocation": 0.04,
+      "adjusted_allocation": 0.03296,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "autopilot": {
+      "confidence": 0.44000000000000006,
+      "base_allocation": 0.02,
+      "adjusted_allocation": 0.0088,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "scalping": {
+      "confidence": 0.44000000000000006,
+      "base_allocation": 0.01,
+      "adjusted_allocation": 0.0044,
+      "status": "\ud83d\udfe1 STANDBY"
+    }
+  },
+  "Transition Bull": {
+    "lazy_billionaire": {
+      "confidence": 0.8240000000000002,
+      "base_allocation": 0.22,
+      "adjusted_allocation": 0.18128000000000005,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "ml_strategy": {
+      "confidence": 0.4640000000000001,
+      "base_allocation": 0.16,
+      "adjusted_allocation": 0.07424000000000001,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "arbitrage": {
+      "confidence": 0.6200000000000001,
+      "base_allocation": 0.14,
+      "adjusted_allocation": 0.08680000000000003,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "mean_reversion": {
+      "confidence": 0.54,
+      "base_allocation": 0.12,
+      "adjusted_allocation": 0.0648,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "momentum": {
+      "confidence": 0.4600000000000001,
+      "base_allocation": 0.1,
+      "adjusted_allocation": 0.04600000000000001,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "grid": {
+      "confidence": 0.42000000000000004,
+      "base_allocation": 0.08,
+      "adjusted_allocation": 0.033600000000000005,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "liquidation_hunter": {
+      "confidence": 0.38000000000000006,
+      "base_allocation": 0.06,
+      "adjusted_allocation": 0.022800000000000004,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "defi_yield": {
+      "confidence": 0.7000000000000001,
+      "base_allocation": 0.05,
+      "adjusted_allocation": 0.035,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "stablecoin_parking": {
+      "confidence": 0.7000000000000001,
+      "base_allocation": 0.04,
+      "adjusted_allocation": 0.028000000000000004,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "autopilot": {
+      "confidence": 0.42000000000000004,
+      "base_allocation": 0.02,
+      "adjusted_allocation": 0.008400000000000001,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "scalping": {
+      "confidence": 0.42000000000000004,
+      "base_allocation": 0.01,
+      "adjusted_allocation": 0.004200000000000001,
+      "status": "\ud83d\udfe1 STANDBY"
+    }
+  },
+  "Recovery": {
+    "lazy_billionaire": {
+      "confidence": 0.7660000000000001,
+      "base_allocation": 0.22,
+      "adjusted_allocation": 0.16852000000000003,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "ml_strategy": {
+      "confidence": 0.7260000000000001,
+      "base_allocation": 0.16,
+      "adjusted_allocation": 0.11616000000000001,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "arbitrage": {
+      "confidence": 0.6300000000000001,
+      "base_allocation": 0.14,
+      "adjusted_allocation": 0.08820000000000003,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "mean_reversion": {
+      "confidence": 0.55,
+      "base_allocation": 0.12,
+      "adjusted_allocation": 0.066,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "momentum": {
+      "confidence": 0.4700000000000001,
+      "base_allocation": 0.1,
+      "adjusted_allocation": 0.047000000000000014,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "grid": {
+      "confidence": 0.43000000000000005,
+      "base_allocation": 0.08,
+      "adjusted_allocation": 0.03440000000000001,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "liquidation_hunter": {
+      "confidence": 0.39000000000000007,
+      "base_allocation": 0.06,
+      "adjusted_allocation": 0.023400000000000004,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "defi_yield": {
+      "confidence": 0.6700000000000002,
+      "base_allocation": 0.05,
+      "adjusted_allocation": 0.03350000000000001,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "stablecoin_parking": {
+      "confidence": 0.7100000000000001,
+      "base_allocation": 0.04,
+      "adjusted_allocation": 0.028400000000000005,
+      "status": "\ud83d\udfe2 ACTIVE"
+    },
+    "autopilot": {
+      "confidence": 0.43000000000000005,
+      "base_allocation": 0.02,
+      "adjusted_allocation": 0.008600000000000002,
+      "status": "\ud83d\udfe1 STANDBY"
+    },
+    "scalping": {
+      "confidence": 0.43000000000000005,
+      "base_allocation": 0.01,
+      "adjusted_allocation": 0.004300000000000001,
+      "status": "\ud83d\udfe1 STANDBY"
+    }
+  }
+}

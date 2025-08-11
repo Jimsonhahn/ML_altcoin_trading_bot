@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test RobustAPI</title>
+</head>
+<body>
+    <h1>RobustAPI Test</h1>
+    <button onclick="testStrategies()">Test Strategies</button>
+    <button onclick="testPerformance()">Test Performance</button>
+    <div id="result"></div>
+
+    <script>
+        // Simulate robustAPI
+        class RobustAPI {
+            async fetchWithRetry(endpoint) {
+                const apiUrl = 'http://localhost:5001';
+                const url = `${apiUrl}${endpoint}`;
+                console.log('Fetching:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                return await response.json();
+            }
+        }
+        
+        const robustAPI = new RobustAPI();
+        
+        async function testStrategies() {
+            const resultDiv = document.getElementById('result');
+            try {
+                resultDiv.innerHTML = 'Testing strategies...';
+                const response = await robustAPI.fetchWithRetry('/api/v1/strategies/list');
+                console.log('Strategies response:', response);
+                
+                resultDiv.innerHTML = `
+                    <h2>✅ Strategies Success!</h2>
+                    <p>Found ${response.strategies.length} strategies:</p>
+                    <ul>
+                        ${response.strategies.map(s => `<li>${s.name} - ${s.description}</li>`).join('')}
+                    </ul>
+                    <pre>${JSON.stringify(response, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('Strategies error:', error);
+                resultDiv.innerHTML = `<h2>❌ Strategies Failed: ${error.message}</h2>`;
+            }
+        }
+        
+        async function testPerformance() {
+            const resultDiv = document.getElementById('result');
+            try {
+                resultDiv.innerHTML = 'Testing performance...';
+                const response = await robustAPI.fetchWithRetry('/api/v1/trading/performance?period=day');
+                console.log('Performance response:', response);
+                
+                resultDiv.innerHTML = `
+                    <h2>✅ Performance Success!</h2>
+                    <p>Total PnL: $${response.total_pnl}</p>
+                    <p>Today PnL: $${response.today_pnl}</p>
+                    <pre>${JSON.stringify(response, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('Performance error:', error);
+                resultDiv.innerHTML = `<h2>❌ Performance Failed: ${error.message}</h2>`;
+            }
+        }
+    </script>
+</body>
+</html>

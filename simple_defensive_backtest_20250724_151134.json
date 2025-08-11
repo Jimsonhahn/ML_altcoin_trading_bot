@@ -1,0 +1,373 @@
+{
+  "advanced_portfolio": {
+    "strategy": "Advanced Portfolio",
+    "initial_capital": 100000.0,
+    "final_value": 94024.93925929586,
+    "total_return": -0.05975060740704139,
+    "annualized_return": -0.05975060740704141,
+    "volatility": 2.033208606173788,
+    "sharpe_ratio": 0.03855147500935901,
+    "max_drawdown": 0.30870898609927816,
+    "total_trades": 5,
+    "total_fees": 219.82687084923776,
+    "portfolio_history": [
+      {
+        "date": "2023-04-01 00:00:00",
+        "portfolio_value": 72769.18743098815,
+        "crypto_weight": 0.24212029712406052,
+        "volatility": 0.7547964833154225
+      },
+      {
+        "date": "2023-05-01 00:00:00",
+        "portfolio_value": 71959.28754402338,
+        "crypto_weight": 0.5998534947545059,
+        "volatility": 0.5649989299967906
+      },
+      {
+        "date": "2023-05-31 00:00:00",
+        "portfolio_value": 69073.79810896012,
+        "crypto_weight": 0.5831377712099283,
+        "volatility": 0.5804435170848354
+      },
+      {
+        "date": "2023-06-30 00:00:00",
+        "portfolio_value": 81464.54845893249,
+        "crypto_weight": 0.646542477980932,
+        "volatility": 0.5441785254423406
+      },
+      {
+        "date": "2023-07-30 00:00:00",
+        "portfolio_value": 91532.0612706958,
+        "crypto_weight": 0.3001157066616777,
+        "volatility": 0.81911045232316
+      },
+      {
+        "date": "2023-08-29 00:00:00",
+        "portfolio_value": 95131.03405002118,
+        "crypto_weight": 0.32659354899310394,
+        "volatility": 0.897330781110024
+      },
+      {
+        "date": "2023-09-28 00:00:00",
+        "portfolio_value": 90966.50732018893,
+        "crypto_weight": 0.2957644092594156,
+        "volatility": 1.0203071989821386
+      },
+      {
+        "date": "2023-10-28 00:00:00",
+        "portfolio_value": 97228.53795417509,
+        "crypto_weight": 0.34112089548817426,
+        "volatility": 0.7652695268762795
+      },
+      {
+        "date": "2023-11-27 00:00:00",
+        "portfolio_value": 105353.95253700064,
+        "crypto_weight": 0.79991840369728,
+        "volatility": 0.3586406079543771
+      },
+      {
+        "date": "2023-12-27 00:00:00",
+        "portfolio_value": 94024.93925929586,
+        "crypto_weight": 0.7758106820758189,
+        "volatility": 0.3270180052924177
+      }
+    ],
+    "trades": [
+      {
+        "date": "2023-01-01 00:00:00",
+        "action": "initial_buy",
+        "amount": 2.664,
+        "price": 30000.0,
+        "fee": 80.0
+      },
+      {
+        "date": "2023-01-31 00:00:00",
+        "action": "sell_crypto",
+        "amount": 1.5931314122178994,
+        "price": 22085.733389288507,
+        "fee": 35.185475624345216
+      },
+      {
+        "date": "2023-05-01 00:00:00",
+        "action": "buy_crypto",
+        "amount": 1.6747865620584355,
+        "price": 15721.213246985431,
+        "fee": 26.35603271802429
+      },
+      {
+        "date": "2023-07-30 00:00:00",
+        "action": "sell_crypto",
+        "amount": 1.5441259374801153,
+        "price": 22862.70609808083,
+        "fee": 35.302897487031416
+      },
+      {
+        "date": "2023-11-27 00:00:00",
+        "action": "buy_crypto",
+        "amount": 1.2481659387497905,
+        "price": 34402.0624355659,
+        "fee": 42.98246501983686
+      }
+    ]
+  },
+  "defensive_volatility": {
+    "strategy": "Defensive Volatility",
+    "initial_capital": 100000.0,
+    "final_value": 113838.08964792162,
+    "total_return": 0.13838089647921617,
+    "annualized_return": 0.13838089647921614,
+    "volatility": 0.14592211747356168,
+    "sharpe_ratio": 0.9124614884884491,
+    "max_drawdown": 0.0003,
+    "total_trades": 2,
+    "total_fees": 43.88197161954116,
+    "avg_volatility": 0.36141839805698606,
+    "portfolio_history": [
+      {
+        "date": "2023-10-24 00:00:00",
+        "portfolio_value": 100000.0,
+        "position_weight": 0.0,
+        "volatility": 0.8131545298150701,
+        "signal": 0
+      },
+      {
+        "date": "2023-10-31 00:00:00",
+        "portfolio_value": 100000.0,
+        "position_weight": 0.0,
+        "volatility": 0.7113232007362168,
+        "signal": 0
+      },
+      {
+        "date": "2023-11-07 00:00:00",
+        "portfolio_value": 100000.0,
+        "position_weight": 0.0,
+        "volatility": 0.6887264737478449,
+        "signal": 0
+      },
+      {
+        "date": "2023-11-14 00:00:00",
+        "portfolio_value": 100000.0,
+        "position_weight": 0.0,
+        "volatility": 0.408038812891618,
+        "signal": 0
+      },
+      {
+        "date": "2023-11-21 00:00:00",
+        "portfolio_value": 100000.0,
+        "position_weight": 0.0,
+        "volatility": 0.40326471502090366,
+        "signal": 0
+      },
+      {
+        "date": "2023-11-28 00:00:00",
+        "portfolio_value": 99970.0,
+        "position_weight": 0.29978993698109435,
+        "volatility": 0.366192541816176,
+        "signal": 1
+      },
+      {
+        "date": "2023-12-05 00:00:00",
+        "portfolio_value": 99970.0,
+        "position_weight": 0.2872116225053827,
+        "volatility": 0.3739308707938268,
+        "signal": 0
+      },
+      {
+        "date": "2023-12-12 00:00:00",
+        "portfolio_value": 113838.08964792162,
+        "position_weight": 0.12194487506312973,
+        "volatility": 0.3566442542977961,
+        "signal": -1
+      },
+      {
+        "date": "2023-12-19 00:00:00",
+        "portfolio_value": 113838.08964792162,
+        "position_weight": 0.11682423852159078,
+        "volatility": 0.4166281484693113,
+        "signal": 0
+      },
+      {
+        "date": "2023-12-26 00:00:00",
+        "portfolio_value": 113838.08964792162,
+        "position_weight": 0.1162629434770876,
+        "volatility": 0.3211959202620203,
+        "signal": 0
+      }
+    ],
+    "trades": [
+      {
+        "date": "2023-11-28 00:00:00",
+        "action": "buy",
+        "amount": 0.870999873232667,
+        "price": 34408.73061068084,
+        "fee": 30.0,
+        "volatility": 0.366192541816176
+      },
+      {
+        "date": "2023-12-12 00:00:00",
+        "action": "sell",
+        "amount": 0.4354999366163335,
+        "price": 31875.944064191437,
+        "fee": 13.881971619541163,
+        "volatility": 0.3566442542977961
+      }
+    ]
+  },
+  "smart_rebalancing": {
+    "strategy": "Smart Rebalancing",
+    "initial_capital": 100000.0,
+    "final_value": 105452.43159961796,
+    "total_return": 0.05452431599617965,
+    "annualized_return": 0.054524315996179684,
+    "volatility": 0.4685085358259089,
+    "sharpe_ratio": 0.24707026351152397,
+    "max_drawdown": 0.5927871580453392,
+    "total_trades": 3,
+    "total_fees": 100.0,
+    "rebalances_executed": 0,
+    "portfolio_history": [
+      {
+        "date": "2023-10-29 00:00:00",
+        "portfolio_value": 90052.19835606063,
+        "asset_weights": {
+          "BTC": 0.5000507371328597,
+          "ETH": 0.30075349847120075,
+          "BNB": 0.1991957643959395
+        },
+        "cash_weight": 0.0,
+        "total_trades": 3
+      },
+      {
+        "date": "2023-11-05 00:00:00",
+        "portfolio_value": 94358.37336379326,
+        "asset_weights": {
+          "BTC": 0.4976905263377995,
+          "ETH": 0.3048976661743298,
+          "BNB": 0.19741180748787074
+        },
+        "cash_weight": 0.0,
+        "total_trades": 3
+      },
+      {
+        "date": "2023-11-12 00:00:00",
+        "portfolio_value": 105167.29973568737,
+        "asset_weights": {
+          "BTC": 0.49661167383647553,
+          "ETH": 0.3021215614641348,
+          "BNB": 0.2012667646993897
+        },
+        "cash_weight": 0.0,
+        "total_trades": 3
+      },
+      {
+        "date": "2023-11-19 00:00:00",
+        "portfolio_value": 108876.2649942277,
+        "asset_weights": {
+          "BTC": 0.49684558497562326,
+          "ETH": 0.30130266514575466,
+          "BNB": 0.20185174987862206
+        },
+        "cash_weight": 0.0,
+        "total_trades": 3
+      },
+      {
+        "date": "2023-11-26 00:00:00",
+        "portfolio_value": 112928.318963216,
+        "asset_weights": {
+          "BTC": 0.4991291936614923,
+          "ETH": 0.30592490700504504,
+          "BNB": 0.1949458993334627
+        },
+        "cash_weight": 0.0,
+        "total_trades": 3
+      },
+      {
+        "date": "2023-12-03 00:00:00",
+        "portfolio_value": 113137.66791485695,
+        "asset_weights": {
+          "BTC": 0.4988616316903074,
+          "ETH": 0.3045796840402875,
+          "BNB": 0.19655868426940515
+        },
+        "cash_weight": 0.0,
+        "total_trades": 3
+      },
+      {
+        "date": "2023-12-10 00:00:00",
+        "portfolio_value": 109247.55604594921,
+        "asset_weights": {
+          "BTC": 0.49740463871691687,
+          "ETH": 0.3017244624818154,
+          "BNB": 0.20087089880126777
+        },
+        "cash_weight": 0.0,
+        "total_trades": 3
+      },
+      {
+        "date": "2023-12-17 00:00:00",
+        "portfolio_value": 97620.29223848939,
+        "asset_weights": {
+          "BTC": 0.4979538410951101,
+          "ETH": 0.3020362032280339,
+          "BNB": 0.20000995567685592
+        },
+        "cash_weight": 0.0,
+        "total_trades": 3
+      },
+      {
+        "date": "2023-12-24 00:00:00",
+        "portfolio_value": 102628.4099357075,
+        "asset_weights": {
+          "BTC": 0.4921630999565102,
+          "ETH": 0.30866405699057003,
+          "BNB": 0.19917284305291982
+        },
+        "cash_weight": 0.0,
+        "total_trades": 3
+      },
+      {
+        "date": "2023-12-31 00:00:00",
+        "portfolio_value": 105452.43159961796,
+        "asset_weights": {
+          "BTC": 0.49910367412135787,
+          "ETH": 0.3001101353529294,
+          "BNB": 0.2007861905257127
+        },
+        "cash_weight": 0.0,
+        "total_trades": 3
+      }
+    ],
+    "trades": [
+      {
+        "date": "2023-01-01 00:00:00",
+        "asset": "BTC",
+        "action": "initial_buy",
+        "amount": 1.665,
+        "price": 30000.0,
+        "fee": 50.0,
+        "target_weight": 0.5,
+        "momentum": 0.0
+      },
+      {
+        "date": "2023-01-01 00:00:00",
+        "asset": "ETH",
+        "action": "initial_buy",
+        "amount": 14.49625105396155,
+        "price": 2067.4310819009834,
+        "fee": 30.0,
+        "target_weight": 0.3,
+        "momentum": 0.0
+      },
+      {
+        "date": "2023-01-01 00:00:00",
+        "asset": "BNB",
+        "action": "initial_buy",
+        "amount": 66.53425181278641,
+        "price": 300.2964556694735,
+        "fee": 20.0,
+        "target_weight": 0.2,
+        "momentum": 0.0
+      }
+    ]
+  }
+}

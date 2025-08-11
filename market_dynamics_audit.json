@@ -1,0 +1,39 @@
+{
+  "total_score": 54.85714285714286,
+  "adaptability": {
+    "has_market_analyzer": true,
+    "has_phase_detection": false,
+    "has_dynamic_weights": true,
+    "has_smooth_transitions": false,
+    "has_multi_timeframe": true,
+    "has_confidence_scores": false,
+    "has_regime_detection": true
+  },
+  "switching": {
+    "has_switching_rules": true,
+    "switching_speed": "immediate",
+    "has_hysteresis": false,
+    "has_manual_override": false,
+    "switching_frequency": "unknown"
+  },
+  "phase_coverage": {
+    "bull_market": true,
+    "bear_market": true,
+    "sideways_market": true,
+    "high_volatility": false,
+    "low_liquidity": false,
+    "flash_crash": false,
+    "total_phases": 3
+  },
+  "backtest_coverage": {
+    "has_multiple_periods": true,
+    "has_crisis_testing": true,
+    "has_different_volatilities": false,
+    "total_backtest_files": 20
+  },
+  "critical_missing": [
+    "Smooth transitions",
+    "Multi-phase detection",
+    null
+  ]
+}

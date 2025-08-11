@@ -1,0 +1,21 @@
+{
+  "test_info": {
+    "timestamp": "20250720_230913",
+    "test_type": "dashboard_integration",
+    "strategy": "Ultimate BTC Strategy",
+    "success": false
+  },
+  "integration_checklist": {
+    "strategy_registry": true,
+    "api_endpoints": true,
+    "dashboard_components": true,
+    "metadata_complete": true,
+    "display_elements": true
+  },
+  "deployment_ready": false,
+  "next_steps": [
+    "Fix failed tests",
+    "Retry integration",
+    "Verify strategy registration"
+  ]
+}

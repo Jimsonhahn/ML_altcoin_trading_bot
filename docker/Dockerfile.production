@@ -1,0 +1,51 @@
+# 🚀 Production Dockerfile für Enhanced Trading Bot
+# Optimiert für Windows Server und Linux Server Deployment
+
+FROM python:3.11-slim
+
+# System dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /app
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash botuser
+RUN chown -R botuser:botuser /app
+
+# Copy requirements first (better caching)
+COPY requirements.txt requirements_simple.txt ./
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY --chown=botuser:botuser . .
+
+# Create necessary directories
+RUN mkdir -p logs data intelligence_exports backups
+RUN chown -R botuser:botuser logs data intelligence_exports backups
+
+# Switch to non-root user
+USER botuser
+
+# Environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV FLASK_APP=api/app.py
+ENV NODE_ENV=production
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/api/v1/health || exit 1
+
+# Expose ports
+EXPOSE 8000 8001 3000
+
+# Default command (can be overridden)
+CMD ["python", "main.py", "--mode", "live", "--intelligence", "--dashboard-updates"]

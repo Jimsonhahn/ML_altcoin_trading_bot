@@ -1,0 +1,111 @@
+{
+  "candle_body_momentum": {
+    "enabled": true,
+    "description": "Exact implementation of TradingView Pine Script candle body momentum strategy",
+    
+    "parameters": {
+      "lookback_period": 10,
+      "sma_period": 200,
+      "timeframe": "30m",
+      "debug_logging": true
+    },
+    
+    "optimal_settings": {
+      "note": "These are the exact parameters from the TradingView video",
+      "timeframe": "30 minutes (specifically mentioned as best)",
+      "sma_period": "200 (NOT 100 - creator said 200 worked better)",
+      "lookback_period": "10 candles for momentum calculation",
+      "video_performance": "High Sortino ratio with good downside protection"
+    },
+    
+    "entry_conditions": {
+      "long": {
+        "condition": "Bullish strength crosses ABOVE bearish strength AND price > 200 SMA",
+        "crossover_detection": "Must happen on exact bar (current > previous)",
+        "trend_confirmation": "Price must be above 200 SMA"
+      },
+      "short": {
+        "condition": "Bearish strength crosses ABOVE bullish strength AND price < 200 SMA", 
+        "crossover_detection": "Must happen on exact bar (current > previous)",
+        "trend_confirmation": "Price must be below 200 SMA"
+      }
+    },
+    
+    "exit_conditions": {
+      "long_exit": "Exit when bearish strength crosses back above bullish strength",
+      "short_exit": "Exit when bullish strength crosses back above bearish strength",
+      "hold_until": "Opposite crossover occurs (no time-based exits)"
+    },
+    
+    "momentum_calculation": {
+      "method": "Running sum of candle body sizes over lookback period",
+      "body_size": "abs(close - open) for each candle",
+      "bullish_candles": "close > open - add body size to bullish_strength",
+      "bearish_candles": "close < open - add body size to bearish_strength",
+      "important_note": "These are RUNNING SUMS, not averages"
+    },
+    
+    "risk_management": {
+      "position_sizing": {
+        "base_risk_per_trade": 0.02,
+        "confidence_multiplier": true,
+        "max_position_size": 0.05
+      },
+      "stop_loss": {
+        "enabled": false,
+        "note": "Video strategy relies on crossover exits only"
+      },
+      "take_profit": {
+        "enabled": false,
+        "note": "Video strategy holds until opposite crossover"
+      }
+    },
+    
+    "backtesting": {
+      "initial_capital": 10000,
+      "commission_rate": 0.001,
+      "slippage_rate": 0.0005,
+      "test_period": "2021-2024",
+      "benchmark": "BTC buy-and-hold"
+    },
+    
+    "visualization": {
+      "plot_momentum_lines": true,
+      "show_crossover_points": true,
+      "show_sma_200": true,
+      "highlight_signals": true,
+      "debug_values": true
+    },
+    
+    "alerts": {
+      "bullish_crossover": {
+        "enabled": true,
+        "message": "🟢 Bullish momentum crossover detected - Long signal if price > SMA-200"
+      },
+      "bearish_crossover": {
+        "enabled": true,
+        "message": "🔴 Bearish momentum crossover detected - Short signal if price < SMA-200"
+      },
+      "momentum_divergence": {
+        "enabled": true,
+        "message": "📈 Momentum lines diverging significantly - Strong move expected"
+      }
+    },
+    
+    "logging": {
+      "log_level": "INFO",
+      "log_momentum_values": true,
+      "log_crossovers": true,
+      "log_sma_relationship": true,
+      "log_signal_generation": true,
+      "detailed_debugging": true
+    },
+    
+    "validation": {
+      "verify_crossover_timing": true,
+      "check_momentum_calculation": true,
+      "validate_sma_period": true,
+      "confirm_video_parameters": true
+    }
+  }
+}

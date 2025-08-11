@@ -1,0 +1,79 @@
+{
+  "total_score": 64.28205128205128,
+  "testing_framework": {
+    "has_unit_tests": true,
+    "has_integration_tests": true,
+    "has_backtesting": true,
+    "has_test_data": true,
+    "has_ci_cd": false,
+    "has_performance_tracking": true,
+    "has_mocking": true,
+    "has_coverage_reporting": false
+  },
+  "coverage": {
+    "core_module_coverage": 20.0,
+    "strategy_coverage": 61.53846153846154,
+    "utils_coverage": 40.0,
+    "integration_coverage": 100,
+    "total_estimated_coverage": 44.46153846153846
+  },
+  "reproducibility": {
+    "has_standardized_process": true,
+    "has_versioned_configs": true,
+    "has_deterministic_results": false,
+    "has_comparison_tools": true,
+    "has_automated_reports": true
+  },
+  "quality_metrics": {
+    "test_isolation": 6.666666666666667,
+    "assertion_quality": 53.333333333333336,
+    "edge_case_coverage": 53.333333333333336,
+    "error_handling_tests": 93.33333333333333,
+    "performance_tests": 86.66666666666667
+  },
+  "test_files": [
+    "test_security.py",
+    "conftest.py",
+    "test_performance_simplified.py",
+    "test_websocket.py",
+    "test_core.py",
+    "__init__.py",
+    "test_end_to_end.py",
+    "test_performance.py",
+    "test_production_readiness.py",
+    "test_summary.py",
+    "test_secure_error_handler.py",
+    "test_integration.py",
+    "run_all_tests.py",
+    "test_trading_bot_validation.py",
+    "test_strategies.py"
+  ],
+  "test_categories": [
+    "Unit tests: 15 files",
+    "Integration test: test_security.py",
+    "Mocking in: test_security.py",
+    "Integration test: conftest.py",
+    "Mocking in: conftest.py",
+    "Integration test: test_core.py",
+    "Mocking in: test_core.py",
+    "Mocking in: test_end_to_end.py",
+    "Mocking in: test_performance.py",
+    "Integration test: test_production_readiness.py",
+    "Integration test: test_integration.py",
+    "Mocking in: test_integration.py",
+    "Integration test: run_all_tests.py",
+    "Mocking in: run_all_tests.py",
+    "Integration test: test_trading_bot_validation.py",
+    "Mocking in: test_trading_bot_validation.py",
+    "Integration test: test_strategies.py",
+    "Mocking in: test_strategies.py",
+    "Backtesting: core/backtest_engine.py",
+    "Test data: data/backtest_results/",
+    "Performance tracking: 20 result sets"
+  ],
+  "missing_tests": [
+    "Core module unit tests",
+    "Strategy backtests across different market conditions",
+    "Deterministic backtest framework"
+  ]
+}

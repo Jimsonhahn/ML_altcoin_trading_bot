@@ -1,0 +1,62 @@
+{
+  "total_score": 68.33333333333333,
+  "monitoring_components": {
+    "has_alerting_system": true,
+    "has_advanced_logging": false,
+    "has_web_dashboard": true,
+    "has_health_monitoring": true,
+    "has_performance_tracking": true,
+    "has_real_time_metrics": true
+  },
+  "notification_channels": {
+    "telegram": true,
+    "email": true,
+    "slack": false,
+    "webhook": false,
+    "sms": false,
+    "desktop": false
+  },
+  "dashboard_features": {
+    "has_real_time_updates": true,
+    "has_charts_visualization": true,
+    "has_performance_metrics": true,
+    "has_trade_history": true,
+    "has_system_status": true,
+    "has_strategy_controls": true,
+    "has_risk_monitoring": true
+  },
+  "alert_rules": {
+    "drawdown_alerts": true,
+    "strategy_error_alerts": true,
+    "api_failure_alerts": true,
+    "position_alerts": true,
+    "liquidity_alerts": false,
+    "performance_alerts": false
+  },
+  "log_analysis": {
+    "has_structured_logging": true,
+    "has_log_aggregation": false,
+    "has_error_tracking": false,
+    "has_performance_logs": false,
+    "log_retention": "unknown"
+  },
+  "monitoring_features": [
+    "Alerting System: utils/notifier.py",
+    "Web Dashboard: dashboard/",
+    "Health Monitoring: []",
+    "Performance tracking: performance_report_simplified_20250720_002913.json",
+    "Real-time metrics: dashboard/src/hooks/useWebSocket.js"
+  ],
+  "channel_files": [
+    "Telegram: utils/notifier.py",
+    "Email: utils/notifier.py",
+    "Telegram: utils/notifier_clean.py",
+    "Email: utils/notifier_clean.py",
+    "Telegram: utils/notifier_final.py",
+    "Email: utils/notifier_final.py",
+    "Telegram: telegram_integration_ready.py",
+    "Telegram: setup_telegram.py",
+    "Email: setup_telegram.py"
+  ],
+  "priority_todos": []
+}

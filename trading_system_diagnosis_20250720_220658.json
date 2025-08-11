@@ -1,0 +1,90 @@
+{
+  "diagnosis_summary": {
+    "primary_problem": "ALPHA_PROBLEM",
+    "severity": "HIGH",
+    "expected_fix_difficulty": "HIGH"
+  },
+  "stage_results": {
+    "alpha_analysis": {
+      "ideal_total_return": 0.09226761407802853,
+      "ideal_sharpe_ratio": 0.3112708446291856,
+      "signal_hit_rate": 0.25,
+      "total_signals": 16,
+      "avg_signal_strength": 0.875,
+      "has_alpha": false
+    },
+    "execution_analysis": {
+      "ideal_return": 0.09226761407802853,
+      "realistic_return": 0.08971765124906872,
+      "execution_cost": 0.0025499628289598064,
+      "avg_slippage_bps": 54.193984405628996,
+      "max_slippage_bps": 57.13710173782823,
+      "total_fees": 302.7014797069585,
+      "execution_efficiency": 5.766725879876783,
+      "execution_problem": false
+    },
+    "regime_analysis": {
+      "max_drawdown_periods": [],
+      "regime_performance": {
+        "low_vol_bull": {
+          "avg_return": 0.0003856872769611933,
+          "volatility": 0.004506942816472431,
+          "sharpe": 0.08557625260998306,
+          "trade_count": 146
+        },
+        "high_vol_bull": {
+          "avg_return": 0.00033518850790316277,
+          "volatility": 0.018008118954125744,
+          "sharpe": 0.018613188237873647,
+          "trade_count": 146
+        },
+        "sideways": {
+          "avg_return": 8.015081676341631e-05,
+          "volatility": 0.0015461219048482444,
+          "sharpe": 0.05183990765028538,
+          "trade_count": 73
+        }
+      },
+      "allocation_analysis": {
+        "avg_allocation": 0.14213628100935666,
+        "max_allocation": 0.4333109023027915,
+        "allocation_volatility": 0.16438376387694673,
+        "allocation_stability": 0.8356162361230532
+      },
+      "regime_detection_accuracy": 0.75,
+      "timing_problem": false
+    }
+  },
+  "optimization_recommendations": {
+    "priority_actions": [
+      {
+        "priority": "CRITICAL",
+        "action": "Alpha Model Redesign",
+        "description": "Strategie hat keinen statistischen Vorteil. Neue Features und Modelle erforderlich.",
+        "expected_impact": "High",
+        "implementation_effort": "High"
+      }
+    ],
+    "strategy_changes": [
+      "Implementiere Machine Learning basierte Signal-Generierung",
+      "Erweitere Feature-Set um: Orderbook-Imbalance, Cross-Asset-Momentum, Makro-Indikatoren",
+      "Verbessere Signal-Timing mit h\u00f6herer Frequenz (st\u00fcndlich statt t\u00e4glich)",
+      "Implementiere Multi-Strategy Ensemble f\u00fcr bessere Diversifikation"
+    ],
+    "execution_improvements": [],
+    "risk_management_updates": [],
+    "target_metrics": {
+      "target_annual_return": "40%+",
+      "target_sharpe_ratio": "1.5+",
+      "target_max_drawdown": "<15%",
+      "target_win_rate": "60%+",
+      "target_execution_efficiency": "3.0+"
+    }
+  },
+  "next_steps": [
+    "1. Feature Engineering: Neue Predictive Features entwickeln",
+    "2. ML Model Training: Ensemble-Modelle trainieren",
+    "3. Walk-Forward Validation: Out-of-sample Tests durchf\u00fchren",
+    "4. Signal Quality Assessment: Hit-Rate > 60% erreichen"
+  ]
+}

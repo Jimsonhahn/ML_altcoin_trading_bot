@@ -1,0 +1,99 @@
+{
+  "timestamp": "2025-07-24T15:01:34.313061",
+  "analysis_summary": {
+    "total_strategies_analyzed": 4,
+    "profitable_strategies": 2,
+    "best_strategy_by_return": "Conservative Strategy",
+    "best_strategy_by_sharpe": "Defensive Volatility",
+    "lowest_drawdown_strategy": "Defensive Volatility"
+  },
+  "defensive_strategies_performance": {
+    "Advanced Portfolio": {
+      "total_return": -0.05975060740704139,
+      "annual_return": -0.05975060740704141,
+      "sharpe_ratio": 0.03855147500935901,
+      "max_drawdown": 0.30870898609927816,
+      "volatility": 2.033208606173788,
+      "total_trades": 5,
+      "win_rate": 0.5,
+      "total_fees": 219.82687084923776
+    },
+    "Defensive Volatility": {
+      "total_return": 0.13838089647921617,
+      "annual_return": 0.13838089647921614,
+      "sharpe_ratio": 0.9124614884884491,
+      "max_drawdown": 0.0003,
+      "volatility": 0.14592211747356168,
+      "total_trades": 2,
+      "win_rate": 0.5,
+      "total_fees": 43.88197161954116
+    },
+    "Smart Rebalancing": {
+      "total_return": -1.0,
+      "annual_return": -1.0,
+      "sharpe_ratio": 0,
+      "max_drawdown": NaN,
+      "volatility": 0,
+      "total_trades": 0,
+      "win_rate": 0.5,
+      "total_fees": 0
+    }
+  },
+  "existing_strategies_performance": {
+    "Conservative Strategy": {
+      "total_return": 0.26959224243134106,
+      "annual_return": 0.12778246891122125,
+      "sharpe_ratio": -1.5532068227250502,
+      "max_drawdown": 0.0023317731176077483,
+      "volatility": 0.016014889580183194,
+      "total_trades": 5,
+      "win_rate": 0.2
+    }
+  },
+  "detailed_comparison": [
+    {
+      "Strategy": "Advanced Portfolio",
+      "Total Return": -0.05975060740704139,
+      "Annual Return": -0.05975060740704141,
+      "Sharpe Ratio": 0.03855147500935901,
+      "Max Drawdown": 0.30870898609927816,
+      "Volatility": 2.033208606173788,
+      "Total Trades": 5,
+      "Win Rate": 0.5,
+      "Composite Score": -0.0017601117381430104
+    },
+    {
+      "Strategy": "Defensive Volatility",
+      "Total Return": 0.13838089647921617,
+      "Annual Return": 0.13838089647921614,
+      "Sharpe Ratio": 0.9124614884884491,
+      "Max Drawdown": 0.0003,
+      "Volatility": 0.14592211747356168,
+      "Total Trades": 2,
+      "Win Rate": 0.5,
+      "Composite Score": 0.12622936996880094
+    },
+    {
+      "Strategy": "Smart Rebalancing",
+      "Total Return": -1.0,
+      "Annual Return": -1.0,
+      "Sharpe Ratio": 0.0,
+      "Max Drawdown": NaN,
+      "Volatility": 0.0,
+      "Total Trades": 0,
+      "Win Rate": 0.5,
+      "Composite Score": NaN
+    },
+    {
+      "Strategy": "Conservative Strategy",
+      "Total Return": 0.26959224243134106,
+      "Annual Return": 0.12778246891122125,
+      "Sharpe Ratio": -1.5532068227250502,
+      "Max Drawdown": 0.0023317731176077483,
+      "Volatility": 0.016014889580183194,
+      "Total Trades": 5,
+      "Win Rate": 0.2,
+      "Composite Score": -0.41775839250879765
+    }
+  ]
+}

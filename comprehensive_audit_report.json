@@ -1,0 +1,80 @@
+{
+  "timestamp": "2025-07-20T10:45:20.820945",
+  "overall_score": 69.01153846153846,
+  "rating": "\u26a0\ufe0f  FAIR - Significant improvements required",
+  "detailed_scores": {
+    "imports": 46.285714285714285,
+    "market_dynamics": 54.85714285714286,
+    "capital_management": 77.83333333333334,
+    "safety_systems": 84.66666666666667,
+    "monitoring": 68.33333333333333,
+    "testing": 64.28205128205128
+  },
+  "critical_issues": [
+    {
+      "category": "imports",
+      "score": 46.285714285714285,
+      "issue": "Imports system critically insufficient (46.3/100)"
+    }
+  ],
+  "high_priority": [
+    {
+      "category": "market_dynamics",
+      "score": 54.85714285714286,
+      "issue": "Market Dynamics needs significant improvement (54.9/100)"
+    },
+    {
+      "category": "monitoring",
+      "score": 68.33333333333333,
+      "issue": "Monitoring needs significant improvement (68.3/100)"
+    },
+    {
+      "category": "testing",
+      "score": 64.28205128205128,
+      "issue": "Testing needs significant improvement (64.3/100)"
+    }
+  ],
+  "medium_priority": [
+    {
+      "category": "capital_management",
+      "score": 77.83333333333334,
+      "issue": "Capital Management has room for improvement (77.8/100)"
+    },
+    {
+      "category": "safety_systems",
+      "score": 84.66666666666667,
+      "issue": "Safety Systems has room for improvement (84.7/100)"
+    }
+  ],
+  "strengths": [
+    "Capital Management: 77.8/100",
+    "Safety Systems: 84.7/100"
+  ],
+  "timeline": {
+    "Week 1 (Critical Fixes)": [
+      "\ud83d\udea8 Fix LightGBM dependency issues",
+      "\ud83d\udea8 Implement real-time risk calculation",
+      "\ud83d\udea8 Create missing __init__.py files",
+      "\ud83d\udea8 Add position liquidation to safety manager"
+    ],
+    "Week 2-3 (High Priority)": [
+      "\u26a1 Implement smooth strategy transitions",
+      "\u26a1 Add capital allocation tracking",
+      "\u26a1 Set up additional notification channels",
+      "\u26a1 Add confidence scoring for phase transitions"
+    ],
+    "Week 4-5 (Medium Priority)": [
+      "\ud83d\udd27 Increase test coverage to 80%+",
+      "\ud83d\udd27 Add deterministic backtest framework",
+      "\ud83d\udd27 Implement market condition test suite",
+      "\ud83d\udd27 Create CI/CD pipeline"
+    ],
+    "Week 6+ (Optimizations)": [
+      "\u2728 Add advanced logging features",
+      "\u2728 Implement performance optimization",
+      "\u2728 Enhance dashboard features",
+      "\u2728 Add comprehensive documentation"
+    ]
+  },
+  "risk_level": "MEDIUM"
+}

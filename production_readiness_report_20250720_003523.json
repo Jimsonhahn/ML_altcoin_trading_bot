@@ -1,0 +1,26 @@
+{
+  "timestamp": "2025-07-20T00:35:23.293374",
+  "test_type": "production_readiness",
+  "status": "NOT_READY",
+  "summary": {
+    "critical_failures": 1,
+    "warnings": 5,
+    "total_issues": 6
+  },
+  "critical_failures": [
+    "API import failure: dlopen(/Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so, 0x0006): Library not loaded: /usr/local/opt/libomp/lib/libomp.dylib\n  Referenced from: <3AF1EF0C-311C-31EC-BCE3-679F37ABEE16> /Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so\n  Reason: tried: '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/lib/libomp.dylib' (no such file, not in dyld cache)"
+  ],
+  "warnings": [
+    "Missing config section: EXCHANGE",
+    "Missing config section: TRADING",
+    "Missing config section: RISK",
+    "Missing config section: API",
+    "Missing optional Docker file: docker-entrypoint.sh"
+  ],
+  "recommendations": [
+    "\u274c Resolve all critical failures before deployment",
+    "\ud83d\udd27 Run this test again after fixing issues",
+    "\ud83d\udcdd Review system architecture and dependencies",
+    "\ud83d\udee0\ufe0f Complete missing components and files"
+  ]
+}

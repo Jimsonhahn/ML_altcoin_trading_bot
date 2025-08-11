@@ -1,0 +1,70 @@
+{
+  "strategy_info": {
+    "name": "Ultimate Institutional BTC Pro",
+    "version": "3.0 DD-Controlled",
+    "timestamp": "20250720_224839",
+    "target": "Ultimate Performance mit DD-Kontrolle"
+  },
+  "performance_metrics": {
+    "strategy_name": "Ultimate Institutional BTC Pro",
+    "strategy_version": "3.0 DD-Controlled",
+    "total_return": 0.0,
+    "annual_return": 0.0,
+    "sharpe_ratio": 0,
+    "sortino_ratio": 0,
+    "calmar_ratio": 0,
+    "max_drawdown": 0.0,
+    "annual_volatility": 0.0,
+    "win_rate": 0,
+    "total_trades": 0,
+    "days_analyzed": 726,
+    "final_capital": 300000.0,
+    "signal_stats": {
+      "generated": 3,
+      "executed": 0,
+      "quality_avg": 0.7765886660057809,
+      "dd_reductions": 0
+    },
+    "profit_taking_events": 0,
+    "max_drawdown_limit": 0.25,
+    "base_max_position_size": 0.75,
+    "risk_profile": "High Performance Controlled"
+  },
+  "target_assessment": {
+    "return_excellent": false,
+    "return_good": false,
+    "sharpe_excellent": false,
+    "sharpe_good": false,
+    "drawdown_controlled": true,
+    "trades_sufficient": false,
+    "overall_score": 40,
+    "status": "NEEDS IMPROVEMENT",
+    "assessment": "Requires significant optimization"
+  },
+  "dd_control_features": {
+    "dynamic_position_scaling": {
+      "0.0": 1.0,
+      "0.05": 1.0,
+      "0.1": 0.85,
+      "0.15": 0.7,
+      "0.2": 0.5,
+      "0.25": 0.25
+    },
+    "profit_taking_thresholds": {
+      "1.5": 0.2,
+      "2.0": 0.3,
+      "3.0": 0.4
+    },
+    "bull_market_multipliers": {
+      "crypto_winter": 0.3,
+      "gradual_recovery": 0.6,
+      "etf_anticipation": 1.25,
+      "etf_approval": 1.5,
+      "etf_cooldown": 0.8,
+      "summer_consolidation": 0.4,
+      "pre_election": 1.2
+    },
+    "dd_reductions_triggered": 0,
+    "profit_taking_events": 0
+  }
+}

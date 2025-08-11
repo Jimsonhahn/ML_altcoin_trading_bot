@@ -1,0 +1,112 @@
+version: '3.8'
+
+# Development Docker Compose - Simplified setup for development
+services:
+  # Main Trading Bot Application (Development)
+  trading-bot-dev:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: altcoin-trading-bot-dev
+    restart: "no"
+    environment:
+      - NODE_ENV=development
+      - TRADING_MODE=paper  # Always paper trading in dev
+      - LOG_LEVEL=DEBUG
+      - TZ=UTC
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    env_file:
+      - .env.dev
+    ports:
+      - "5000:5000"  # API
+      - "8080:8080"  # Dashboard
+      - "5678:5678"  # Python debugger
+    volumes:
+      - .:/app  # Mount entire project for hot reload
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - trading-network-dev
+    depends_on:
+      - redis-dev
+    command: ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "--wait-for-client", "main.py"]
+
+  # Redis for development
+  redis-dev:
+    image: redis:7-alpine
+    container_name: trading-bot-redis-dev
+    restart: "no"
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-dev-data:/data
+    networks:
+      - trading-network-dev
+
+  # PostgreSQL for development
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: trading-bot-postgres-dev
+    restart: "no"
+    environment:
+      POSTGRES_DB: trading_bot_dev
+      POSTGRES_USER: trader_dev
+      POSTGRES_PASSWORD: dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-dev-data:/var/lib/postgresql/data
+    networks:
+      - trading-network-dev
+
+  # Jupyter for data analysis and strategy development
+  jupyter:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading-bot-jupyter
+    restart: "no"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/app
+      - ./notebooks:/app/notebooks
+    networks:
+      - trading-network-dev
+    command: ["jupyter", "lab", "--ip=0.0.0.0", "--allow-root", "--no-browser", "--NotebookApp.token=''"]
+
+  # Monitoring stack (simplified for dev)
+  prometheus-dev:
+    image: prom/prometheus:latest
+    container_name: trading-bot-prometheus-dev
+    restart: "no"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.dev.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - trading-network-dev
+
+  grafana-dev:
+    image: grafana/grafana:latest
+    container_name: trading-bot-grafana-dev
+    restart: "no"
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - trading-network-dev
+
+# Networks
+networks:
+  trading-network-dev:
+    driver: bridge
+
+# Volumes
+volumes:
+  redis-dev-data:
+  postgres-dev-data:

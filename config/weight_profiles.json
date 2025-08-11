@@ -1,0 +1,210 @@
+{
+  "default": {
+    "sideways": {
+      "arbitrage": 0.60,
+      "grid_trading": 0.30,
+      "defi_farming": 0.10
+    },
+    "bull": {
+      "momentum": 0.70,
+      "grid_trading": 0.20,
+      "copy_trading": 0.10
+    },
+    "volatile": {
+      "arbitrage": 0.50,
+      "grid_trading": 0.30,
+      "mean_reversion": 0.20
+    },
+    "bear": {
+      "arbitrage": 0.80,
+      "defi_farming": 0.20
+    },
+    "extreme_fear": {
+      "stablecoin_parking": 1.00
+    }
+  },
+  "conservative": {
+    "sideways": {
+      "arbitrage": 0.70,
+      "grid_trading": 0.20,
+      "defi_farming": 0.10
+    },
+    "bull": {
+      "momentum": 0.50,
+      "grid_trading": 0.30,
+      "copy_trading": 0.20
+    },
+    "volatile": {
+      "arbitrage": 0.60,
+      "grid_trading": 0.25,
+      "mean_reversion": 0.15
+    },
+    "bear": {
+      "arbitrage": 0.90,
+      "defi_farming": 0.10
+    },
+    "extreme_fear": {
+      "stablecoin_parking": 1.00
+    }
+  },
+  "aggressive": {
+    "sideways": {
+      "arbitrage": 0.40,
+      "grid_trading": 0.30,
+      "momentum": 0.20,
+      "defi_farming": 0.10
+    },
+    "bull": {
+      "momentum": 0.80,
+      "grid_trading": 0.15,
+      "copy_trading": 0.05
+    },
+    "volatile": {
+      "arbitrage": 0.30,
+      "grid_trading": 0.20,
+      "mean_reversion": 0.25,
+      "momentum": 0.25
+    },
+    "bear": {
+      "arbitrage": 0.60,
+      "mean_reversion": 0.25,
+      "defi_farming": 0.15
+    },
+    "extreme_fear": {
+      "stablecoin_parking": 0.80,
+      "arbitrage": 0.20
+    }
+  },
+  "balanced": {
+    "sideways": {
+      "arbitrage": 0.50,
+      "grid_trading": 0.25,
+      "mean_reversion": 0.15,
+      "defi_farming": 0.10
+    },
+    "bull": {
+      "momentum": 0.60,
+      "grid_trading": 0.25,
+      "copy_trading": 0.15
+    },
+    "volatile": {
+      "arbitrage": 0.45,
+      "grid_trading": 0.25,
+      "mean_reversion": 0.20,
+      "momentum": 0.10
+    },
+    "bear": {
+      "arbitrage": 0.70,
+      "mean_reversion": 0.15,
+      "defi_farming": 0.15
+    },
+    "extreme_fear": {
+      "stablecoin_parking": 0.90,
+      "arbitrage": 0.10
+    }
+  },
+  "high_frequency": {
+    "sideways": {
+      "arbitrage": 0.80,
+      "grid_trading": 0.20
+    },
+    "bull": {
+      "momentum": 0.60,
+      "arbitrage": 0.25,
+      "grid_trading": 0.15
+    },
+    "volatile": {
+      "arbitrage": 0.70,
+      "grid_trading": 0.20,
+      "mean_reversion": 0.10
+    },
+    "bear": {
+      "arbitrage": 0.85,
+      "mean_reversion": 0.15
+    },
+    "extreme_fear": {
+      "stablecoin_parking": 1.00
+    }
+  },
+  "defi_focused": {
+    "sideways": {
+      "defi_farming": 0.50,
+      "arbitrage": 0.30,
+      "grid_trading": 0.20
+    },
+    "bull": {
+      "defi_farming": 0.40,
+      "momentum": 0.35,
+      "copy_trading": 0.25
+    },
+    "volatile": {
+      "arbitrage": 0.40,
+      "defi_farming": 0.30,
+      "mean_reversion": 0.30
+    },
+    "bear": {
+      "defi_farming": 0.60,
+      "arbitrage": 0.40
+    },
+    "extreme_fear": {
+      "stablecoin_parking": 0.70,
+      "defi_farming": 0.30
+    }
+  },
+  "ml_enhanced": {
+    "sideways": {
+      "ml_strategy": 0.40,
+      "arbitrage": 0.35,
+      "grid_trading": 0.25
+    },
+    "bull": {
+      "ml_strategy": 0.50,
+      "momentum": 0.30,
+      "copy_trading": 0.20
+    },
+    "volatile": {
+      "ml_strategy": 0.45,
+      "arbitrage": 0.30,
+      "mean_reversion": 0.25
+    },
+    "bear": {
+      "ml_strategy": 0.40,
+      "arbitrage": 0.40,
+      "defi_farming": 0.20
+    },
+    "extreme_fear": {
+      "stablecoin_parking": 0.80,
+      "ml_strategy": 0.20
+    }
+  },
+  "crypto_native": {
+    "sideways": {
+      "arbitrage": 0.40,
+      "grid_trading": 0.30,
+      "defi_farming": 0.20,
+      "copy_trading": 0.10
+    },
+    "bull": {
+      "momentum": 0.50,
+      "copy_trading": 0.25,
+      "grid_trading": 0.15,
+      "defi_farming": 0.10
+    },
+    "volatile": {
+      "arbitrage": 0.35,
+      "mean_reversion": 0.25,
+      "grid_trading": 0.25,
+      "defi_farming": 0.15
+    },
+    "bear": {
+      "arbitrage": 0.50,
+      "defi_farming": 0.30,
+      "mean_reversion": 0.20
+    },
+    "extreme_fear": {
+      "stablecoin_parking": 0.60,
+      "defi_farming": 0.25,
+      "arbitrage": 0.15
+    }
+  }
+}

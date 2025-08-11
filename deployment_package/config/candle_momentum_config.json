@@ -1,0 +1,80 @@
+{
+  "candle_momentum": {
+    "enabled": true,
+    "description": "Candle Body Momentum Strategy - Measures bullish vs bearish candle momentum",
+    
+    "parameters": {
+      "lookback_period": 20,
+      "sma_period": 50,
+      "use_ema": false,
+      "volume_filter": true,
+      "volume_period": 20,
+      "min_momentum_ratio": 1.2,
+      "min_confidence": 0.5,
+      "multi_timeframe": false,
+      "higher_timeframe": "4h"
+    },
+    
+    "risk_management": {
+      "max_position_size": 0.1,
+      "stop_loss_percentage": 0.02,
+      "take_profit_percentage": 0.04,
+      "trailing_stop": true,
+      "trailing_stop_percentage": 0.015,
+      "max_risk_per_trade": 0.02
+    },
+    
+    "entry_conditions": {
+      "require_trend_confirmation": true,
+      "require_volume_confirmation": true,
+      "min_candle_body_ratio": 0.3,
+      "max_drawdown_filter": true,
+      "max_drawdown_threshold": 0.05
+    },
+    
+    "exit_conditions": {
+      "use_momentum_exit": true,
+      "use_trailing_stop": true,
+      "momentum_exit_threshold": 1.0,
+      "time_based_exit": false,
+      "max_hold_period_hours": 168
+    },
+    
+    "backtesting": {
+      "commission_rate": 0.001,
+      "slippage_rate": 0.0005,
+      "start_date": "2023-01-01",
+      "end_date": "2024-01-01",
+      "initial_capital": 10000,
+      "benchmark": "BTC"
+    },
+    
+    "optimization": {
+      "optimize_parameters": false,
+      "parameter_ranges": {
+        "lookback_period": [10, 30, 5],
+        "sma_period": [20, 100, 10],
+        "min_momentum_ratio": [1.1, 2.0, 0.1],
+        "min_confidence": [0.3, 0.8, 0.1]
+      },
+      "optimization_metric": "sharpe_ratio",
+      "walk_forward_periods": 12
+    },
+    
+    "alerts": {
+      "enabled": true,
+      "signal_alerts": true,
+      "position_alerts": true,
+      "risk_alerts": true,
+      "performance_alerts": true
+    },
+    
+    "logging": {
+      "log_level": "INFO",
+      "log_signals": true,
+      "log_analysis": false,
+      "log_positions": true,
+      "detailed_logging": false
+    }
+  }
+}

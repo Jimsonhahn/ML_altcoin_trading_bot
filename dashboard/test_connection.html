@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Bot Dashboard Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Trading Bot Dashboard - Connection Test</h1>
+        
+        <div class="info">
+            <h3>📋 System Status</h3>
+            <p><strong>Dashboard URL:</strong> <a href="http://localhost:3002" target="_blank">http://localhost:3002</a></p>
+            <p><strong>API URL:</strong> <a href="http://localhost:5001" target="_blank">http://localhost:5001</a></p>
+        </div>
+
+        <h3>🔧 Connection Tests</h3>
+        <button onclick="testAPI()">Test API Connection</button>
+        <button onclick="testTradingStatus()">Test Trading Status</button>
+        <button onclick="testMarketRegime()">Test Market Regime</button>
+        <button onclick="testDashboard()">Open Dashboard</button>
+
+        <div id="results"></div>
+
+        <div class="info">
+            <h3>💡 Troubleshooting</h3>
+            <ul>
+                <li>Stelle sicher, dass die API läuft: <code>curl http://localhost:5001/health</code></li>
+                <li>Prüfe, ob das Dashboard kompiliert wurde: Siehe Terminal-Output</li>
+                <li>Browser-Konsole (F12) für JavaScript-Fehler prüfen</li>
+                <li>Firewall/Antivirus könnte lokale Verbindungen blockieren</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function showResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+
+        async function testAPI() {
+            try {
+                const response = await fetch('http://localhost:5001/health');
+                const data = await response.json();
+                showResult(`✅ API Connection: Success!<br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+            } catch (error) {
+                showResult(`❌ API Connection Failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testTradingStatus() {
+            try {
+                const response = await fetch('http://localhost:5001/api/v1/trading/status');
+                const data = await response.json();
+                showResult(`✅ Trading Status: Success!<br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+            } catch (error) {
+                showResult(`❌ Trading Status Failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testMarketRegime() {
+            try {
+                const response = await fetch('http://localhost:5001/api/v1/market/regime');
+                const data = await response.json();
+                showResult(`✅ Market Regime: Success!<br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+            } catch (error) {
+                showResult(`❌ Market Regime Failed: ${error.message}`, 'error');
+            }
+        }
+
+        function testDashboard() {
+            window.open('http://localhost:3002', '_blank');
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            showResult('🚀 Testing connections...', 'info');
+            setTimeout(testAPI, 500);
+        };
+    </script>
+</body>
+</html>

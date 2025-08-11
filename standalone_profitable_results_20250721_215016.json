@@ -1,0 +1,39 @@
+{
+  "test_timestamp": "2025-07-21T21:50:16.271889",
+  "strategy_type": "standalone_profitable",
+  "target_annual_return": 0.3,
+  "target_sharpe_ratio": 2.0,
+  "achieved_annual_return": 5.3085786020650225,
+  "achieved_sharpe_ratio": 3.3263779499641695,
+  "goals_met": {
+    "return_goal": "True",
+    "sharpe_goal": "True",
+    "both_goals": "True"
+  },
+  "performance_metrics": {
+    "total_return": 5.02106280104524,
+    "annual_return": 5.3085786020650225,
+    "sharpe_ratio": 3.3263779499641695,
+    "max_drawdown": 0.008024409364304826,
+    "win_rate": 0.45454545454545453,
+    "profit_factor": 0.8991583035806947,
+    "total_trades": 11,
+    "winning_trades": 5,
+    "avg_win": 1393.7425872678607,
+    "avg_loss": -1291.7104267750517,
+    "largest_win": 3288.0527005210824,
+    "largest_loss": -2349.082879704307
+  },
+  "trading_activity": {
+    "signals_generated": 660,
+    "high_quality_signals": 32,
+    "trades_executed": 22
+  },
+  "strategy_config": {
+    "min_signal_strength": 0.45,
+    "risk_reward_ratio": 2.5,
+    "max_position_size": 0.3,
+    "confluence_required": 3
+  },
+  "status": "GOALS_ACHIEVED"
+}

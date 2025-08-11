@@ -1,0 +1,182 @@
+{
+  "strategy_info": {
+    "name": "High-Risk Daily Trading",
+    "version": "1.0.0",
+    "description": "Aggressive daily trading strategy with strict 30€ budget limit",
+    "risk_level": "EXTREME",
+    "target_return": "50-100%",
+    "max_loss": "30€ (100% of daily budget)"
+  },
+
+  "risk_management": {
+    "daily_budget": 30.0,
+    "currency": "EUR",
+    "hard_stop_enabled": true,
+    "auto_reset_time": "00:00:00",
+    "emergency_stop_triggers": {
+      "max_drawdown": 0.95,
+      "consecutive_losses": 5,
+      "api_errors": 10
+    },
+    "position_limits": {
+      "max_positions": 3,
+      "max_position_size": 15.0,
+      "min_position_size": 2.0
+    }
+  },
+
+  "entry_signals": {
+    "volume_spike": {
+      "enabled": true,
+      "weight": 0.4,
+      "min_spike_ratio": 3.0,
+      "min_confidence": 0.7,
+      "timeframes": ["1m", "5m", "15m"],
+      "breakout_confirmation": true
+    },
+    "social_sentiment": {
+      "enabled": true,
+      "weight": 0.3,
+      "sources": ["twitter", "reddit"],
+      "min_sentiment": 0.3,
+      "min_momentum": 2.0,
+      "update_interval": 300
+    },
+    "technical_breakout": {
+      "enabled": true,
+      "weight": 0.3,
+      "patterns": ["triangle", "flag", "pennant", "range"],
+      "min_volume_confirm": 1.5,
+      "breakout_threshold": 0.02
+    }
+  },
+
+  "exit_conditions": {
+    "time_based": {
+      "enabled": true,
+      "max_hold_hours": 6,
+      "min_hold_minutes": 30,
+      "force_close_time": "23:30:00"
+    },
+    "profit_targets": {
+      "enabled": true,
+      "target_1": 0.25,
+      "target_2": 0.50,
+      "target_3": 1.00,
+      "partial_close": [0.3, 0.3, 0.4]
+    },
+    "stop_losses": {
+      "enabled": true,
+      "initial_stop": 0.15,
+      "trailing_stop": 0.10,
+      "breakeven_trigger": 0.15
+    }
+  },
+
+  "symbol_selection": {
+    "exchanges": ["binance"],
+    "market_cap_range": {
+      "min": 10000000,
+      "max": 5000000000
+    },
+    "volume_filters": {
+      "min_24h_volume": 1000000,
+      "min_avg_volume": 500000
+    },
+    "exclude_pairs": ["USDT", "BUSD", "USDC", "DAI"],
+    "focus_sectors": ["DeFi", "Gaming", "AI", "Layer1", "Layer2"],
+    "max_symbols": 50
+  },
+
+  "execution": {
+    "order_type": "market",
+    "slippage_tolerance": 0.005,
+    "retry_attempts": 3,
+    "timeout_seconds": 30,
+    "partial_fills": true,
+    "post_only": false
+  },
+
+  "monitoring": {
+    "update_frequency": 60,
+    "alert_channels": ["telegram", "discord"],
+    "performance_tracking": true,
+    "detailed_logging": true,
+    "backup_frequency": 3600
+  },
+
+  "advanced_features": {
+    "ml_enhancement": {
+      "enabled": false,
+      "model_type": "ensemble",
+      "retrain_frequency": "daily"
+    },
+    "multi_exchange": {
+      "enabled": false,
+      "arbitrage_detection": true,
+      "cross_exchange_signals": true
+    },
+    "news_integration": {
+      "enabled": false,
+      "sources": ["coindesk", "cointelegraph"],
+      "sentiment_weight": 0.1
+    }
+  },
+
+  "backtesting": {
+    "enabled": true,
+    "lookback_days": 30,
+    "monte_carlo_runs": 1000,
+    "stress_test_scenarios": ["crash", "pump", "sideways"],
+    "min_sharpe_ratio": 0.5,
+    "max_var_95": 0.25
+  },
+
+  "api_config": {
+    "rate_limits": {
+      "binance": 1200,
+      "coinbase": 600,
+      "kraken": 300
+    },
+    "retry_backoff": "exponential",
+    "timeout_handling": "graceful",
+    "error_threshold": 5
+  },
+
+  "notification_settings": {
+    "trade_entries": true,
+    "trade_exits": true,
+    "profit_targets": true,
+    "stop_losses": true,
+    "budget_warnings": true,
+    "daily_summary": true,
+    "error_alerts": true
+  },
+
+  "security": {
+    "encrypted_storage": true,
+    "api_key_rotation": false,
+    "withdraw_protection": true,
+    "suspicious_activity_detection": true,
+    "access_logging": true
+  },
+
+  "performance_targets": {
+    "daily": {
+      "min_return": 0.10,
+      "target_return": 0.50,
+      "max_return": 2.00,
+      "win_rate_target": 0.60
+    },
+    "weekly": {
+      "target_return": 2.00,
+      "max_drawdown": 0.30,
+      "sharpe_target": 1.0
+    },
+    "monthly": {
+      "target_return": 5.00,
+      "consistency_score": 0.80,
+      "profit_factor": 2.0
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "validation_info": {
+    "strategy": "Ultimate BTC Strategy",
+    "validation_period": "2023-01-01 to 2024-12-31",
+    "initial_capital": 300000.0,
+    "market_conditions": "Realistic 2-year crypto cycle"
+  },
+  "performance_metrics": {
+    "total_return": 2.192713508175493,
+    "annual_return": 0.7853983629104409,
+    "sharpe_ratio": 1.3746881902780685,
+    "sortino_ratio": 2.068366297882718,
+    "calmar_ratio": 1.703096775091472,
+    "max_drawdown": 0.46115897487285046,
+    "annual_volatility": 0.5531424277069182,
+    "var_95": -0.056096458184233665,
+    "cvar_95": -0.07455805558868064,
+    "win_rate": 0.4520547945205479,
+    "monthly_win_rate": 0.5416666666666666,
+    "monthly_volatility": 0.1566299405538763,
+    "total_trades": 5,
+    "avg_slippage_bps": 16.08559194736357,
+    "total_fees": 158.60654738907294,
+    "fee_rate": 0.0005286884912969098,
+    "days_analyzed": 731,
+    "months_analyzed": 24,
+    "phase_performance": {
+      "crypto_winter": [
+        0.0
+      ],
+      "gradual_recovery": [
+        0.09497006146733164
+      ],
+      "etf_anticipation": [
+        1.10876432984764
+      ],
+      "etf_approval": [
+        0.38270539707513973
+      ],
+      "etf_cooldown": [
+        0.0
+      ],
+      "summer_consolidation": [
+        -0.46115897487285046
+      ],
+      "pre_election": [
+        0.5338134663188566
+      ]
+    },
+    "final_capital": 957814.052452648
+  },
+  "benchmark_comparison": {
+    "btc_annual_return": 2.0151134457776365,
+    "sp500_annual_return": 0.09544511501033215,
+    "strategy_alpha_vs_btc": -1.2297150828671957,
+    "strategy_alpha_vs_sp500": 0.6899532479001087
+  },
+  "risk_assessment": {
+    "target_achievement": {
+      "return_target": "True",
+      "sharpe_target": "False",
+      "drawdown_target": "False"
+    },
+    "overall_score": 40,
+    "assessment": "GOOD",
+    "recommendation": "Empfehlung: Weitere Optimierung vor Live-Trading"
+  },
+  "trading_analysis": {
+    "total_signals": 174,
+    "total_trades": 5,
+    "signal_frequency": 0.23803009575923392,
+    "execution_rate": 0.028735632183908046
+  }
+}

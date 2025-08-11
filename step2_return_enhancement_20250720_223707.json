@@ -1,0 +1,47 @@
+{
+  "step_info": {
+    "step": "2",
+    "name": "Return-Enhancement",
+    "strategy": "Elite Institutional BTC Pro",
+    "version": "2.1 Aggressive-Enhanced",
+    "timestamp": "20250720_223707",
+    "target": "25%+ Annual Return"
+  },
+  "performance_metrics": {
+    "strategy_name": "Elite Institutional BTC Pro",
+    "strategy_version": "2.1 Aggressive-Enhanced",
+    "total_return": -0.10201141065222585,
+    "annual_return": -0.05269334734439235,
+    "sharpe_ratio": -0.05921439202735126,
+    "sortino_ratio": -0.04852919082272039,
+    "calmar_ratio": -0.24089922888402182,
+    "max_drawdown": 0.21873605651830857,
+    "annual_volatility": 0.8898739907698989,
+    "win_rate": 1.0,
+    "total_trades": 11,
+    "days_analyzed": 726,
+    "final_capital": 269396.57680433226,
+    "signal_stats": {
+      "generated": 20,
+      "executed": 11,
+      "quality_avg": 0.7458645130806192,
+      "enhancement_rate": 0.55
+    },
+    "max_drawdown_limit": 0.25,
+    "max_position_size": 0.6,
+    "risk_profile": "Enhanced Performance"
+  },
+  "target_assessment": {
+    "return_target": false,
+    "sharpe_target": false,
+    "drawdown_target": true,
+    "trades_target": true,
+    "overall_score": 50.0,
+    "status": "TEILWEISE ERFOLGREICH"
+  },
+  "strategy_info": {},
+  "next_steps": {
+    "action": "Fine-tune f\u00fcr bessere Performance",
+    "ready_for_step3": false
+  }
+}

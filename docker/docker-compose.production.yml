@@ -1,0 +1,210 @@
+# 🚀 Production Docker Compose für Enhanced Trading Bot
+# Maßgeschneidert für deine bestehende Architektur
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database (TimescaleDB für deine market_states)
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: trading_bot_db
+    environment:
+      POSTGRES_DB: trading_bot
+      POSTGRES_USER: trading_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-your_secure_password_here}
+      TIMESCALEDB_TELEMETRY: off
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/02-init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trading_user -d trading_bot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trading_network
+
+  # Redis für Caching und Session Management
+  redis:
+    image: redis:7-alpine
+    container_name: trading_bot_redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secure_password}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trading_network
+
+  # Enhanced Trading Bot API
+  trading_bot:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.production
+    container_name: enhanced_trading_bot
+    environment:
+      # Database Configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=trading_bot
+      - DB_USER=trading_user
+      - DB_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
+      
+      # Redis Configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_secure_password}
+      
+      # Trading Configuration (deine bestehenden Settings)
+      - TRADING_MODE=${TRADING_MODE:-paper}
+      - BINANCE_API_KEY=${BINANCE_API_KEY}
+      - BINANCE_SECRET_KEY=${BINANCE_SECRET_KEY}
+      
+      # Enhanced Features
+      - INTELLIGENCE_ENABLED=true
+      - DASHBOARD_UPDATES=true
+      - EXPORT_PATH=/app/intelligence_exports
+      - LEARNING_ENABLED=true
+      
+      # API Configuration
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY:-generate_a_secure_secret_key}
+      
+      # Logging
+      - LOG_LEVEL=INFO
+      - LOG_PATH=/app/logs
+      
+      # Server Configuration
+      - SERVER_NAME=${SERVER_NAME:-85.215.183.30}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      
+    volumes:
+      - ./logs:/app/logs
+      - ./intelligence_exports:/app/intelligence_exports
+      - ./backups:/app/backups
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    ports:
+      - "8000:8000"  # Main API
+      - "8001:8001"  # Intelligence API (if separate)
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - trading_network
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # React Dashboard (production build)
+  dashboard:
+    build:
+      context: ../dashboard
+      dockerfile: Dockerfile
+    container_name: trading_bot_dashboard
+    environment:
+      - REACT_APP_API_URL=http://${SERVER_NAME:-localhost}:8000
+      - REACT_APP_WS_URL=ws://${SERVER_NAME:-localhost}:8000
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - trading_bot
+    restart: unless-stopped
+    networks:
+      - trading_network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: trading_bot_nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro  # For SSL certificates
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - trading_bot
+      - dashboard
+    restart: unless-stopped
+    networks:
+      - trading_network
+
+  # Monitoring - Prometheus (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: trading_bot_prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - trading_network
+    profiles:
+      - monitoring
+
+  # Monitoring - Grafana (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: trading_bot_grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - trading_network
+    profiles:
+      - monitoring
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  trading_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

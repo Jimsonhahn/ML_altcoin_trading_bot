@@ -1,0 +1,39 @@
+{
+  "decisions": [
+    {
+      "decision_id": "decision_20250811_115359_1791",
+      "timestamp": "2025-08-11T11:53:59.495723",
+      "session_id": "619df0c6-69ab-4954-bd91-ee12f77a83aa",
+      "decision_data": {
+        "strategy": "momentum_strategy",
+        "symbol": "BTC/USDT",
+        "action": "buy",
+        "quantity": 0.1,
+        "price": 45000.0,
+        "reasoning": "Strong momentum signals detected"
+      },
+      "market_context": {
+        "regime": "bull_market",
+        "volatility": 0.15,
+        "volume": "high",
+        "sentiment": "positive",
+        "rsi": 65.5,
+        "macd_signal": "bullish"
+      },
+      "strategy_reasoning": "Strong momentum detected with RSI > 60 and bullish MACD",
+      "confidence_level": 0.85,
+      "bot_version": "enhanced_v1.0",
+      "environmental_factors": {
+        "cpu_usage": 0,
+        "memory_usage": 0,
+        "active_strategies": [],
+        "market_hours": true,
+        "system_load": "normal"
+      }
+    }
+  ],
+  "metadata": {
+    "last_updated": "2025-08-11T11:53:59.496971",
+    "total_decisions": 1
+  }
+}

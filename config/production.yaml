@@ -1,0 +1,119 @@
+# Production-ready Trading Bot Configuration
+# ==========================================
+
+trading:
+  mode: paper  # switch to 'live' when ready for real trading
+  initial_capital: 10000
+  max_position_size: 0.1  # 10% per trade maximum
+  max_positions: 5  # Maximum concurrent positions
+  min_trade_size: 50  # Minimum USD value per trade
+
+strategies:
+  momentum:
+    enabled: true
+    timeframe: 15m
+    rsi_period: 14
+    rsi_overbought: 70
+    rsi_oversold: 30
+    sma_short_period: 5
+    sma_long_period: 20
+    volume_spike_threshold: 1.5
+    
+  mean_reversion:
+    enabled: true
+    timeframe: 1h
+    bollinger_period: 20
+    bollinger_std: 2.0
+    rsi_period: 14
+    use_rsi_filter: true
+    
+  grid_trading:
+    enabled: false  # Disabled by default
+    timeframe: 1h
+    num_grids: 10
+    price_range_multiplier: 0.05
+    grid_size_percent: 0.01
+
+risk_management:
+  max_drawdown: 0.15  # 15% maximum drawdown
+  stop_loss: 0.02     # 2% stop loss
+  take_profit: 0.04   # 4% take profit
+  position_sizing: "fixed"  # or "percentage" or "kelly"
+  risk_per_trade: 0.02  # 2% of capital per trade
+  
+  killswitch:
+    enabled: true
+    max_drawdown_trigger: 0.10  # Emergency stop at 10% drawdown
+    auto_reactivate_hours: 24
+    
+data_sources:
+  primary: binance
+  timeframes:
+    - 1m
+    - 5m
+    - 15m
+    - 1h
+    - 4h
+    - 1d
+  cache_enabled: true
+  cache_duration_hours: 24
+
+exchange:
+  name: binance
+  testnet: true  # Use testnet for paper trading
+  rate_limit: true
+  
+  # These will be read from SecretManager, not stored here
+  # api_key: ${BINANCE_API_KEY}
+  # api_secret: ${BINANCE_API_SECRET}
+
+monitoring:
+  telegram:
+    enabled: false  # Enable when bot_token and chat_id are configured
+    notifications:
+      - trade_opened
+      - trade_closed
+      - error_occurred
+      - daily_summary
+      
+  email:
+    enabled: false
+    notifications:
+      - critical_errors
+      - daily_summary
+
+  performance:
+    track_metrics: true
+    calculate_sharpe: true
+    calculate_drawdown: true
+    save_to_database: true
+    
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  max_file_size_mb: 50
+  backup_count: 5
+  
+  modules:
+    trading_bot: INFO
+    strategies: INFO
+    exchange: WARNING
+    data_manager: WARNING
+    risk_manager: INFO
+    
+database:
+  path: "db/trading_bot.db"
+  backup_enabled: true
+  backup_interval_hours: 6
+  cleanup_days: 90
+  
+security:
+  jwt_expiry_hours: 1
+  session_timeout_minutes: 30
+  max_failed_logins: 5
+  lockout_duration_minutes: 15
+  
+performance:
+  update_interval_seconds: 5
+  calculation_interval_seconds: 60
+  broadcast_interval_seconds: 10

@@ -1,0 +1,56 @@
+{
+  "total_score": 46.285714285714285,
+  "failed_imports": [
+    "main: dlopen(/Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so, 0x0006): Library not loaded: /usr/local/opt/libomp/lib/libomp.dylib\n  Referenced from: <3AF1EF0C-311C-31EC-BCE3-679F37ABEE16> /Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so\n  Reason: tried: '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/lib/libomp.dylib' (no such file, not in dyld cache)",
+    "core.trading_bot: dlopen(/Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so, 0x0006): Library not loaded: /usr/local/opt/libomp/lib/libomp.dylib\n  Referenced from: <3AF1EF0C-311C-31EC-BCE3-679F37ABEE16> /Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so\n  Reason: tried: '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/lib/libomp.dylib' (no such file, not in dyld cache)",
+    "core.strategy_router: dlopen(/Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so, 0x0006): Library not loaded: /usr/local/opt/libomp/lib/libomp.dylib\n  Referenced from: <3AF1EF0C-311C-31EC-BCE3-679F37ABEE16> /Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so\n  Reason: tried: '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/lib/libomp.dylib' (no such file, not in dyld cache)",
+    "strategies.super_lazy_billionaire_strategy: dlopen(/Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so, 0x0006): Library not loaded: /usr/local/opt/libomp/lib/libomp.dylib\n  Referenced from: <3AF1EF0C-311C-31EC-BCE3-679F37ABEE16> /Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so\n  Reason: tried: '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/lib/libomp.dylib' (no such file, not in dyld cache)",
+    "strategies.momentum: dlopen(/Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so, 0x0006): Library not loaded: /usr/local/opt/libomp/lib/libomp.dylib\n  Referenced from: <3AF1EF0C-311C-31EC-BCE3-679F37ABEE16> /Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so\n  Reason: tried: '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/lib/libomp.dylib' (no such file, not in dyld cache)",
+    "strategies.mean_reversion: dlopen(/Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so, 0x0006): Library not loaded: /usr/local/opt/libomp/lib/libomp.dylib\n  Referenced from: <3AF1EF0C-311C-31EC-BCE3-679F37ABEE16> /Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so\n  Reason: tried: '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/lib/libomp.dylib' (no such file, not in dyld cache)",
+    "strategies.ml_strategy: dlopen(/Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so, 0x0006): Library not loaded: /usr/local/opt/libomp/lib/libomp.dylib\n  Referenced from: <3AF1EF0C-311C-31EC-BCE3-679F37ABEE16> /Users/jnb/PycharmProjects/altcoin_trading_bot/.venv/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so\n  Reason: tried: '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/local/opt/libomp/lib/libomp.dylib' (no such file), '/usr/lib/libomp.dylib' (no such file, not in dyld cache)"
+  ],
+  "missing_inits": [
+    "core/__init__.py",
+    "utils/__init__.py"
+  ],
+  "potential_cycles": [
+    "core.trading_bot <-> core.safety_manager",
+    "core.trading_bot <-> data_sources.data_manager",
+    "core.safety_manager <-> core.trading_bot",
+    "core.ml_enhanced_backtesting <-> core.enhanced_backtesting",
+    "core.ml_enhanced_backtesting <-> strategies.ml_strategy",
+    "core.trading_bot_fixed <-> data_sources.data_manager",
+    "core.trading_bot_fixed <-> core.safety_manager",
+    "strategies.lazy_billionaire_strategy <-> core.strategy_router",
+    "strategies.super_lazy_billionaire_strategy <-> strategies.lazy_billionaire_strategy",
+    "utils.test_secure_integration <-> data_sources.coingecko_source",
+    "utils.integrated_trading_example <-> utils.error_handler",
+    "utils.test_all_secure_http <-> core.data_collector",
+    "utils.test_all_secure_http <-> ml_components.coin_monitor",
+    "utils.test_all_secure_http <-> core.exchange",
+    "utils.test_all_secure_http <-> data_sources.binance_source",
+    "utils.test_all_secure_http <-> data_sources.coingecko_source",
+    "utils.test_error_handler <-> utils.error_handler",
+    "ml_components.__init__ <-> ml_components.market_regime",
+    "ml_components.__init__ <-> ml_components.asset_clusters",
+    "api.websocket.socket_handlers <-> api.services.bot_manager",
+    "api.websocket.socket_handlers <-> api.services.bot_manager",
+    "api.websocket.events <-> api.websocket.socket_handlers",
+    "api.websocket.events <-> api.websocket.socket_handlers",
+    "api.routes.strategies <-> api.routes.trading",
+    "api.routes.strategies <-> api.routes.trading",
+    "api.routes.monitoring <-> api.routes.trading",
+    "api.routes.monitoring <-> api.routes.trading",
+    "api.routes.trading <-> api.websocket.events",
+    "api.routes.trading <-> api.services.bot_manager",
+    "api.services.bot_manager <-> api.websocket.events",
+    "data_sources.__init__ <-> data_sources.data_manager",
+    "data_sources.data_manager <-> data_sources.binance_source",
+    "data_sources.data_sources.data_manager <-> data_sources.binance_source",
+    "data_sources.data_sources.data_manager <-> data_sources.coingecko_source"
+  ],
+  "strategy_factory_issues": {
+    "has_lazy_billionaire": false,
+    "has_mean_reversion": false
+  }
+}

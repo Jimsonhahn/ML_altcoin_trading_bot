@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Enhanced Trading Bot Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        .card { @apply bg-white rounded-lg shadow-md p-4 mb-4; }
+        .metric { @apply text-center p-3 bg-gray-50 rounded; }
+        .insight-item { @apply border-l-4 border-blue-500 pl-3 mb-2; }
+        .status-online { @apply text-green-600; }
+        .status-offline { @apply text-red-600; }
+        .confidence-high { @apply text-green-600 font-bold; }
+        .confidence-medium { @apply text-yellow-600 font-bold; }
+        .confidence-low { @apply text-red-600 font-bold; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-3 py-4 max-w-md">
+        <!-- Header -->
+        <div class="card bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+            <h1 class="text-2xl font-bold mb-2">🚀 Enhanced Trading Bot</h1>
+            <p class="text-sm">
+                <span id="status" class="status-offline">● Connecting...</span> | 
+                <span id="lastUpdate">Last Update: --</span>
+            </p>
+        </div>
+
+        <!-- Quick Metrics -->
+        <div class="grid grid-cols-2 gap-2 mb-4">
+            <div class="metric">
+                <div class="text-xl font-bold text-blue-600" id="totalDecisions">--</div>
+                <div class="text-xs text-gray-600">Decisions Today</div>
+            </div>
+            <div class="metric">
+                <div class="text-xl font-bold text-green-600" id="avgConfidence">--</div>
+                <div class="text-xs text-gray-600">Avg Confidence</div>
+            </div>
+            <div class="metric">
+                <div class="text-xl font-bold text-purple-600" id="activeStrategies">--</div>
+                <div class="text-xs text-gray-600">Active Strategies</div>
+            </div>
+            <div class="metric">
+                <div class="text-xl font-bold text-yellow-600" id="anomalies">--</div>
+                <div class="text-xs text-gray-600">Anomalies</div>
+            </div>
+        </div>
+
+        <!-- Latest Decisions -->
+        <div class="card">
+            <h2 class="text-lg font-bold mb-3 flex items-center">
+                🧠 Latest Decisions
+                <span class="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full" id="decisionsCount">0</span>
+            </h2>
+            <div id="decisionsList">
+                <div class="text-center text-gray-500 py-4">Loading decisions...</div>
+            </div>
+        </div>
+
+        <!-- Intelligence Metrics -->
+        <div class="card">
+            <h2 class="text-lg font-bold mb-3">📊 Intelligence Metrics</h2>
+            <div id="intelligenceMetrics">
+                <div class="text-center text-gray-500 py-4">Loading metrics...</div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="card">
+            <h2 class="text-lg font-bold mb-3">🎛️ Controls</h2>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="refreshData()" class="bg-blue-500 text-white px-3 py-2 rounded text-sm hover:bg-blue-600">
+                    🔄 Refresh
+                </button>
+                <button onclick="exportData()" class="bg-green-500 text-white px-3 py-2 rounded text-sm hover:bg-green-600">
+                    📤 Export
+                </button>
+                <button onclick="showSystemInfo()" class="bg-purple-500 text-white px-3 py-2 rounded text-sm hover:bg-purple-600">
+                    ℹ️ System
+                </button>
+                <button onclick="toggleAutoRefresh()" id="autoRefreshBtn" class="bg-gray-500 text-white px-3 py-2 rounded text-sm hover:bg-gray-600">
+                    ⏸️ Auto
+                </button>
+            </div>
+        </div>
+
+        <!-- Status Footer -->
+        <div class="text-center text-xs text-gray-500 mt-4">
+            Intelligence API: <span id="apiStatus">Checking...</span><br>
+            Export Path: intelligence_exports/<br>
+            Last Refresh: <span id="refreshTime">--</span>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:8002/api/intelligence';
+        let autoRefresh = true;
+        let refreshInterval;
+
+        // Auto-refresh every 15 seconds (mobile optimized)
+        function startAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            refreshInterval = setInterval(refreshData, 15000);
+            autoRefresh = true;
+            updateAutoRefreshButton();
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            autoRefresh = false;
+            updateAutoRefreshButton();
+        }
+
+        function toggleAutoRefresh() {
+            if (autoRefresh) {
+                stopAutoRefresh();
+            } else {
+                startAutoRefresh();
+            }
+        }
+
+        function updateAutoRefreshButton() {
+            const btn = document.getElementById('autoRefreshBtn');
+            if (autoRefresh) {
+                btn.textContent = '⏸️ Auto';
+                btn.classList.remove('bg-gray-500');
+                btn.classList.add('bg-green-500');
+            } else {
+                btn.textContent = '▶️ Auto';
+                btn.classList.remove('bg-green-500');
+                btn.classList.add('bg-gray-500');
+            }
+        }
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshData();
+            startAutoRefresh();
+        });
+
+        async function refreshData() {
+            try {
+                document.getElementById('lastUpdate').textContent = 
+                    'Last Update: ' + new Date().toLocaleTimeString();
+                document.getElementById('refreshTime').textContent = 
+                    new Date().toLocaleTimeString();
+
+                // Check API status
+                const healthResponse = await axios.get(`${API_BASE}/health`);
+                const health = healthResponse.data;
+                
+                document.getElementById('status').textContent = '● Online';
+                document.getElementById('status').className = 'status-online';
+                document.getElementById('apiStatus').textContent = 'Connected ✅';
+
+                // Load demo data
+                const demoResponse = await axios.get(`${API_BASE}/demo`);
+                const demo = demoResponse.data;
+                
+                displayDemoData(demo);
+
+                // Try to load real metrics if available
+                try {
+                    const metricsResponse = await axios.get(`${API_BASE}/metrics`);
+                    const metrics = metricsResponse.data;
+                    if (metrics.success) {
+                        displayRealMetrics(metrics.metrics);
+                    }
+                } catch (e) {
+                    console.log('Real metrics not available, using demo data');
+                }
+
+            } catch (error) {
+                console.error('Error refreshing data:', error);
+                document.getElementById('status').textContent = '● Offline';
+                document.getElementById('status').className = 'status-offline';
+                document.getElementById('apiStatus').textContent = 'Disconnected ❌';
+                
+                displayOfflineData();
+            }
+        }
+
+        function displayDemoData(demo) {
+            // Update metrics
+            document.getElementById('totalDecisions').textContent = demo.metrics.total_decisions;
+            document.getElementById('avgConfidence').textContent = 
+                (demo.metrics.avg_confidence * 100).toFixed(1) + '%';
+            document.getElementById('activeStrategies').textContent = demo.metrics.strategies_active.length;
+            document.getElementById('anomalies').textContent = demo.anomalies.length;
+
+            // Display decisions
+            displayDecisions(demo.decisions);
+
+            // Display patterns as intelligence metrics
+            displayIntelligenceMetrics(demo.patterns);
+        }
+
+        function displayRealMetrics(metrics) {
+            // If real metrics available, use them
+            if (metrics.recent_activity) {
+                document.getElementById('totalDecisions').textContent = 
+                    metrics.recent_activity.decisions_today || 0;
+                document.getElementById('anomalies').textContent = 
+                    metrics.recent_activity.anomalies_detected || 0;
+            }
+        }
+
+        function displayDecisions(decisions) {
+            const container = document.getElementById('decisionsList');
+            document.getElementById('decisionsCount').textContent = decisions.length;
+            
+            if (decisions.length === 0) {
+                container.innerHTML = '<div class="text-gray-500 text-center py-4">No recent decisions</div>';
+                return;
+            }
+
+            container.innerHTML = decisions.map(decision => {
+                const confidenceClass = decision.confidence >= 0.8 ? 'confidence-high' : 
+                                      decision.confidence >= 0.6 ? 'confidence-medium' : 'confidence-low';
+                
+                return `
+                    <div class="insight-item">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <div class="font-semibold text-sm">${decision.strategy}</div>
+                                <div class="text-xs text-gray-600">${decision.symbol} • ${decision.action.toUpperCase()}</div>
+                                <div class="text-xs text-gray-500 mt-1">${decision.reasoning}</div>
+                            </div>
+                            <div class="text-right ml-2">
+                                <div class="${confidenceClass} text-xs">
+                                    ${(decision.confidence * 100).toFixed(0)}%
+                                </div>
+                                <div class="text-xs text-gray-400">
+                                    ${new Date(decision.timestamp).toLocaleTimeString()}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function displayIntelligenceMetrics(patterns) {
+            const container = document.getElementById('intelligenceMetrics');
+            
+            if (!patterns || patterns.length === 0) {
+                container.innerHTML = '<div class="text-gray-500 text-center py-4">No patterns detected</div>';
+                return;
+            }
+
+            container.innerHTML = patterns.map(pattern => `
+                <div class="bg-gray-50 p-3 rounded mb-2">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-semibold text-sm">${pattern.name}</div>
+                            <div class="text-xs text-gray-600">Frequency: ${pattern.frequency}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm font-bold text-green-600">
+                                ${(pattern.success_rate * 100).toFixed(0)}%
+                            </div>
+                            <div class="text-xs text-gray-500">Success</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayOfflineData() {
+            document.getElementById('totalDecisions').textContent = '--';
+            document.getElementById('avgConfidence').textContent = '--';
+            document.getElementById('activeStrategies').textContent = '--';
+            document.getElementById('anomalies').textContent = '--';
+            
+            document.getElementById('decisionsList').innerHTML = 
+                '<div class="text-red-500 text-center py-4">❌ Connection lost</div>';
+            
+            document.getElementById('intelligenceMetrics').innerHTML = 
+                '<div class="text-red-500 text-center py-4">❌ Offline mode</div>';
+        }
+
+        async function exportData() {
+            try {
+                const response = await axios.get(`${API_BASE}/export/decisions`);
+                
+                // Create download link
+                const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `trading_decisions_${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                alert('✅ Data exported successfully!');
+                
+            } catch (error) {
+                alert('❌ Export failed: ' + error.message);
+            }
+        }
+
+        function showSystemInfo() {
+            axios.get(`${API_BASE}/health`)
+                .then(response => {
+                    const health = response.data;
+                    const features = health.features || {};
+                    
+                    alert(`🖥️ System Info:\n` +
+                          `Status: ${health.status}\n` +
+                          `Enhanced Logger: ${health.intelligence_enabled ? 'Active ✅' : 'Inactive ❌'}\n` +
+                          `Learning: ${features.learning ? 'On' : 'Off'}\n` +
+                          `Dashboard Updates: ${features.dashboard_updates ? 'On' : 'Off'}\n` +
+                          `Export Path: ${features.export_path || 'N/A'}\n` +
+                          `Time: ${new Date().toLocaleString()}`);
+                })
+                .catch(error => {
+                    alert('❌ System info unavailable: ' + error.message);
+                });
+        }
+
+        // Mobile-specific optimizations
+        document.addEventListener('touchstart', function() {}, { passive: true });
+        
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        // Add pull-to-refresh gesture
+        let startY = 0;
+        let startTime = 0;
+
+        document.addEventListener('touchstart', function(e) {
+            startY = e.touches[0].clientY;
+            startTime = new Date().getTime();
+        }, { passive: true });
+
+        document.addEventListener('touchmove', function(e) {
+            const currentY = e.touches[0].clientY;
+            const deltaY = currentY - startY;
+            
+            if (deltaY > 100 && window.scrollY === 0) {
+                // Pull-to-refresh triggered
+                const currentTime = new Date().getTime();
+                if (currentTime - startTime < 500) {
+                    refreshData();
+                    // Show refresh feedback
+                    const status = document.getElementById('status');
+                    status.textContent = '● Refreshing...';
+                    setTimeout(() => {
+                        status.textContent = '● Online';
+                    }, 1000);
+                }
+            }
+        }, { passive: true });
+    </script>
+</body>
+</html>

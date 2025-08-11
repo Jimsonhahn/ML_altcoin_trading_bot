@@ -1,0 +1,121 @@
+{
+  "name": "defi_yield",
+  "description": "DeFi Yield Optimizer - Automatisches Zinseszins-System",
+  "version": "2.0",
+
+  "trading_pairs": ["USDT/USDT", "USDC/USDC", "DAI/DAI", "BUSD/BUSD"],
+
+  "defi": {
+    "enabled": true,
+    "min_apy": 0.15,
+    "compound_frequency": 24,
+    "gas_limit": 0.005,
+    "max_protocols": 5,
+    "risk_levels": ["low", "medium"],
+
+    "protocol_weights": {
+      "aave": 0.25,
+      "compound": 0.20,
+      "yearn": 0.20,
+      "curve": 0.20,
+      "convex": 0.15
+    },
+
+    "compound_settings": {
+      "auto_compound": true,
+      "compound_threshold": 50,
+      "gas_price_limit": 100,
+      "optimal_times": ["02:00", "14:00"]
+    },
+
+    "risk_management": {
+      "max_single_protocol": 0.4,
+      "min_tvl": 10000000,
+      "require_audit": true,
+      "min_protocol_age": 30,
+      "impermanent_loss_threshold": 0.05
+    },
+
+    "rebalancing": {
+      "enabled": true,
+      "check_interval": 3600,
+      "min_apy_difference": 0.05,
+      "consider_gas_costs": true
+    },
+
+    "safety_features": {
+      "emergency_withdrawal": true,
+      "max_slippage": 0.01,
+      "use_flashloan_protection": true,
+      "monitor_protocol_health": true
+    }
+  },
+
+  "strategy_params": {
+    "allocation_mode": "risk_adjusted",
+    "target_apy": 0.25,
+    "diversification_factor": 0.8
+  },
+
+  "monitoring": {
+    "track_yields": true,
+    "alert_on_apy_drop": 0.10,
+    "alert_on_protocol_issue": true,
+    "daily_report": true
+  },
+
+  "capital_allocation": {
+    "stable_farms": 0.60,
+    "curve_pools": 0.25,
+    "experimental": 0.10,
+    "reserve": 0.05
+  },
+
+  "advanced_features": {
+    "use_boost": true,
+    "stake_governance_tokens": true,
+    "participate_in_gauges": true,
+    "auto_harvest": true,
+    "reinvest_rewards": true
+  },
+
+  "chain_config": {
+    "ethereum": {
+      "enabled": true,
+      "rpc": "https://eth-mainnet.alchemyapi.io/v2/YOUR_KEY",
+      "gas_tracker": true
+    },
+    "bsc": {
+      "enabled": false,
+      "rpc": "https://bsc-dataseed.binance.org/"
+    },
+    "polygon": {
+      "enabled": true,
+      "rpc": "https://polygon-rpc.com/"
+    },
+    "arbitrum": {
+      "enabled": true,
+      "rpc": "https://arb1.arbitrum.io/rpc"
+    }
+  },
+
+  "risk": {
+    "position_size": 0.20,
+    "max_open_positions": 10,
+    "stop_loss": 0.10,
+    "emergency_withdraw_threshold": 0.20
+  },
+
+  "backtest": {
+    "start_date": "2024-01-01",
+    "end_date": "2024-12-31",
+    "initial_balance": 10000,
+    "commission": 0.001
+  },
+
+  "logging": {
+    "level": "INFO",
+    "file_enabled": true,
+    "file_path": "logs/defi_yield.log"
+  }
+}

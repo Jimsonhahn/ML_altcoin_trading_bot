@@ -1,0 +1,312 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+  
+  body {
+    @apply bg-gray-50 dark:bg-dark-900 text-gray-900 dark:text-gray-100 transition-colors duration-300 font-sans antialiased;
+  }
+  
+  * {
+    @apply border-gray-200 dark:border-dark-700;
+  }
+}
+
+@layer components {
+  /* Modern Card System */
+  .card {
+    @apply bg-white dark:bg-surface-800 rounded-xl shadow-sm border border-gray-200 dark:border-surface-700 p-6 transition-all duration-300;
+  }
+  
+  .card-hover {
+    @apply hover:shadow-xl hover:shadow-primary-500/10 hover:border-primary-300 dark:hover:border-primary-600 hover:-translate-y-1 transition-all duration-300;
+  }
+  
+  .card-glass {
+    @apply backdrop-blur-sm bg-white/80 dark:bg-surface-800/80 border border-white/20 dark:border-surface-700/20 rounded-xl shadow-xl;
+  }
+  
+  .metric-card {
+    @apply relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-surface-800 dark:to-surface-900 p-6 border border-gray-200 dark:border-surface-700 transition-all duration-300;
+  }
+  
+  .metric-card-hover {
+    @apply hover:shadow-xl hover:shadow-primary-500/10 hover:scale-[1.02] hover:border-primary-300 dark:hover:border-primary-600 transition-all duration-300;
+  }
+  
+  /* Enhanced Button System */
+  .btn-primary {
+    @apply relative overflow-hidden bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl hover:shadow-primary-500/25 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+  }
+  
+  .btn-secondary {
+    @apply relative overflow-hidden bg-gray-200 dark:bg-surface-700 hover:bg-gray-300 dark:hover:bg-surface-600 text-gray-800 dark:text-gray-200 px-6 py-3 rounded-lg font-semibold transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105;
+  }
+  
+  .btn-success {
+    @apply relative overflow-hidden bg-gradient-to-r from-success-600 to-success-700 hover:from-success-700 hover:to-success-800 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl hover:shadow-success-500/25 transform hover:scale-105;
+  }
+  
+  .btn-danger {
+    @apply relative overflow-hidden bg-gradient-to-r from-danger-600 to-danger-700 hover:from-danger-700 hover:to-danger-800 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl hover:shadow-danger-500/25 transform hover:scale-105;
+  }
+  
+  .btn-ghost {
+    @apply relative overflow-hidden bg-transparent hover:bg-gray-100 dark:hover:bg-surface-700 text-gray-600 dark:text-gray-300 px-6 py-3 rounded-lg font-semibold transition-all duration-200 border border-gray-300 dark:border-surface-600 hover:border-primary-300 dark:hover:border-primary-600;
+  }
+  
+  .input-field {
+    @apply w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200;
+  }
+  
+  .status-indicator {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .status-success {
+    @apply bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-100;
+  }
+  
+  .status-danger {
+    @apply bg-danger-100 text-danger-800 dark:bg-danger-900 dark:text-danger-100;
+  }
+  
+  .status-warning {
+    @apply bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-100;
+  }
+  
+  .status-info {
+    @apply bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-100;
+  }
+  
+  .loading-spinner {
+    @apply inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent;
+  }
+  
+  .glass-effect {
+    @apply backdrop-blur-sm bg-white/80 dark:bg-surface-900/80 border border-white/20 dark:border-surface-700/20;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Dashboard Grid System */
+  .dashboard-grid {
+    @apply grid grid-cols-12 gap-6 p-6;
+  }
+  
+  .grid-item-small {
+    @apply col-span-12 md:col-span-6 lg:col-span-4 xl:col-span-3;
+  }
+  
+  .grid-item-medium {
+    @apply col-span-12 md:col-span-6 lg:col-span-6 xl:col-span-6;
+  }
+  
+  .grid-item-large {
+    @apply col-span-12 lg:col-span-8 xl:col-span-9;
+  }
+  
+  .grid-item-full {
+    @apply col-span-12;
+  }
+  
+  /* Modern gradient backgrounds */
+  .gradient-bg-primary {
+    @apply bg-gradient-to-br from-primary-500 to-primary-700;
+  }
+  
+  .gradient-bg-success {
+    @apply bg-gradient-to-br from-success-500 to-success-700;
+  }
+  
+  .gradient-bg-danger {
+    @apply bg-gradient-to-br from-danger-500 to-danger-700;
+  }
+  
+  .gradient-bg-warning {
+    @apply bg-gradient-to-br from-warning-500 to-warning-700;
+  }
+  
+  /* Status indicators */
+  .status-dot {
+    @apply w-2 h-2 rounded-full animate-pulse;
+  }
+  
+  .status-dot-online {
+    @apply bg-success-500;
+  }
+  
+  .status-dot-offline {
+    @apply bg-danger-500;
+  }
+  
+  .status-dot-warning {
+    @apply bg-warning-500;
+  }
+  
+  /* Logo Area Enhancements */
+  .logo-area {
+    @apply relative overflow-hidden;
+  }
+  
+  .logo-area::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent;
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+  }
+  
+  .logo-area:hover::before {
+    transform: translateX(100%);
+  }
+  
+  .logo-glow {
+    @apply absolute inset-0 bg-gradient-to-r from-primary-500/20 to-blue-500/20 rounded-xl blur-md opacity-0 transition-opacity duration-300;
+  }
+  
+  .logo-icon {
+    @apply transform transition-all duration-300;
+  }
+  
+  .logo-area:hover .logo-icon {
+    @apply rotate-2 scale-105;
+  }
+  
+  .logo-area:hover .logo-glow {
+    @apply opacity-100;
+  }
+  
+  /* Enhanced logo animations */
+  .logo-pulse {
+    animation: logo-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  @keyframes logo-pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(0.98);
+    }
+  }
+  
+  .status-pulse {
+    animation: status-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  @keyframes status-pulse {
+    0%, 100% {
+      opacity: 1;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+    }
+    70% {
+      opacity: 0.9;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0);
+    }
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400 dark:bg-gray-500;
+}
+
+/* Animation keyframes */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: shimmer 2s infinite;
+}
+
+/* Chart styling */
+.chart-container {
+  position: relative;
+  height: 400px;
+}
+
+.chart-container canvas {
+  border-radius: 0.5rem;
+}
+
+/* Toast notifications */
+.toast {
+  @apply fixed top-4 right-4 z-50 transform translate-x-full transition-transform duration-300;
+}
+
+.toast.show {
+  @apply translate-x-0;
+}
+
+.toast-success {
+  @apply bg-success-500 text-white;
+}
+
+.toast-error {
+  @apply bg-danger-500 text-white;
+}
+
+.toast-warning {
+  @apply bg-warning-500 text-white;
+}
+
+.toast-info {
+  @apply bg-primary-500 text-white;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .card {
+    @apply p-4;
+  }
+  
+  .chart-container {
+    height: 300px;
+  }
+}

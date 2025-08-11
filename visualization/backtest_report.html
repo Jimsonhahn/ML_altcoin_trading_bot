@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Altcoin Trading Bot - Master Backtest Analysis</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #2E86AB;
+            --secondary-color: #A23B72;
+            --success-color: #F18F01;
+            --danger-color: #C73E1D;
+            --dark-color: #1A1B23;
+            --light-color: #F5F5F5;
+            --text-color: #333;
+            --border-color: #e0e0e0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .main-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin: 0 auto;
+            max-width: 1400px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
+
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .nav-tabs {
+            background: var(--light-color);
+            border-bottom: 3px solid var(--primary-color);
+            padding: 0 30px;
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            color: var(--text-color);
+            font-weight: 500;
+            padding: 15px 25px;
+            margin-right: 10px;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.3s ease;
+        }
+
+        .nav-tabs .nav-link:hover {
+            background: rgba(46, 134, 171, 0.1);
+            color: var(--primary-color);
+        }
+
+        .nav-tabs .nav-link.active {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+        }
+
+        .tab-content {
+            padding: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary-color);
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .metric-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .positive { color: var(--success-color); }
+        .negative { color: var(--danger-color); }
+
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+        }
+
+        .strategy-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .strategy-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border-top: 4px solid var(--success-color);
+        }
+
+        .strategy-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--dark-color);
+            margin-bottom: 15px;
+        }
+
+        .recommendation-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .recommendation-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .allocation-bar {
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .allocation-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success-color) 0%, var(--primary-color) 100%);
+            transition: width 0.3s ease;
+        }
+
+        .risk-indicator {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .risk-low { background: #d4edda; color: #155724; }
+        .risk-medium { background: #fff3cd; color: #856404; }
+        .risk-high { background: #f8d7da; color: #721c24; }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 50px;
+        }
+
+        .data-table {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        .data-table table {
+            width: 100%;
+            margin: 0;
+        }
+
+        .data-table th {
+            background: var(--primary-color);
+            color: white;
+            padding: 15px;
+            font-weight: 500;
+        }
+
+        .data-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .data-table tr:hover {
+            background: rgba(46, 134, 171, 0.05);
+        }
+
+        .alert-custom {
+            border-radius: 10px;
+            border: none;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .alert-info {
+            background: linear-gradient(135deg, #17a2b8, #138496);
+            color: white;
+        }
+
+        .filter-controls {
+            background: var(--light-color);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn-custom {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-custom:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .tab-content {
+                padding: 15px;
+            }
+            
+            .strategy-comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Header -->
+        <div class="header">
+            <h1><i class="fas fa-chart-line"></i> Altcoin Trading Bot</h1>
+            <p>Master Backtest Analysis Dashboard - 300.000€ Capital Optimization</p>
+        </div>
+
+        <!-- Navigation -->
+        <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
+                    <i class="fas fa-tachometer-alt"></i> Übersicht
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="strategies-tab" data-bs-toggle="tab" data-bs-target="#strategies" type="button" role="tab">
+                    <i class="fas fa-cogs"></i> Strategien
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="performance-tab" data-bs-toggle="tab" data-bs-target="#performance" type="button" role="tab">
+                    <i class="fas fa-chart-area"></i> Performance
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="risk-tab" data-bs-toggle="tab" data-bs-target="#risk" type="button" role="tab">
+                    <i class="fas fa-shield-alt"></i> Risiko
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="recommendations-tab" data-bs-toggle="tab" data-bs-target="#recommendations" type="button" role="tab">
+                    <i class="fas fa-lightbulb"></i> Empfehlungen
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="mainTabsContent">
+            <!-- Overview Tab -->
+            <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value positive" id="totalReturn">+45.2%</div>
+                            <div class="metric-label">Gesamtrendite (12M)</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="sharpeRatio">1.82</div>
+                            <div class="metric-label">Sharpe Ratio</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value negative" id="maxDrawdown">-15.3%</div>
+                            <div class="metric-label">Max Drawdown</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value positive" id="winRate">68.5%</div>
+                            <div class="metric-label">Gewinnrate</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h4><i class="fas fa-chart-line"></i> Portfolio Performance Übersicht</h4>
+                    <div id="portfolioChart" style="height: 400px;"></div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <h5><i class="fas fa-pie-chart"></i> Strategien Allocation</h5>
+                            <div id="allocationChart" style="height: 300px;"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <h5><i class="fas fa-chart-bar"></i> Monatsrenditen</h5>
+                            <div id="monthlyReturnsChart" style="height: 300px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Strategies Tab -->
+            <div class="tab-pane fade" id="strategies" role="tabpanel">
+                <div class="filter-controls">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">Zeitraum:</label>
+                            <select class="form-select" id="timeframeFilter">
+                                <option value="all">Gesamter Zeitraum</option>
+                                <option value="1m">Letzter Monat</option>
+                                <option value="3m">Letzte 3 Monate</option>
+                                <option value="6m">Letzte 6 Monate</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Marktphase:</label>
+                            <select class="form-select" id="marketPhaseFilter">
+                                <option value="all">Alle Phasen</option>
+                                <option value="bull">Bull Market</option>
+                                <option value="bear">Bear Market</option>
+                                <option value="sideways">Seitwärts</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Aktionen:</label><br>
+                            <button class="btn btn-custom" onclick="refreshStrategies()">
+                                <i class="fas fa-sync-alt"></i> Aktualisieren
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="strategy-comparison" id="strategyCards">
+                    <!-- Strategy cards will be populated by JavaScript -->
+                </div>
+
+                <div class="data-table">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Strategie</th>
+                                <th>Rendite</th>
+                                <th>Sharpe</th>
+                                <th>Drawdown</th>
+                                <th>Trades</th>
+                                <th>Gewinnrate</th>
+                                <th>Risiko</th>
+                            </tr>
+                        </thead>
+                        <tbody id="strategyTableBody">
+                            <!-- Table rows will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Performance Tab -->
+            <div class="tab-pane fade" id="performance" role="tabpanel">
+                <div class="chart-container">
+                    <h4><i class="fas fa-chart-area"></i> Detaillierte Performance Analyse</h4>
+                    <div id="detailedPerformanceChart" style="height: 500px;"></div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <h5><i class="fas fa-chart-bar"></i> Rendite vs. Risiko</h5>
+                            <div id="riskReturnChart" style="height: 350px;"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <h5><i class="fas fa-chart-line"></i> Rolling Sharpe Ratio</h5>
+                            <div id="rollingSharpeChart" style="height: 350px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h5><i class="fas fa-chart-area"></i> Drawdown Analyse</h5>
+                    <div id="drawdownChart" style="height: 300px;"></div>
+                </div>
+            </div>
+
+            <!-- Risk Tab -->
+            <div class="tab-pane fade" id="risk" role="tabpanel">
+                <div class="alert alert-custom alert-info">
+                    <h5><i class="fas fa-info-circle"></i> Risiko-Management Übersicht</h5>
+                    <p>Diese Analyse zeigt die wichtigsten Risikometriken für das 300.000€ Portfolio basierend auf historischen Daten und Monte-Carlo-Simulationen.</p>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <div class="metric-value" id="var95">-€12,450</div>
+                            <div class="metric-label">Value at Risk (95%)</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <div class="metric-value" id="expectedShortfall">-€18,750</div>
+                            <div class="metric-label">Expected Shortfall</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="metric-card">
+                            <div class="metric-value" id="volatility">22.5%</div>
+                            <div class="metric-label">Jährliche Volatilität</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <h5><i class="fas fa-chart-bar"></i> Risiko Verteilung</h5>
+                            <div id="riskDistributionChart" style="height: 350px;"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <h5><i class="fas fa-project-diagram"></i> Korrelations Matrix</h5>
+                            <div id="correlationMatrix" style="height: 350px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h5><i class="fas fa-chart-line"></i> Stress Test Szenarien</h5>
+                    <div id="stressTestChart" style="height: 300px;"></div>
+                </div>
+            </div>
+
+            <!-- Recommendations Tab -->
+            <div class="tab-pane fade" id="recommendations" role="tabpanel">
+                <div class="recommendation-box">
+                    <div class="recommendation-title">
+                        <i class="fas fa-star"></i> Empfohlene Portfolio Allokation für 300.000€
+                    </div>
+                    <p>Basierend auf der umfassenden Analyse empfehlen wir die folgende Strategie-Allokation für optimale risikoadjustierte Renditen:</p>
+                </div>
+
+                <div class="row" id="recommendationCards">
+                    <!-- Recommendation cards will be populated by JavaScript -->
+                </div>
+
+                <div class="chart-container">
+                    <h4><i class="fas fa-chart-pie"></i> Empfohlene Allokation Visualisierung</h4>
+                    <div id="recommendedAllocationChart" style="height: 400px;"></div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="metric-card">
+                            <h5><i class="fas fa-calendar-alt"></i> Implementierungs-Roadmap</h5>
+                            <div class="implementation-steps">
+                                <div class="step">
+                                    <strong>Phase 1 (Wochen 1-2):</strong><br>
+                                    Arbitrage, Grid Trading, Stablecoin Parking (40% des Kapitals)
+                                </div>
+                                <div class="step mt-3">
+                                    <strong>Phase 2 (Wochen 3-6):</strong><br>
+                                    ML Strategie, Momentum, Mean Reversion (weitere 40% des Kapitals)
+                                </div>
+                                <div class="step mt-3">
+                                    <strong>Phase 3 (Wochen 7-12):</strong><br>
+                                    DeFi, Copy Trading, Lazy Billionaire (verbleibendes Kapital)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="metric-card">
+                            <h5><i class="fas fa-exclamation-triangle"></i> Wichtige Hinweise</h5>
+                            <ul>
+                                <li>Kontinuierliches Monitoring der Strategien erforderlich</li>
+                                <li>Monatliches Rebalancing bei Abweichungen > 15%</li>
+                                <li>Stop-Loss bei Portfolio-Verlust > 20%</li>
+                                <li>Anpassung der Allokation je nach Marktlage</li>
+                                <li>Regelmäßige Performance-Reviews</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample data - in real implementation, this would come from the backend
+        const portfolioData = {
+            strategies: {
+                'ML Strategy': { 
+                    allocation: 0.20, 
+                    return: 0.68, 
+                    sharpe: 1.88, 
+                    drawdown: -0.22, 
+                    trades: 450, 
+                    winRate: 0.64, 
+                    risk: 'high',
+                    complexity: 'High'
+                },
+                'Arbitrage': { 
+                    allocation: 0.18, 
+                    return: 0.42, 
+                    sharpe: 2.45, 
+                    drawdown: -0.06, 
+                    trades: 1250, 
+                    winRate: 0.78, 
+                    risk: 'low',
+                    complexity: 'High'
+                },
+                'Momentum': { 
+                    allocation: 0.15, 
+                    return: 0.52, 
+                    sharpe: 1.65, 
+                    drawdown: -0.18, 
+                    trades: 320, 
+                    winRate: 0.58, 
+                    risk: 'medium',
+                    complexity: 'Medium'
+                },
+                'Mean Reversion': { 
+                    allocation: 0.12, 
+                    return: 0.34, 
+                    sharpe: 1.42, 
+                    drawdown: -0.12, 
+                    trades: 680, 
+                    winRate: 0.62, 
+                    risk: 'medium',
+                    complexity: 'Medium'
+                },
+                'Lazy Billionaire': { 
+                    allocation: 0.12, 
+                    return: 0.45, 
+                    sharpe: 1.15, 
+                    drawdown: -0.32, 
+                    trades: 12, 
+                    winRate: 0.65, 
+                    risk: 'medium',
+                    complexity: 'Low'
+                },
+                'Grid Trading': { 
+                    allocation: 0.10, 
+                    return: 0.28, 
+                    sharpe: 1.35, 
+                    drawdown: -0.09, 
+                    trades: 2100, 
+                    winRate: 0.71, 
+                    risk: 'low',
+                    complexity: 'Low'
+                },
+                'Stablecoin Parking': { 
+                    allocation: 0.08, 
+                    return: 0.08, 
+                    sharpe: 3.00, 
+                    drawdown: -0.01, 
+                    trades: 24, 
+                    winRate: 0.95, 
+                    risk: 'low',
+                    complexity: 'Low'
+                },
+                'DeFi': { 
+                    allocation: 0.03, 
+                    return: 0.58, 
+                    sharpe: 1.52, 
+                    drawdown: -0.28, 
+                    trades: 85, 
+                    winRate: 0.55, 
+                    risk: 'high',
+                    complexity: 'High'
+                },
+                'Copy Trading': { 
+                    allocation: 0.02, 
+                    return: 0.38, 
+                    sharpe: 1.38, 
+                    drawdown: -0.15, 
+                    trades: 180, 
+                    winRate: 0.56, 
+                    risk: 'medium',
+                    complexity: 'Low'
+                }
+            },
+            monthlyReturns: [
+                { month: 'Jan', return: 8.2 },
+                { month: 'Feb', return: -3.1 },
+                { month: 'Mar', return: 12.5 },
+                { month: 'Apr', return: 5.8 },
+                { month: 'May', return: -7.2 },
+                { month: 'Jun', return: 9.4 },
+                { month: 'Jul', return: 6.1 },
+                { month: 'Aug', return: -2.3 },
+                { month: 'Sep', return: 11.7 },
+                { month: 'Oct', return: 4.2 },
+                { month: 'Nov', return: 8.9 },
+                { month: 'Dec', return: 3.6 }
+            ]
+        };
+
+        // Initialize charts and data when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePortfolioChart();
+            initializeAllocationChart();
+            initializeMonthlyReturnsChart();
+            populateStrategyCards();
+            populateStrategyTable();
+            initializeRecommendationCards();
+            initializeDetailedCharts();
+        });
+
+        function initializePortfolioChart() {
+            // Generate sample portfolio performance data
+            const dates = [];
+            const values = [];
+            let currentValue = 300000;
+            const startDate = new Date('2023-01-01');
+            
+            for (let i = 0; i < 365; i++) {
+                const date = new Date(startDate);
+                date.setDate(date.getDate() + i);
+                dates.push(date.toISOString().split('T')[0]);
+                
+                // Simulate portfolio growth with some volatility
+                const dailyReturn = (Math.random() - 0.45) * 0.02;
+                currentValue *= (1 + dailyReturn);
+                values.push(currentValue);
+            }
+
+            const trace = {
+                x: dates,
+                y: values,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Portfolio Wert',
+                line: {
+                    color: '#2E86AB',
+                    width: 3
+                },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(46, 134, 171, 0.1)'
+            };
+
+            const layout = {
+                title: '',
+                xaxis: { 
+                    title: 'Datum',
+                    showgrid: true,
+                    gridcolor: '#f0f0f0'
+                },
+                yaxis: { 
+                    title: 'Portfolio Wert (€)',
+                    showgrid: true,
+                    gridcolor: '#f0f0f0'
+                },
+                showlegend: false,
+                margin: { t: 20, r: 20, b: 40, l: 80 },
+                plot_bgcolor: 'white',
+                paper_bgcolor: 'white'
+            };
+
+            Plotly.newPlot('portfolioChart', [trace], layout, {responsive: true});
+        }
+
+        function initializeAllocationChart() {
+            const strategies = Object.keys(portfolioData.strategies);
+            const allocations = strategies.map(s => portfolioData.strategies[s].allocation * 100);
+
+            const trace = {
+                labels: strategies,
+                values: allocations,
+                type: 'pie',
+                hole: 0.4,
+                marker: {
+                    colors: ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#6A994E', '#577590', '#43AA8B', '#90708C', '#F9844A']
+                },
+                textinfo: 'label+percent',
+                textposition: 'outside'
+            };
+
+            const layout = {
+                title: '',
+                showlegend: false,
+                margin: { t: 20, r: 20, b: 20, l: 20 },
+                paper_bgcolor: 'white'
+            };
+
+            Plotly.newPlot('allocationChart', [trace], layout, {responsive: true});
+        }
+
+        function initializeMonthlyReturnsChart() {
+            const months = portfolioData.monthlyReturns.map(d => d.month);
+            const returns = portfolioData.monthlyReturns.map(d => d.return);
+
+            const trace = {
+                x: months,
+                y: returns,
+                type: 'bar',
+                marker: {
+                    color: returns.map(r => r >= 0 ? '#F18F01' : '#C73E1D')
+                }
+            };
+
+            const layout = {
+                title: '',
+                xaxis: { title: 'Monat' },
+                yaxis: { title: 'Rendite (%)' },
+                showlegend: false,
+                margin: { t: 20, r: 20, b: 40, l: 60 },
+                plot_bgcolor: 'white',
+                paper_bgcolor: 'white'
+            };
+
+            Plotly.newPlot('monthlyReturnsChart', [trace], layout, {responsive: true});
+        }
+
+        function populateStrategyCards() {
+            const container = document.getElementById('strategyCards');
+            container.innerHTML = '';
+
+            Object.entries(portfolioData.strategies).forEach(([name, data]) => {
+                const card = document.createElement('div');
+                card.className = 'strategy-card';
+                
+                const riskClass = `risk-${data.risk}`;
+                
+                card.innerHTML = `
+                    <div class="strategy-title">${name}</div>
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted">Allokation</small>
+                            <div class="fw-bold">${(data.allocation * 100).toFixed(1)}%</div>
+                            <div class="allocation-bar">
+                                <div class="allocation-fill" style="width: ${data.allocation * 100}%"></div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Rendite</small>
+                            <div class="fw-bold positive">${(data.return * 100).toFixed(1)}%</div>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-6">
+                            <small class="text-muted">Sharpe Ratio</small>
+                            <div class="fw-bold">${data.sharpe.toFixed(2)}</div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Risiko</small>
+                            <div><span class="risk-indicator ${riskClass}">${data.risk}</span></div>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        function populateStrategyTable() {
+            const tbody = document.getElementById('strategyTableBody');
+            tbody.innerHTML = '';
+
+            Object.entries(portfolioData.strategies).forEach(([name, data]) => {
+                const row = document.createElement('tr');
+                
+                const riskClass = `risk-${data.risk}`;
+                const returnClass = data.return >= 0 ? 'positive' : 'negative';
+                const drawdownClass = 'negative';
+                
+                row.innerHTML = `
+                    <td><strong>${name}</strong></td>
+                    <td><span class="${returnClass}">${(data.return * 100).toFixed(1)}%</span></td>
+                    <td>${data.sharpe.toFixed(2)}</td>
+                    <td><span class="${drawdownClass}">${(data.drawdown * 100).toFixed(1)}%</span></td>
+                    <td>${data.trades.toLocaleString()}</td>
+                    <td>${(data.winRate * 100).toFixed(1)}%</td>
+                    <td><span class="risk-indicator ${riskClass}">${data.risk}</span></td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        function initializeRecommendationCards() {
+            const container = document.getElementById('recommendationCards');
+            
+            const recommendations = [
+                {
+                    title: 'Konservatives Portfolio',
+                    subtitle: 'Niedrigeres Risiko, stabile Renditen',
+                    expectedReturn: '25-35%',
+                    maxDrawdown: '8-12%',
+                    strategies: ['Arbitrage: 25%', 'Stablecoin: 20%', 'Grid: 20%', 'Mean Rev: 15%', 'Andere: 20%']
+                },
+                {
+                    title: 'Ausgewogenes Portfolio',
+                    subtitle: 'Empfohlen für 300.000€',
+                    expectedReturn: '40-50%',
+                    maxDrawdown: '15-20%',
+                    strategies: ['ML: 20%', 'Arbitrage: 18%', 'Momentum: 15%', 'Mean Rev: 12%', 'Andere: 35%']
+                },
+                {
+                    title: 'Aggressives Portfolio',
+                    subtitle: 'Höhere Renditen, höheres Risiko',
+                    expectedReturn: '60-80%',
+                    maxDrawdown: '25-35%',
+                    strategies: ['ML: 25%', 'Momentum: 20%', 'DeFi: 15%', 'Arbitrage: 12%', 'Andere: 28%']
+                }
+            ];
+
+            recommendations.forEach((rec, index) => {
+                const col = document.createElement('div');
+                col.className = 'col-md-4';
+                
+                const highlight = index === 1 ? 'border-primary border-3' : '';
+                
+                col.innerHTML = `
+                    <div class="metric-card ${highlight}">
+                        <h5 class="text-primary">${rec.title}</h5>
+                        <p class="text-muted">${rec.subtitle}</p>
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <small class="text-muted">Erwartete Rendite</small>
+                                <div class="fw-bold positive">${rec.expectedReturn}</div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Max Drawdown</small>
+                                <div class="fw-bold negative">${rec.maxDrawdown}</div>
+                            </div>
+                        </div>
+                        <div>
+                            <small class="text-muted">Hauptstrategien:</small>
+                            <ul class="list-unstyled mt-1">
+                                ${rec.strategies.map(s => `<li><small>${s}</small></li>`).join('')}
+                            </ul>
+                        </div>
+                        ${index === 1 ? '<div class="text-center mt-3"><span class="badge bg-primary">EMPFOHLEN</span></div>' : ''}
+                    </div>
+                `;
+                
+                container.appendChild(col);
+            });
+
+            // Initialize recommended allocation chart
+            initializeRecommendedAllocationChart();
+        }
+
+        function initializeRecommendedAllocationChart() {
+            const recommendedData = {
+                'ML Strategy': 20,
+                'Arbitrage': 18,
+                'Momentum': 15,
+                'Mean Reversion': 12,
+                'Lazy Billionaire': 12,
+                'Grid Trading': 10,
+                'Stablecoin Parking': 8,
+                'DeFi': 3,
+                'Copy Trading': 2
+            };
+
+            const trace = {
+                labels: Object.keys(recommendedData),
+                values: Object.values(recommendedData),
+                type: 'pie',
+                hole: 0.5,
+                marker: {
+                    colors: ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#6A994E', '#577590', '#43AA8B', '#90708C', '#F9844A']
+                },
+                textinfo: 'label+percent',
+                textposition: 'outside'
+            };
+
+            const layout = {
+                title: '',
+                showlegend: true,
+                legend: { orientation: 'h', y: -0.2 },
+                margin: { t: 20, r: 20, b: 80, l: 20 },
+                paper_bgcolor: 'white',
+                annotations: [{
+                    font: { size: 20, color: '#2E86AB' },
+                    showarrow: false,
+                    text: "300k€<br>Portfolio",
+                    x: 0.5,
+                    y: 0.5
+                }]
+            };
+
+            Plotly.newPlot('recommendedAllocationChart', [trace], layout, {responsive: true});
+        }
+
+        function initializeDetailedCharts() {
+            // Initialize detailed performance chart
+            const strategies = Object.keys(portfolioData.strategies);
+            const returns = strategies.map(s => portfolioData.strategies[s].return * 100);
+            const volatilities = strategies.map(s => Math.random() * 20 + 10); // Mock volatility data
+
+            const riskReturnTrace = {
+                x: volatilities,
+                y: returns,
+                mode: 'markers+text',
+                type: 'scatter',
+                text: strategies,
+                textposition: 'top center',
+                marker: {
+                    size: 12,
+                    color: returns,
+                    colorscale: 'Viridis',
+                    showscale: true
+                }
+            };
+
+            const riskReturnLayout = {
+                title: '',
+                xaxis: { title: 'Volatilität (%)' },
+                yaxis: { title: 'Rendite (%)' },
+                showlegend: false,
+                margin: { t: 20, r: 20, b: 60, l: 80 },
+                plot_bgcolor: 'white',
+                paper_bgcolor: 'white'
+            };
+
+            Plotly.newPlot('riskReturnChart', [riskReturnTrace], riskReturnLayout, {responsive: true});
+
+            // Add other detailed charts here...
+        }
+
+        function refreshStrategies() {
+            // Show loading state
+            document.querySelector('.loading-spinner').style.display = 'block';
+            
+            // Simulate data refresh
+            setTimeout(() => {
+                populateStrategyCards();
+                populateStrategyTable();
+                document.querySelector('.loading-spinner').style.display = 'none';
+            }, 1000);
+        }
+
+        // Tab switching functionality
+        document.addEventListener('shown.bs.tab', function (event) {
+            // Resize charts when tabs are switched
+            Plotly.Plots.resize('portfolioChart');
+            Plotly.Plots.resize('allocationChart');
+            Plotly.Plots.resize('monthlyReturnsChart');
+            Plotly.Plots.resize('recommendedAllocationChart');
+            Plotly.Plots.resize('riskReturnChart');
+        });
+    </script>
+</body>
+</html>

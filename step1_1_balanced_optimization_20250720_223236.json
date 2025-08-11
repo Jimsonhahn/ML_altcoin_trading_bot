@@ -1,0 +1,84 @@
+{
+  "step": "1.1",
+  "optimization_focus": "Balanced Signal Enhancement with Risk Control",
+  "strategy_info": {
+    "name": "Balanced Institutional BTC Elite",
+    "version": "1.3 Fine-Tuned",
+    "risk_profile": "Balanced Institutional",
+    "status": "active",
+    "max_drawdown_limit": 0.18,
+    "max_position_size": 0.38,
+    "min_signal_strength": 0.63,
+    "quality_threshold": 0.75,
+    "current_phase": "balanced_analysis",
+    "last_signal_time": "2024-12-06 00:00:00",
+    "signal_stats": {
+      "generated": 92,
+      "executed": 2,
+      "quality_avg": 0.7967555994729909,
+      "top_quality": 0
+    },
+    "alerts": []
+  },
+  "performance_metrics": {
+    "strategy_name": "Balanced Institutional BTC Elite",
+    "strategy_version": "1.3 Fine-Tuned",
+    "risk_profile": "Balanced Institutional",
+    "total_return": 0.36743339041764855,
+    "annual_return": 0.16937307580500094,
+    "sharpe_ratio": 1.2927350102992952,
+    "sortino_ratio": 1.7051149222534665,
+    "calmar_ratio": 1.0063143640714407,
+    "max_drawdown": 0.1683103032731596,
+    "annual_volatility": 0.11168033251576868,
+    "total_trades": 2,
+    "signal_generation_rate": 0.12602739726027398,
+    "signal_execution_rate": 0.021739130434782608,
+    "avg_signal_quality": 0.7967555994729909,
+    "avg_trade_quality": 0.8015151515151515,
+    "top_quality_rate": 0.0,
+    "balanced_trade_rate": 1.0,
+    "top_quality_signals": 0,
+    "days_analyzed": 730,
+    "final_capital": 410230.01712529454,
+    "balanced_optimization": true,
+    "drawdown_limit": 0.18,
+    "quality_threshold": 0.75
+  },
+  "balance_summary": {
+    "total_signals_generated": 92,
+    "top_quality_signals": 0,
+    "top_quality_rate": 0.0,
+    "avg_quality_score": 0.7967555994729909,
+    "quality_distribution": {
+      "ultra_high": 0.0,
+      "high": 0.8695652173913043,
+      "medium": 0.13043478260869565,
+      "filtered_out": 0.0
+    },
+    "balance_improvements": {
+      "conservative_sizing": true,
+      "progressive_dd_control": true,
+      "quality_first_execution": true,
+      "stricter_risk_limits": true
+    }
+  },
+  "signal_statistics": {
+    "generated": 92,
+    "executed": 2,
+    "quality_avg": 0.7967555994729909,
+    "top_quality": 0
+  },
+  "step1_1_assessment": {
+    "score": 75,
+    "status": "\u2705 BALANCE ERREICHT - Bereit f\u00fcr Schritt 2",
+    "improvements": {
+      "signal_improvement": false,
+      "return_improvement": "True",
+      "risk_controlled": "True",
+      "quality_maintained": "True"
+    },
+    "next_action": "Proceed to Schritt 2: Return-Enhancement",
+    "balance_achieved": true
+  }
+}

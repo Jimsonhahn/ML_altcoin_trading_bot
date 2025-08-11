@@ -1,0 +1,104 @@
+{
+  "apps": [
+    {
+      "name": "trading-bot",
+      "script": "main.py",
+      "interpreter": "python3",
+      "cwd": "/opt/trading-bot",
+      "args": "",
+      "instances": 1,
+      "exec_mode": "fork",
+      "watch": false,
+      "ignore_watch": [
+        "node_modules",
+        "logs",
+        "data/cache",
+        "*.log"
+      ],
+      "env": {
+        "NODE_ENV": "production",
+        "PYTHONPATH": "/opt/trading-bot",
+        "PYTHONUNBUFFERED": "1"
+      },
+      "env_file": "/opt/trading-bot/.env.production",
+      "log_file": "/var/log/trading-bot/combined.log",
+      "out_file": "/var/log/trading-bot/out.log",
+      "error_file": "/var/log/trading-bot/error.log",
+      "log_date_format": "YYYY-MM-DD HH:mm:ss Z",
+      "merge_logs": true,
+      "autorestart": true,
+      "restart_delay": 10000,
+      "max_restarts": 10,
+      "min_uptime": "30s",
+      "kill_timeout": 60000,
+      "listen_timeout": 30000,
+      "max_memory_restart": "4G",
+      "cron_restart": "0 4 * * *",
+      "vizion": false,
+      "post_update": ["npm install", "echo 'App updated'"],
+      "watch_delay": 1000,
+      "ignore_watch": ["logs", "data/cache"],
+      "watch_options": {
+        "followSymlinks": false
+      },
+      "source_map_support": false,
+      "instance_var": "INSTANCE_ID",
+      "pmx": false,
+      "automation": false,
+      "treekill": true,
+      "port": 8080,
+      "uid": "trading-bot",
+      "gid": "trading-bot"
+    },
+    {
+      "name": "trading-bot-api",
+      "script": "api/app.py",
+      "interpreter": "python3",
+      "cwd": "/opt/trading-bot",
+      "instances": 2,
+      "exec_mode": "cluster",
+      "env": {
+        "NODE_ENV": "production",
+        "PYTHONPATH": "/opt/trading-bot",
+        "PORT": "8080"
+      },
+      "env_file": "/opt/trading-bot/.env.production",
+      "log_file": "/var/log/trading-bot/api-combined.log",
+      "out_file": "/var/log/trading-bot/api-out.log",
+      "error_file": "/var/log/trading-bot/api-error.log",
+      "autorestart": true,
+      "restart_delay": 5000,
+      "max_restarts": 15,
+      "min_uptime": "10s",
+      "max_memory_restart": "2G",
+      "kill_timeout": 30000,
+      "port": 8080,
+      "uid": "trading-bot",
+      "gid": "trading-bot"
+    },
+    {
+      "name": "trading-bot-monitor",
+      "script": "scripts/health_monitor.py",
+      "interpreter": "python3",
+      "cwd": "/opt/trading-bot",
+      "instances": 1,
+      "exec_mode": "fork",
+      "env": {
+        "NODE_ENV": "production",
+        "PYTHONPATH": "/opt/trading-bot"
+      },
+      "env_file": "/opt/trading-bot/.env.production",
+      "log_file": "/var/log/trading-bot/monitor-combined.log",
+      "out_file": "/var/log/trading-bot/monitor-out.log",
+      "error_file": "/var/log/trading-bot/monitor-error.log",
+      "autorestart": true,
+      "restart_delay": 15000,
+      "max_restarts": 5,
+      "min_uptime": "60s",
+      "max_memory_restart": "512M",
+      "cron_restart": "0 */6 * * *",
+      "uid": "trading-bot",
+      "gid": "trading-bot"
+    }
+  ]
+}

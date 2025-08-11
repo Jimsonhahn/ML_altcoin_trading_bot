@@ -1,0 +1,36 @@
+{
+  "optimization_date": "2025-07-21T22:38:06.347077",
+  "iterations_completed": 0,
+  "tier1_achieved": false,
+  "best_config": {
+    "position_sizing": {
+      "max_position_size": 0.09677794925911798,
+      "kelly_fraction": 0.2145337790006831,
+      "risk_per_trade": 0.022008655500674257
+    },
+    "signal_params": {
+      "min_signal_strength": 0.6109059063790201,
+      "volume_threshold": 1.1519253746752447,
+      "volatility_regime_threshold": 0.04
+    },
+    "risk_management": {
+      "stop_loss_base": 0.025,
+      "take_profit_base": 0.055,
+      "take_profit_dynamic": true
+    },
+    "advanced_features": {
+      "multi_timeframe": true,
+      "regime_detection": true,
+      "adaptive_parameters": true
+    }
+  },
+  "best_metrics": null,
+  "best_score": 0,
+  "targets": {
+    "min_annual_return": 0.25,
+    "min_sharpe_ratio": 1.5,
+    "min_win_rate": 0.55,
+    "max_drawdown": 0.1
+  },
+  "optimization_history": []
+}
