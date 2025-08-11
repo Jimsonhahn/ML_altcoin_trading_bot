@@ -480,6 +480,160 @@
             color: var(--text-secondary);
         }
 
+        /* Open Trades Styles */
+        .open-trades-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .open-trades-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .open-trades-container::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+            border-radius: 3px;
+        }
+
+        .open-trades-container::-webkit-scrollbar-thumb {
+            background: var(--accent-blue);
+            border-radius: 3px;
+        }
+
+        .trade-item {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.05), rgba(0, 212, 255, 0.05));
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .trade-item:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-blue);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.2);
+        }
+
+        .trade-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--profit-green), var(--accent-blue));
+        }
+
+        .trade-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .trade-symbol {
+            font-family: 'Orbitron', monospace;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--gold-accent);
+            text-shadow: 0 0 10px var(--glow-gold);
+        }
+
+        .trade-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-open { 
+            background: linear-gradient(45deg, var(--profit-green), #00cc70);
+            color: black;
+            animation: statusPulse 2s infinite;
+        }
+
+        .status-pending { 
+            background: linear-gradient(45deg, var(--warning-orange), #e6940a);
+            color: black; 
+        }
+
+        @keyframes statusPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .trade-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .trade-metric {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .trade-metric-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .trade-metric-value {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .trade-pnl {
+            font-size: 16px !important;
+            font-weight: 700 !important;
+        }
+
+        .trade-pnl.positive {
+            color: var(--profit-green);
+            text-shadow: 0 0 8px var(--glow-green);
+        }
+
+        .trade-pnl.negative {
+            color: var(--loss-red);
+        }
+
+        .trade-duration {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .duration-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            animation: durationBlink 1.5s infinite;
+        }
+
+        @keyframes durationBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
         /* Decision Tree */
         .decision-tree {
             margin: 20px 0;
@@ -686,6 +840,23 @@
 
     <!-- Main Dashboard -->
     <div class="dashboard-grid">
+        <!-- Open Trades Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">📊 Offene Trades - Live Positions</div>
+                <div class="live-indicator">
+                    <div class="live-dot"></div>
+                    <span id="openTradesCount">0</span> Active
+                </div>
+            </div>
+            
+            <div class="open-trades-container" id="openTradesContainer">
+                <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
+                    Loading open trades...
+                </div>
+            </div>
+        </div>
+
         <!-- Money Growth Gamification -->
         <div class="panel">
             <div class="panel-header">
@@ -1048,6 +1219,9 @@
                 const response = await axios.get(`${API_BASE}/demo`);
                 const data = response.data;
                 
+                // Load open trades
+                updateOpenTrades();
+                
                 // Update bot mood and activity
                 updateBotIntelligence(data);
                 
@@ -1276,6 +1450,120 @@ Time: ${new Date().toLocaleString()}
             `;
             
             alert(info);
+        }
+
+        function updateOpenTrades() {
+            const container = document.getElementById('openTradesContainer');
+            const countElement = document.getElementById('openTradesCount');
+            
+            // Simulate open trades data
+            const openTrades = [
+                {
+                    symbol: 'BTC/USDT',
+                    side: 'LONG',
+                    size: '0.25 BTC',
+                    entryPrice: '$45,230.50',
+                    currentPrice: '$46,077.82',
+                    pnl: '+$847.32',
+                    pnlPercent: '+1.87%',
+                    duration: '2h 34m',
+                    status: 'OPEN',
+                    strategy: 'Momentum',
+                    confidence: 87,
+                    positive: true
+                },
+                {
+                    symbol: 'ETH/USDT', 
+                    side: 'LONG',
+                    size: '3.2 ETH',
+                    entryPrice: '$2,847.20',
+                    currentPrice: '$2,921.38',
+                    pnl: '+$234.18',
+                    pnlPercent: '+2.54%',
+                    duration: '5h 12m',
+                    status: 'OPEN',
+                    strategy: 'Candle Body Momentum',
+                    confidence: 92,
+                    positive: true
+                },
+                {
+                    symbol: 'ADA/USDT',
+                    side: 'SHORT',
+                    size: '5000 ADA',
+                    entryPrice: '$0.4567',
+                    currentPrice: '$0.4433',
+                    pnl: '+$67.00',
+                    pnlPercent: '+2.93%',
+                    duration: '1h 45m',
+                    status: 'OPEN',
+                    strategy: 'Mean Reversion',
+                    confidence: 78,
+                    positive: true
+                },
+                {
+                    symbol: 'SOL/USDT',
+                    side: 'LONG',
+                    size: '15 SOL',
+                    entryPrice: '$89.32',
+                    currentPrice: '$87.21',
+                    pnl: '-$31.65',
+                    pnlPercent: '-2.36%',
+                    duration: '45m',
+                    status: 'OPEN',
+                    strategy: 'Breakout',
+                    confidence: 65,
+                    positive: false
+                }
+            ];
+            
+            countElement.textContent = openTrades.length;
+            
+            container.innerHTML = openTrades.map(trade => `
+                <div class="trade-item">
+                    <div class="trade-header">
+                        <div class="trade-symbol">${trade.symbol}</div>
+                        <div class="trade-status status-${trade.status.toLowerCase()}">${trade.status}</div>
+                    </div>
+                    
+                    <div class="trade-details">
+                        <div class="trade-metric">
+                            <div class="trade-metric-label">Side & Size</div>
+                            <div class="trade-metric-value">${trade.side} • ${trade.size}</div>
+                        </div>
+                        
+                        <div class="trade-metric">
+                            <div class="trade-metric-label">Strategy</div>
+                            <div class="trade-metric-value">${trade.strategy}</div>
+                        </div>
+                        
+                        <div class="trade-metric">
+                            <div class="trade-metric-label">Entry Price</div>
+                            <div class="trade-metric-value">${trade.entryPrice}</div>
+                        </div>
+                        
+                        <div class="trade-metric">
+                            <div class="trade-metric-label">Current Price</div>
+                            <div class="trade-metric-value">${trade.currentPrice}</div>
+                        </div>
+                        
+                        <div class="trade-metric">
+                            <div class="trade-metric-label">P&L</div>
+                            <div class="trade-metric-value trade-pnl ${trade.positive ? 'positive' : 'negative'}">${trade.pnl}</div>
+                        </div>
+                        
+                        <div class="trade-metric">
+                            <div class="trade-metric-label">P&L %</div>
+                            <div class="trade-metric-value trade-pnl ${trade.positive ? 'positive' : 'negative'}">${trade.pnlPercent}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="trade-duration">
+                        <div class="duration-dot"></div>
+                        <span>Open for: ${trade.duration}</span>
+                        <span style="margin-left: auto;">Confidence: ${trade.confidence}%</span>
+                    </div>
+                </div>
+            `).join('');
         }
 
         function showOfflineMode() {
