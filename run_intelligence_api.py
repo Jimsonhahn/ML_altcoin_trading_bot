@@ -47,6 +47,25 @@ class MockDBConnection:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         pass
 
+# Mock Trading Bot for Standalone-Betrieb
+class MockTradingBot:
+    def __init__(self):
+        self.exchange_manager = MockExchangeManager()
+        self.config = {}
+    
+    async def execute_trade(self, signal):
+        # Mock successful trade
+        class MockTradeResult:
+            def __init__(self):
+                self.success = True
+                self.pnl = 0.0
+                self.error = None
+        
+        return MockTradeResult()
+
+class MockExchangeManager:
+    pass
+
 # Global Enhanced Logger Instance
 enhanced_logger = None
 risk_tiered_manager = None
@@ -212,6 +231,7 @@ def create_intelligence_app():
     @security_manager.rate_limit_decorator('api/risk-tiered')
     def risk_tiered_performance():
         """Get detailed performance metrics"""
+        from datetime import datetime
         if not risk_tiered_manager:
             return jsonify({'error': 'Risk-Tiered System not available'}), 503
         
@@ -298,6 +318,7 @@ def create_intelligence_app():
     @security_manager.rate_limit_decorator('api/risk-tiered')
     def portfolio_optimization_status():
         """Get portfolio optimization metrics"""
+        from datetime import datetime
         if not portfolio_optimizer:
             return jsonify({'error': 'Portfolio Optimizer not available'}), 503
         
