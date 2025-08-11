@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏭💰 JANICS FREEDOM FACTORY - Autonomous Wealth Generation Terminal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/particles.js@2.0.0/particles.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-primary: #0a0b0f;
+            --bg-secondary: #1a1d29;
+            --bg-panel: #252b3d;
+            --profit-green: #00ff88;
+            --loss-red: #ff4757;
+            --neutral-gray: #8e9aaf;
+            --accent-blue: #00d4ff;
+            --warning-orange: #ffa502;
+            --gold-accent: #ffd700;
+            --factory-bronze: #cd7f32;
+            --text-primary: #ffffff;
+            --text-secondary: #8e9aaf;
+            --border-color: #2c3446;
+            --glow-green: rgba(0, 255, 136, 0.4);
+            --glow-blue: rgba(0, 212, 255, 0.4);
+            --glow-gold: rgba(255, 215, 0, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, #0f1419 100%);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        #particles-js {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .factory-header {
+            background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary), #1a1d29);
+            padding: 20px 25px;
+            border-bottom: 3px solid var(--gold-accent);
+            box-shadow: 0 4px 30px rgba(255, 215, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .factory-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.1), transparent);
+            animation: factoryShine 4s infinite;
+        }
+
+        @keyframes factoryShine {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .factory-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--gold-accent);
+            text-shadow: 0 0 30px var(--glow-gold);
+            text-align: center;
+            animation: factoryGlow 3s ease-in-out infinite alternate;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        @keyframes factoryGlow {
+            from { 
+                text-shadow: 0 0 30px var(--glow-gold);
+                transform: scale(1);
+            }
+            to { 
+                text-shadow: 0 0 40px var(--glow-gold), 0 0 60px var(--glow-gold);
+                transform: scale(1.02);
+            }
+        }
+
+        .factory-subtitle {
+            text-align: center;
+            font-size: 16px;
+            color: var(--accent-blue);
+            font-weight: 600;
+            margin-top: 8px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .factory-status {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            padding: 8px 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 25px;
+            border: 1px solid var(--border-color);
+        }
+
+        .factory-dot {
+            width: 12px;
+            height: 12px;
+            background: var(--profit-green);
+            border-radius: 50%;
+            animation: factoryPulse 2s infinite;
+            box-shadow: 0 0 15px var(--glow-green);
+        }
+
+        @keyframes factoryPulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.3); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            padding: 25px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .panel {
+            background: linear-gradient(135deg, var(--bg-panel), rgba(37, 43, 61, 0.9));
+            border: 2px solid var(--border-color);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, var(--gold-accent), var(--accent-blue), var(--profit-green), var(--gold-accent));
+            border-radius: 20px;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .panel:hover::before {
+            opacity: 0.3;
+        }
+
+        .panel:hover {
+            transform: translateY(-5px) scale(1.01);
+            box-shadow: 0 20px 60px rgba(255, 215, 0, 0.2);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--gold-accent);
+        }
+
+        .panel-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--gold-accent);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: var(--profit-green);
+            font-weight: 600;
+            background: rgba(0, 255, 136, 0.1);
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--profit-green);
+        }
+
+        /* Money Growth Gamification */
+        .money-counter {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .odometer-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 48px;
+            font-weight: 900;
+            color: var(--profit-green);
+            text-shadow: 0 0 30px var(--glow-green);
+            position: relative;
+            display: inline-block;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .odometer-value.updating {
+            transform: scale(1.1);
+            color: var(--gold-accent);
+            text-shadow: 0 0 40px var(--glow-gold);
+        }
+
+        .money-stream {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .floating-dollar {
+            position: absolute;
+            color: var(--profit-green);
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px var(--glow-green);
+            animation: floatUp 3s linear forwards;
+            opacity: 0.8;
+        }
+
+        @keyframes floatUp {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .growth-streak {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(255, 215, 0, 0.1));
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid var(--profit-green);
+            margin: 20px 0;
+        }
+
+        .streak-flame {
+            font-size: 32px;
+            animation: flicker 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes flicker {
+            0% { transform: scale(1) rotate(-2deg); }
+            100% { transform: scale(1.1) rotate(2deg); }
+        }
+
+        .target-progress {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .progress-ring {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto;
+        }
+
+        .progress-ring svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring-bg {
+            fill: none;
+            stroke: var(--border-color);
+            stroke-width: 8;
+        }
+
+        .progress-ring-fill {
+            fill: none;
+            stroke: var(--profit-green);
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 283;
+            stroke-dashoffset: 283;
+            animation: progressFill 2s ease-out forwards;
+        }
+
+        @keyframes progressFill {
+            to {
+                stroke-dashoffset: calc(283 - (283 * var(--progress)) / 100);
+            }
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .progress-label {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Bot Intelligence */
+        .strategy-hexagon {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin: 10px;
+            display: inline-block;
+        }
+
+        .hexagon {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            border: 2px solid var(--border-color);
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .hexagon:hover {
+            border-color: var(--gold-accent);
+            box-shadow: 0 0 25px var(--glow-gold);
+            transform: scale(1.1);
+        }
+
+        .hexagon.active {
+            background: linear-gradient(135deg, var(--gold-accent), var(--accent-blue));
+            border-color: var(--gold-accent);
+            box-shadow: 0 0 30px var(--glow-gold);
+            animation: hexagonPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes hexagonPulse {
+            0%, 100% { box-shadow: 0 0 30px var(--glow-gold); }
+            50% { box-shadow: 0 0 50px var(--glow-gold), 0 0 80px var(--glow-gold); }
+        }
+
+        .strategy-name {
+            font-size: 10px;
+            font-weight: 700;
+            text-align: center;
+            color: var(--text-primary);
+        }
+
+        .confidence-breakdown {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 15px;
+            align-items: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .confidence-meter {
+            width: 100%;
+            height: 20px;
+            background: var(--bg-primary);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--loss-red) 0%, var(--warning-orange) 50%, var(--profit-green) 100%);
+            border-radius: 10px;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .confidence-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: confidenceFlow 2s infinite;
+        }
+
+        @keyframes confidenceFlow {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .bot-mood {
+            text-align: center;
+            margin: 25px 0;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(255, 215, 0, 0.1));
+            border-radius: 15px;
+            border: 2px solid var(--accent-blue);
+        }
+
+        .bot-avatar {
+            font-size: 64px;
+            margin-bottom: 15px;
+            animation: avatarBounce 3s ease-in-out infinite;
+        }
+
+        @keyframes avatarBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .bot-status {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--gold-accent);
+            margin-bottom: 8px;
+        }
+
+        .bot-activity {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Decision Tree */
+        .decision-tree {
+            margin: 20px 0;
+        }
+
+        .decision-node {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 12px;
+            background: rgba(0, 212, 255, 0.05);
+            border-left: 4px solid var(--accent-blue);
+            border-radius: 0 10px 10px 0;
+            transition: all 0.3s ease;
+        }
+
+        .decision-node:hover {
+            background: rgba(0, 212, 255, 0.15);
+            transform: translateX(5px);
+        }
+
+        .decision-node.active {
+            background: rgba(255, 215, 0, 0.1);
+            border-left-color: var(--gold-accent);
+            box-shadow: 0 0 20px var(--glow-gold);
+        }
+
+        /* Achievements */
+        .achievement-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .achievement-card {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(0, 255, 136, 0.1));
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .achievement-card:hover {
+            border-color: var(--gold-accent);
+            box-shadow: 0 0 25px var(--glow-gold);
+            transform: translateY(-3px);
+        }
+
+        .achievement-card.unlocked {
+            border-color: var(--profit-green);
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(255, 215, 0, 0.1));
+        }
+
+        .achievement-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .achievement-title {
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: var(--gold-accent);
+        }
+
+        .achievement-description {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Trading Activity */
+        .trade-narrative {
+            margin: 20px 0;
+        }
+
+        .narrative-item {
+            display: flex;
+            align-items: center;
+            margin: 12px 0;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .narrative-item:hover {
+            border-color: var(--accent-blue);
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .narrative-icon {
+            font-size: 24px;
+            margin-right: 15px;
+            width: 40px;
+            text-align: center;
+        }
+
+        .narrative-content {
+            flex: 1;
+        }
+
+        .narrative-time {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .factory-title {
+                font-size: 24px;
+                letter-spacing: 1px;
+            }
+            
+            .factory-status {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                padding: 15px;
+                gap: 20px;
+            }
+            
+            .panel {
+                padding: 20px;
+            }
+            
+            .odometer-value {
+                font-size: 32px;
+            }
+            
+            .target-progress {
+                grid-template-columns: 1fr;
+            }
+            
+            .progress-ring {
+                width: 100px;
+                height: 100px;
+            }
+        }
+
+        /* Celebration Effects */
+        .celebration {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .firework {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            position: absolute;
+            animation: explode 1s ease-out forwards;
+        }
+
+        @keyframes explode {
+            0% {
+                opacity: 1;
+                transform: scale(0);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(20);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Particle Background -->
+    <div id="particles-js"></div>
+    
+    <!-- Money Stream Container -->
+    <div class="money-stream" id="moneyStream"></div>
+
+    <!-- Factory Header -->
+    <div class="factory-header">
+        <div class="factory-title">🏭 JANICS FREEDOM FACTORY 🏭</div>
+        <div class="factory-subtitle">Autonomous Wealth Generation Terminal</div>
+        <div class="factory-status">
+            <div class="status-item">
+                <div class="factory-dot"></div>
+                <span>FACTORY ONLINE</span>
+            </div>
+            <div class="status-item">
+                <span id="serverStatus">Server: Connecting...</span>
+            </div>
+            <div class="status-item">
+                <span id="lastUpdate">Last Update: --</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div class="dashboard-grid">
+        <!-- Money Growth Gamification -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">💰 Wealth Accumulator</div>
+                <div class="live-indicator">
+                    <div class="factory-dot"></div>
+                    <span>Money Making</span>
+                </div>
+            </div>
+            
+            <div class="money-counter">
+                <div class="odometer-value" id="portfolioValue">$127,450.32</div>
+                <div style="color: var(--text-secondary); margin-top: 10px;">Total Portfolio Value</div>
+            </div>
+            
+            <div class="growth-streak">
+                <div>
+                    <div class="streak-flame">🔥</div>
+                    <div style="text-align: center; margin-top: 5px;">
+                        <div style="color: var(--profit-green); font-weight: 700;">17 Hours</div>
+                        <div style="color: var(--text-secondary); font-size: 12px;">Profit Streak</div>
+                    </div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="color: var(--gold-accent); font-size: 24px; font-weight: 700;" id="dailyProfit">+$2,847.93</div>
+                    <div style="color: var(--text-secondary); font-size: 14px;">Today's Freedom</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="color: var(--accent-blue); font-weight: 700;">x1.23</div>
+                    <div style="color: var(--text-secondary); font-size: 12px;">Confidence Boost</div>
+                </div>
+            </div>
+            
+            <div class="target-progress">
+                <div>
+                    <div class="progress-ring">
+                        <svg>
+                            <circle class="progress-ring-bg" cx="60" cy="60" r="45"/>
+                            <circle class="progress-ring-fill" cx="60" cy="60" r="45" style="--progress: 73"/>
+                        </svg>
+                        <div class="progress-text">
+                            <div style="color: var(--profit-green); font-weight: 700;">73%</div>
+                            <div style="font-size: 10px;">Daily</div>
+                        </div>
+                    </div>
+                    <div class="progress-label">$500 Target</div>
+                </div>
+                <div>
+                    <div class="progress-ring">
+                        <svg>
+                            <circle class="progress-ring-bg" cx="60" cy="60" r="45"/>
+                            <circle class="progress-ring-fill" cx="60" cy="60" r="45" style="--progress: 34"/>
+                        </svg>
+                        <div class="progress-text">
+                            <div style="color: var(--warning-orange); font-weight: 700;">34%</div>
+                            <div style="font-size: 10px;">Weekly</div>
+                        </div>
+                    </div>
+                    <div class="progress-label">$3,500 Target</div>
+                </div>
+                <div>
+                    <div class="progress-ring">
+                        <svg>
+                            <circle class="progress-ring-bg" cx="60" cy="60" r="45"/>
+                            <circle class="progress-ring-fill" cx="60" cy="60" r="45" style="--progress: 12"/>
+                        </svg>
+                        <div class="progress-text">
+                            <div style="color: var(--loss-red); font-weight: 700;">12%</div>
+                            <div style="font-size: 10px;">Monthly</div>
+                        </div>
+                    </div>
+                    <div class="progress-label">$15,000 Target</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced AI Decision Engine -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">🧠 Strategy Command Center</div>
+                <div class="live-indicator">
+                    <div class="factory-dot"></div>
+                    <span>AI Active</span>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <div style="display: flex; justify-content: center; flex-wrap: wrap;">
+                    <div class="strategy-hexagon">
+                        <div class="hexagon active">
+                            <div class="strategy-name">MOMENTUM<br>V2.1</div>
+                        </div>
+                    </div>
+                    <div class="strategy-hexagon">
+                        <div class="hexagon">
+                            <div class="strategy-name">MEAN<br>REVERT</div>
+                        </div>
+                    </div>
+                    <div class="strategy-hexagon">
+                        <div class="hexagon">
+                            <div class="strategy-name">ARBITRAGE<br>PRO</div>
+                        </div>
+                    </div>
+                    <div class="strategy-hexagon">
+                        <div class="hexagon">
+                            <div class="strategy-name">ML<br>PREDICT</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <div style="color: var(--gold-accent); font-weight: 700; font-size: 16px;">MOMENTUM_BREAKOUT_V2.1</div>
+                <div style="color: var(--text-secondary); font-size: 14px; margin-top: 5px;">Active for 2h 34m • Performance: +$2,847.33</div>
+            </div>
+            
+            <div class="confidence-breakdown">
+                <div>
+                    <div style="color: var(--text-secondary); font-size: 12px; margin-bottom: 5px;">Strategy Confidence</div>
+                    <div class="confidence-meter">
+                        <div class="confidence-fill" style="width: 94.2%"></div>
+                    </div>
+                </div>
+                <div style="color: var(--profit-green); font-weight: 700; font-size: 24px;">94.2%</div>
+            </div>
+            
+            <div class="decision-tree">
+                <div class="decision-node active">
+                    <div class="narrative-icon">⚡</div>
+                    <div>
+                        <div style="font-weight: 600;">IF Market Momentum > 0.75 → BUY Signal</div>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px;">Current: 0.87 ✅</div>
+                    </div>
+                </div>
+                <div class="decision-node">
+                    <div class="narrative-icon">📊</div>
+                    <div>
+                        <div style="font-weight: 600;">IF RSI < 30 AND Volume > 1.5x → Strong Buy</div>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px;">Monitoring...</div>
+                    </div>
+                </div>
+                <div class="decision-node">
+                    <div class="narrative-icon">🎯</div>
+                    <div>
+                        <div style="font-weight: 600;">Risk/Reward > 1:3 → Position Confirmed</div>
+                        <div style="font-size: 12px; color: var(--profit-green); margin-top: 3px;">Current: 1:3.2 ✅</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Janics Bot Intelligence -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">🤖 Janics Bot Status</div>
+                <div class="live-indicator">
+                    <div class="factory-dot"></div>
+                    <span>Learning</span>
+                </div>
+            </div>
+            
+            <div class="bot-mood">
+                <div class="bot-avatar">🤖</div>
+                <div class="bot-status" id="botMood">AGGRESSIVE MODE</div>
+                <div class="bot-activity" id="botActivity">Scanning markets for breakout opportunities...</div>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <h4 style="color: var(--gold-accent); margin-bottom: 15px;">Confidence Breakdown</h4>
+                <div class="confidence-breakdown">
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span>Technical Analysis</span>
+                            <span style="color: var(--profit-green); font-weight: 700;">89%</span>
+                        </div>
+                        <div class="confidence-meter">
+                            <div class="confidence-fill" style="width: 89%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="confidence-breakdown">
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span>Market Sentiment</span>
+                            <span style="color: var(--warning-orange); font-weight: 700;">76%</span>
+                        </div>
+                        <div class="confidence-meter">
+                            <div class="confidence-fill" style="width: 76%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="confidence-breakdown">
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span>Volume Analysis</span>
+                            <span style="color: var(--profit-green); font-weight: 700;">93%</span>
+                        </div>
+                        <div class="confidence-meter">
+                            <div class="confidence-fill" style="width: 93%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trade Storytelling -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">📈 Trade Narratives</div>
+                <div class="live-indicator">
+                    <div class="factory-dot"></div>
+                    <span>Live Stories</span>
+                </div>
+            </div>
+            
+            <div class="trade-narrative" id="tradeNarrative">
+                <div class="narrative-item">
+                    <div class="narrative-icon">🎯</div>
+                    <div class="narrative-content">
+                        <div style="font-weight: 600; margin-bottom: 5px;">Bot spotted ascending triangle on ETH</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Entry signal confirmed by 3 indicators • Position: $2,847 (2.3%)</div>
+                        <div class="narrative-time">2 min ago</div>
+                    </div>
+                </div>
+                <div class="narrative-item">
+                    <div class="narrative-icon">⚡</div>
+                    <div class="narrative-content">
+                        <div style="font-weight: 600; margin-bottom: 5px;">Momentum breakout detected on BTC</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Target: +4.2% in 6-8 hours • Stop-loss: -1.8%</div>
+                        <div class="narrative-time">5 min ago</div>
+                    </div>
+                </div>
+                <div class="narrative-item">
+                    <div class="narrative-icon">🧠</div>
+                    <div class="narrative-content">
+                        <div style="font-weight: 600; margin-bottom: 5px;">Learning from false breakout pattern</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Model accuracy improved by +2.3%</div>
+                        <div class="narrative-time">12 min ago</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Freedom Factory Achievements -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">🏆 Freedom Achievements</div>
+                <div class="live-indicator">
+                    <div class="factory-dot"></div>
+                    <span>Unlocking</span>
+                </div>
+            </div>
+            
+            <div class="achievement-grid">
+                <div class="achievement-card unlocked">
+                    <div class="achievement-icon">🎯</div>
+                    <div class="achievement-title">Freedom Starter</div>
+                    <div class="achievement-description">First $1000 profit ✅</div>
+                </div>
+                <div class="achievement-card unlocked">
+                    <div class="achievement-icon">⛓️‍💥</div>
+                    <div class="achievement-title">Chain Breaker</div>
+                    <div class="achievement-description">10 consecutive wins ✅</div>
+                </div>
+                <div class="achievement-card">
+                    <div class="achievement-icon">👑</div>
+                    <div class="achievement-title">Liberation Leader</div>
+                    <div class="achievement-description">Beat daily record</div>
+                </div>
+                <div class="achievement-card">
+                    <div class="achievement-icon">💎</div>
+                    <div class="achievement-title">Diamond Hands</div>
+                    <div class="achievement-description">Hold through 15% drawdown</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; text-align: center;">
+                <div style="color: var(--gold-accent); font-weight: 700; font-size: 18px;">Freedom Progress</div>
+                <div style="color: var(--text-secondary); margin-top: 5px;">247 days of passive income generated</div>
+                <div style="color: var(--profit-green); margin-top: 3px;">73% to Complete Financial Independence</div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">⚙️ Factory Controls</div>
+                <button style="background: linear-gradient(135deg, var(--gold-accent), var(--accent-blue)); border: none; border-radius: 8px; padding: 10px 20px; color: var(--bg-primary); font-weight: 700; cursor: pointer;" onclick="loadDashboardData()">
+                    <span id="refreshIcon">🔄</span> Refresh Factory
+                </button>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-top: 20px;">
+                <button style="background: var(--profit-green); border: none; border-radius: 8px; padding: 12px; color: var(--bg-primary); font-weight: 700; cursor: pointer;" onclick="exportData()">
+                    💰 Export Wealth
+                </button>
+                <button style="background: var(--warning-orange); border: none; border-radius: 8px; padding: 12px; color: var(--bg-primary); font-weight: 700; cursor: pointer;" onclick="showFactoryInfo()">
+                    🏭 Factory Info
+                </button>
+                <button style="background: var(--accent-blue); border: none; border-radius: 8px; padding: 12px; color: white; font-weight: 700; cursor: pointer;" onclick="toggleAutoRefresh()" id="autoRefreshBtn">
+                    ⏸️ Auto Mode
+                </button>
+                <button style="background: var(--gold-accent); border: none; border-radius: 8px; padding: 12px; color: var(--bg-primary); font-weight: 700; cursor: pointer;" onclick="celebrateSuccess()">
+                    🎉 Celebrate
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = 'http://85.215.183.30:8080/api/intelligence';
+        let autoRefresh = true;
+        let refreshInterval;
+        let portfolioValue = 127450.32;
+        let dailyProfit = 2847.93;
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeParticles();
+            loadDashboardData();
+            startAutoRefresh();
+            startMoneyStream();
+            startValueAnimation();
+        });
+
+        function initializeParticles() {
+            particlesJS('particles-js', {
+                particles: {
+                    number: { value: 50 },
+                    color: { value: "#ffd700" },
+                    shape: { type: "circle" },
+                    opacity: { value: 0.3 },
+                    size: { value: 2 },
+                    move: {
+                        enable: true,
+                        speed: 1,
+                        direction: "none",
+                        random: true
+                    }
+                },
+                interactivity: {
+                    detect_on: "canvas",
+                    events: {
+                        onhover: { enable: true, mode: "repulse" },
+                        onclick: { enable: true, mode: "push" }
+                    }
+                }
+            });
+        }
+
+        async function loadDashboardData() {
+            const refreshIcon = document.getElementById('refreshIcon');
+            refreshIcon.innerHTML = '⚙️';
+            
+            try {
+                document.getElementById('lastUpdate').textContent = 
+                    'Last Update: ' + new Date().toLocaleTimeString();
+                
+                const response = await axios.get(`${API_BASE}/demo`);
+                const data = response.data;
+                
+                // Update bot mood and activity
+                updateBotIntelligence(data);
+                
+                // Update trade narratives
+                updateTradeNarratives(data.decisions || []);
+                
+                document.getElementById('serverStatus').textContent = 'Server: Online 🟢';
+                
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                document.getElementById('serverStatus').textContent = 'Server: Offline 🔴';
+                showOfflineMode();
+            }
+            
+            refreshIcon.textContent = '🔄';
+        }
+
+        function updateBotIntelligence(data) {
+            const moods = ['AGGRESSIVE', 'CAUTIOUS', 'OPPORTUNISTIC', 'OPTIMIZING'];
+            const activities = [
+                'Scanning markets for breakout opportunities...',
+                'Analyzing 247 data points for optimal entry...',
+                'Learning from recent market patterns...',
+                'Calculating optimal position sizing...',
+                'Monitoring correlation changes...'
+            ];
+            
+            const randomMood = moods[Math.floor(Math.random() * moods.length)];
+            const randomActivity = activities[Math.floor(Math.random() * activities.length)];
+            
+            document.getElementById('botMood').textContent = randomMood + ' MODE';
+            document.getElementById('botActivity').textContent = randomActivity;
+            
+            // Update confidence if available
+            if (data.metrics && data.metrics.avg_confidence) {
+                const confidence = (data.metrics.avg_confidence * 100).toFixed(1);
+                // Update confidence displays
+            }
+        }
+
+        function updateTradeNarratives(decisions) {
+            const container = document.getElementById('tradeNarrative');
+            const narratives = [
+                {
+                    icon: '🎯',
+                    title: 'Bot spotted ascending triangle on ETH',
+                    details: 'Entry signal confirmed by 3 indicators • Position: $2,847 (2.3%)',
+                    time: '2 min ago'
+                },
+                {
+                    icon: '⚡',
+                    title: 'Momentum breakout detected on BTC',
+                    details: 'Target: +4.2% in 6-8 hours • Stop-loss: -1.8%',
+                    time: '5 min ago'
+                },
+                {
+                    icon: '🧠',
+                    title: 'Learning from false breakout pattern',
+                    details: 'Model accuracy improved by +2.3%',
+                    time: '12 min ago'
+                }
+            ];
+            
+            // Add real decisions if available
+            if (decisions.length > 0) {
+                decisions.slice(0, 2).forEach((decision, index) => {
+                    narratives.unshift({
+                        icon: decision.action === 'buy' ? '📈' : '📉',
+                        title: `${decision.reasoning}`,
+                        details: `${decision.action.toUpperCase()} ${decision.symbol} • Confidence: ${(decision.confidence * 100).toFixed(1)}%`,
+                        time: 'Just now'
+                    });
+                });
+            }
+            
+            container.innerHTML = narratives.slice(0, 5).map(narrative => `
+                <div class="narrative-item">
+                    <div class="narrative-icon">${narrative.icon}</div>
+                    <div class="narrative-content">
+                        <div style="font-weight: 600; margin-bottom: 5px;">${narrative.title}</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">${narrative.details}</div>
+                        <div class="narrative-time">${narrative.time}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function startMoneyStream() {
+            setInterval(() => {
+                createFloatingDollar();
+            }, 3000);
+        }
+
+        function createFloatingDollar() {
+            const stream = document.getElementById('moneyStream');
+            const dollar = document.createElement('div');
+            dollar.className = 'floating-dollar';
+            dollar.textContent = '$';
+            dollar.style.left = Math.random() * 100 + '%';
+            dollar.style.fontSize = (16 + Math.random() * 16) + 'px';
+            
+            stream.appendChild(dollar);
+            
+            setTimeout(() => {
+                if (stream.contains(dollar)) {
+                    stream.removeChild(dollar);
+                }
+            }, 3000);
+        }
+
+        function startValueAnimation() {
+            setInterval(() => {
+                const change = (Math.random() - 0.3) * 1000;
+                portfolioValue += change;
+                
+                const valueElement = document.getElementById('portfolioValue');
+                valueElement.classList.add('updating');
+                
+                setTimeout(() => {
+                    valueElement.textContent = '$' + portfolioValue.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+                    valueElement.classList.remove('updating');
+                }, 500);
+                
+                if (change > 500) {
+                    celebrateSuccess();
+                }
+            }, 8000);
+        }
+
+        function celebrateSuccess() {
+            const celebration = document.createElement('div');
+            celebration.className = 'celebration';
+            document.body.appendChild(celebration);
+            
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    const firework = document.createElement('div');
+                    firework.className = 'firework';
+                    firework.style.left = (Math.random() * 100) + '%';
+                    firework.style.top = (Math.random() * 100) + '%';
+                    firework.style.backgroundColor = ['#ffd700', '#00ff88', '#00d4ff'][Math.floor(Math.random() * 3)];
+                    celebration.appendChild(firework);
+                    
+                    setTimeout(() => {
+                        if (celebration.contains(firework)) {
+                            celebration.removeChild(firework);
+                        }
+                    }, 1000);
+                }, i * 50);
+            }
+            
+            setTimeout(() => {
+                document.body.removeChild(celebration);
+            }, 2000);
+        }
+
+        function startAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            refreshInterval = setInterval(loadDashboardData, 15000);
+            updateAutoRefreshButton();
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            refreshInterval = null;
+            updateAutoRefreshButton();
+        }
+
+        function toggleAutoRefresh() {
+            if (refreshInterval) {
+                stopAutoRefresh();
+                autoRefresh = false;
+            } else {
+                startAutoRefresh();
+                autoRefresh = true;
+            }
+        }
+
+        function updateAutoRefreshButton() {
+            const btn = document.getElementById('autoRefreshBtn');
+            if (refreshInterval) {
+                btn.innerHTML = '⏸️ Auto ON';
+                btn.style.background = 'var(--profit-green)';
+            } else {
+                btn.innerHTML = '▶️ Auto OFF';
+                btn.style.background = 'var(--neutral-gray)';
+            }
+        }
+
+        async function exportData() {
+            try {
+                const response = await axios.get(`${API_BASE}/export/decisions`);
+                const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `janics_freedom_factory_${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                celebrateSuccess();
+            } catch (error) {
+                console.error('Export failed:', error);
+            }
+        }
+
+        function showFactoryInfo() {
+            const info = `
+🏭 JANICS FREEDOM FACTORY STATUS 🏭
+
+🤖 Bot Intelligence: ACTIVE
+💰 Wealth Generation: 24/7 OPERATIONAL
+🎯 Success Rate: 73.2%
+⚡ Processing Speed: 247 data points/second
+🧠 Learning Mode: CONTINUOUS
+🔥 Profit Streak: 17 hours
+💎 Total Generated: $127,450.32
+
+🚀 AUTONOMOUS WEALTH CREATION IN PROGRESS 🚀
+
+Server: 85.215.183.30:8080
+Time: ${new Date().toLocaleString()}
+            `;
+            
+            alert(info);
+        }
+
+        function showOfflineMode() {
+            document.getElementById('botMood').textContent = 'OFFLINE MODE';
+            document.getElementById('botActivity').textContent = 'Waiting for factory connection...';
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key.toLowerCase()) {
+                    case 'r':
+                        e.preventDefault();
+                        loadDashboardData();
+                        break;
+                    case 'e':
+                        e.preventDefault();
+                        exportData();
+                        break;
+                    case ' ':
+                        e.preventDefault();
+                        celebrateSuccess();
+                        break;
+                }
+            }
+        });
+
+        // Easter egg: Konami code for extra celebration
+        let konamiCode = [];
+        const konami = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65];
+        
+        document.addEventListener('keydown', function(e) {
+            konamiCode.push(e.keyCode);
+            if (konamiCode.length > 10) konamiCode.shift();
+            
+            if (konamiCode.join(',') === konami.join(',')) {
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => celebrateSuccess(), i * 200);
+                }
+                konamiCode = [];
+            }
+        });
+    </script>
+</body>
+</html>
