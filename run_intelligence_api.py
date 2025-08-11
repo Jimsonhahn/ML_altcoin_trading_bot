@@ -252,6 +252,8 @@ def run_intelligence_server(host='localhost', port=8001):
     app = create_intelligence_app()
     
     print("\n🌐 Available Endpoints:")
+    print(f"   🎮 Dashboard: http://{host}:{port}/")
+    print(f"   🎮 Dashboard Alt: http://{host}:{port}/dashboard")
     print(f"   Health: http://{host}:{port}/health")
     print(f"   Intelligence Health: http://{host}:{port}/api/intelligence/health")
     print(f"   Metrics: http://{host}:{port}/api/intelligence/metrics")
