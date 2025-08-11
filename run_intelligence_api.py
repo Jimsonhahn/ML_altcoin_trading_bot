@@ -498,6 +498,102 @@ def create_intelligence_app():
                 'error': str(e)
             }), 500
     
+    @app.route('/api/bot/start', methods=['POST'])
+    @security_manager.rate_limit_decorator('dashboard')
+    def start_bot():
+        \"\"\"Start the trading bot\"\"\"
+        from datetime import datetime
+        try:
+            data = request.get_json() or {}
+            bot_script = data.get('script', 'main.py')
+            
+            result = dashboard_manager.process_monitor.start_trading_bot(bot_script)
+            
+            if result['success']:
+                dashboard_manager.add_notification(
+                    \"🚀 Trading Bot Started\",
+                    f\"Bot started successfully (PID: {result['pid']})\",
+                    dashboard_manager.NotificationLevel.INFO,
+                    \"system\"
+                )
+            
+            return jsonify({
+                'success': result['success'],
+                'message': result['message'],
+                'data': result,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e),
+                'message': 'Failed to start trading bot'
+            }), 500
+    
+    @app.route('/api/bot/stop', methods=['POST'])
+    @security_manager.rate_limit_decorator('dashboard')
+    def stop_bot():
+        \"\"\"Stop the trading bot\"\"\"
+        from datetime import datetime
+        try:
+            data = request.get_json() or {}
+            pid = data.get('pid')  # Optional specific PID
+            
+            result = dashboard_manager.process_monitor.stop_trading_bot(pid)
+            
+            if result['success']:
+                dashboard_manager.add_notification(
+                    \"🛑 Trading Bot Stopped\",
+                    result['message'],
+                    dashboard_manager.NotificationLevel.INFO,
+                    \"system\"
+                )
+            
+            return jsonify({
+                'success': result['success'],
+                'message': result['message'],
+                'data': result,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e),
+                'message': 'Failed to stop trading bot'
+            }), 500
+    
+    @app.route('/api/bot/restart', methods=['POST'])
+    @security_manager.rate_limit_decorator('dashboard')
+    def restart_bot():
+        \"\"\"Restart the trading bot\"\"\"
+        from datetime import datetime
+        try:
+            data = request.get_json() or {}
+            bot_script = data.get('script', 'main.py')
+            
+            result = dashboard_manager.process_monitor.restart_trading_bot(bot_script)
+            
+            if result['success']:
+                dashboard_manager.add_notification(
+                    \"🔄 Trading Bot Restarted\",
+                    f\"Bot restarted successfully (PID: {result['pid']})\",
+                    dashboard_manager.NotificationLevel.INFO,
+                    \"system\"
+                )
+            
+            return jsonify({
+                'success': result['success'],
+                'message': result['message'],
+                'data': result,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e),
+                'message': 'Failed to restart trading bot'
+            }), 500
+    
     @app.route('/api/intelligence/demo')
     @security_manager.rate_limit_decorator('api/intelligence')
     def demo_data():

@@ -183,6 +183,207 @@ class BotProcessMonitor:
                 'error': str(e)
             }
     
+    def start_trading_bot(self, bot_script: str = "main.py") -> Dict[str, Any]:
+        """Start the trading bot process"""
+        try:
+            # Check if bot is already running
+            current_status = self.check_bot_processes()
+            if current_status['trading_bot_running']:
+                return {
+                    'success': False,
+                    'message': f'Trading bot is already running (PID: {current_status["main_pid"]})',
+                    'error': 'BOT_ALREADY_RUNNING'
+                }
+            
+            # Start the bot process
+            import subprocess
+            import sys
+            
+            # Try different possible bot locations
+            possible_locations = [
+                bot_script,
+                f"./{bot_script}",
+                f"../{bot_script}",
+                "main.py",
+                "./main.py"
+            ]
+            
+            bot_path = None
+            for location in possible_locations:
+                if os.path.exists(location):
+                    bot_path = location
+                    break
+            
+            if not bot_path:
+                return {
+                    'success': False,
+                    'message': f'Could not find {bot_script} to start',
+                    'error': 'BOT_SCRIPT_NOT_FOUND'
+                }
+            
+            # Start bot process in background
+            process = subprocess.Popen([
+                sys.executable, bot_path
+            ], 
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+            start_new_session=True  # Detach from parent
+            )
+            
+            # Wait briefly to check if it started successfully
+            import time
+            time.sleep(2)
+            
+            if process.poll() is None:  # Process is still running
+                return {
+                    'success': True,
+                    'message': f'Trading bot started successfully (PID: {process.pid})',
+                    'pid': process.pid,
+                    'script_path': bot_path
+                }
+            else:
+                # Process died immediately, get error
+                stdout, stderr = process.communicate()
+                return {
+                    'success': False,
+                    'message': f'Trading bot failed to start: {stderr.decode()[:200]}',
+                    'error': 'BOT_START_FAILED',
+                    'stderr': stderr.decode()
+                }
+                
+        except Exception as e:
+            logger.error(f"Error starting trading bot: {e}")
+            return {
+                'success': False,
+                'message': f'Failed to start trading bot: {str(e)}',
+                'error': 'EXCEPTION'
+            }
+    
+    def stop_trading_bot(self, pid: int = None) -> Dict[str, Any]:
+        """Stop the trading bot process"""
+        try:
+            current_status = self.check_bot_processes()
+            
+            if not current_status['trading_bot_running']:
+                return {
+                    'success': False,
+                    'message': 'No trading bot processes found to stop',
+                    'error': 'BOT_NOT_RUNNING'
+                }
+            
+            stopped_processes = []
+            failed_processes = []
+            
+            # Stop all bot processes or specific PID
+            for process_info in current_status['processes']:
+                try:
+                    if pid and process_info['pid'] != pid:
+                        continue
+                        
+                    process = psutil.Process(process_info['pid'])
+                    process_name = process_info['name']
+                    process_pid = process_info['pid']
+                    
+                    # Try graceful shutdown first
+                    process.terminate()
+                    
+                    # Wait for graceful shutdown
+                    import time
+                    time.sleep(3)
+                    
+                    if process.is_running():
+                        # Force kill if still running
+                        process.kill()
+                        time.sleep(1)
+                    
+                    if not process.is_running():
+                        stopped_processes.append({
+                            'pid': process_pid,
+                            'name': process_name
+                        })
+                    else:
+                        failed_processes.append({
+                            'pid': process_pid,
+                            'name': process_name,
+                            'error': 'Still running after kill'
+                        })
+                        
+                except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                    # Process already stopped or no access
+                    stopped_processes.append({
+                        'pid': process_info['pid'],
+                        'name': process_info['name'],
+                        'note': 'Already stopped or no access'
+                    })
+                except Exception as e:
+                    failed_processes.append({
+                        'pid': process_info['pid'],
+                        'name': process_info['name'],
+                        'error': str(e)
+                    })
+            
+            if stopped_processes and not failed_processes:
+                return {
+                    'success': True,
+                    'message': f'Successfully stopped {len(stopped_processes)} trading bot process(es)',
+                    'stopped_processes': stopped_processes
+                }
+            elif stopped_processes and failed_processes:
+                return {
+                    'success': True,
+                    'message': f'Stopped {len(stopped_processes)} processes, {len(failed_processes)} failed',
+                    'stopped_processes': stopped_processes,
+                    'failed_processes': failed_processes
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': f'Failed to stop {len(failed_processes)} trading bot process(es)',
+                    'error': 'STOP_FAILED',
+                    'failed_processes': failed_processes
+                }
+                
+        except Exception as e:
+            logger.error(f"Error stopping trading bot: {e}")
+            return {
+                'success': False,
+                'message': f'Failed to stop trading bot: {str(e)}',
+                'error': 'EXCEPTION'
+            }
+    
+    def restart_trading_bot(self, bot_script: str = "main.py") -> Dict[str, Any]:
+        """Restart the trading bot (stop + start)"""
+        # Stop first
+        stop_result = self.stop_trading_bot()
+        
+        if not stop_result['success'] and stop_result['error'] != 'BOT_NOT_RUNNING':
+            return {
+                'success': False,
+                'message': f'Failed to stop bot before restart: {stop_result["message"]}',
+                'error': 'RESTART_STOP_FAILED'
+            }
+        
+        # Wait a moment
+        import time
+        time.sleep(2)
+        
+        # Start again
+        start_result = self.start_trading_bot(bot_script)
+        
+        if start_result['success']:
+            return {
+                'success': True,
+                'message': f'Trading bot restarted successfully (PID: {start_result["pid"]})',
+                'pid': start_result['pid']
+            }
+        else:
+            return {
+                'success': False,
+                'message': f'Bot stopped but failed to restart: {start_result["message"]}',
+                'error': 'RESTART_START_FAILED'
+            }
+    
     def check_intelligence_api(self) -> bool:
         """Check if Intelligence API is running (this process)"""
         return True  # We're running if we can execute this code

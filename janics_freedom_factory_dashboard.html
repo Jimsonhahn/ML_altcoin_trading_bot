@@ -132,6 +132,76 @@
             border: 1px solid var(--border-color);
         }
 
+        .bot-controls {
+            gap: 8px;
+            padding: 4px 8px;
+        }
+
+        .control-btn {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            border: 1px solid var(--gold-accent);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+        }
+
+        .control-btn:active {
+            transform: translateY(0);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .start-btn:hover {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            border-color: #2ecc71;
+        }
+
+        .stop-btn:hover {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border-color: #e74c3c;
+        }
+
+        .restart-btn:hover {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            border-color: #f39c12;
+        }
+
+        .control-btn.loading {
+            background: linear-gradient(135deg, #7f8c8d, #95a5a6);
+            pointer-events: none;
+        }
+
+        .control-btn.loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: loading-sweep 1s infinite;
+        }
+
+        @keyframes loading-sweep {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
         .factory-dot {
             width: 12px;
             height: 12px;
@@ -835,6 +905,17 @@
             <div class="status-item">
                 <span id="tradingBotStatus">Trading Bot: Checking...</span>
             </div>
+            <div class="status-item bot-controls" id="botControls" style="display: none;">
+                <button onclick="startTradingBot()" class="control-btn start-btn" id="startBtn">
+                    🚀 Start Bot
+                </button>
+                <button onclick="stopTradingBot()" class="control-btn stop-btn" id="stopBtn">
+                    🛑 Stop Bot
+                </button>
+                <button onclick="restartTradingBot()" class="control-btn restart-btn" id="restartBtn">
+                    🔄 Restart Bot
+                </button>
+            </div>
             <div class="status-item">
                 <span id="lastUpdate">Last Update: --</span>
             </div>
@@ -1363,6 +1444,103 @@
             refreshIcon.textContent = '🔄';
         }
 
+        async function startTradingBot() {
+            const startBtn = document.getElementById('startBtn');
+            const originalText = startBtn.innerHTML;
+            
+            try {
+                // Show loading state
+                startBtn.classList.add('loading');
+                startBtn.innerHTML = '⏳ Starting...';
+                startBtn.disabled = true;
+                
+                const response = await axios.post('/api/bot/start', {
+                    script: 'main.py'
+                });
+                
+                if (response.data.success) {
+                    showNotification('🚀 Bot Started', response.data.message, 'success');
+                    // Refresh status after 3 seconds
+                    setTimeout(() => checkTradingBotStatus(), 3000);
+                } else {
+                    showNotification('❌ Start Failed', response.data.message, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Start bot error:', error);
+                showNotification('❌ Start Error', 'Failed to start trading bot: ' + error.message, 'error');
+            } finally {
+                // Reset button state
+                startBtn.classList.remove('loading');
+                startBtn.innerHTML = originalText;
+                startBtn.disabled = false;
+            }
+        }
+
+        async function stopTradingBot() {
+            const stopBtn = document.getElementById('stopBtn');
+            const originalText = stopBtn.innerHTML;
+            
+            try {
+                // Show loading state
+                stopBtn.classList.add('loading');
+                stopBtn.innerHTML = '⏳ Stopping...';
+                stopBtn.disabled = true;
+                
+                const response = await axios.post('/api/bot/stop');
+                
+                if (response.data.success) {
+                    showNotification('🛑 Bot Stopped', response.data.message, 'info');
+                    // Refresh status after 3 seconds
+                    setTimeout(() => checkTradingBotStatus(), 3000);
+                } else {
+                    showNotification('❌ Stop Failed', response.data.message, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Stop bot error:', error);
+                showNotification('❌ Stop Error', 'Failed to stop trading bot: ' + error.message, 'error');
+            } finally {
+                // Reset button state
+                stopBtn.classList.remove('loading');
+                stopBtn.innerHTML = originalText;
+                stopBtn.disabled = false;
+            }
+        }
+
+        async function restartTradingBot() {
+            const restartBtn = document.getElementById('restartBtn');
+            const originalText = restartBtn.innerHTML;
+            
+            try {
+                // Show loading state
+                restartBtn.classList.add('loading');
+                restartBtn.innerHTML = '⏳ Restarting...';
+                restartBtn.disabled = true;
+                
+                const response = await axios.post('/api/bot/restart', {
+                    script: 'main.py'
+                });
+                
+                if (response.data.success) {
+                    showNotification('🔄 Bot Restarted', response.data.message, 'success');
+                    // Refresh status after 5 seconds (restart takes longer)
+                    setTimeout(() => checkTradingBotStatus(), 5000);
+                } else {
+                    showNotification('❌ Restart Failed', response.data.message, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Restart bot error:', error);
+                showNotification('❌ Restart Error', 'Failed to restart trading bot: ' + error.message, 'error');
+            } finally {
+                // Reset button state
+                restartBtn.classList.remove('loading');
+                restartBtn.innerHTML = originalText;
+                restartBtn.disabled = false;
+            }
+        }
+
         async function checkTradingBotStatus() {
             try {
                 const response = await axios.get('/api/bot/status');
@@ -1370,6 +1548,13 @@
                 
                 const tradingBot = data.trading_bot;
                 const statusElement = document.getElementById('tradingBotStatus');
+                const controlsElement = document.getElementById('botControls');
+                const startBtn = document.getElementById('startBtn');
+                const stopBtn = document.getElementById('stopBtn');
+                const restartBtn = document.getElementById('restartBtn');
+                
+                // Show controls
+                controlsElement.style.display = 'flex';
                 
                 if (tradingBot.running) {
                     if (tradingBot.process_count > 1) {
@@ -1379,12 +1564,23 @@
                         statusElement.innerHTML = `Trading Bot: ✅ Running (${tradingBot.uptime_hours.toFixed(1)}h uptime)`;
                         statusElement.style.color = '#00ff88';
                     }
+                    
+                    // Bot running - enable stop/restart, disable start
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    restartBtn.disabled = false;
+                    
                 } else {
-                    statusElement.innerHTML = 'Trading Bot: 🔴 OFFLINE - Start main.py!';
+                    statusElement.innerHTML = 'Trading Bot: 🔴 OFFLINE - Use controls to start!';
                     statusElement.style.color = '#ff4757';
                     
+                    // Bot offline - enable start, disable stop/restart
+                    startBtn.disabled = false;
+                    stopBtn.disabled = true;
+                    restartBtn.disabled = true;
+                    
                     // Show critical notification for offline bot
-                    showNotification('🚨 TRADING BOT OFFLINE', 'Main trading bot is not running! Start main.py to begin trading.', 'critical');
+                    showNotification('🚨 TRADING BOT OFFLINE', 'Main trading bot is not running! Use the Start Bot button to begin trading.', 'critical');
                 }
                 
                 // Update system resource info if needed
@@ -1395,6 +1591,9 @@
                 document.getElementById('tradingBotStatus').innerHTML = 'Trading Bot: ❌ Check Failed';
                 document.getElementById('tradingBotStatus').style.color = '#ff6b6b';
                 console.error('Bot status check error:', error);
+                
+                // Hide controls on error
+                document.getElementById('botControls').style.display = 'none';
             }
         }
 
