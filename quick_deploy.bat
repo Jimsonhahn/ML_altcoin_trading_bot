@@ -28,8 +28,39 @@ python -m pip install -r requirements.txt
 REM Install and build dashboard
 echo 🎨 Setting up revolutionary dashboard...
 cd dashboard
-call npm install --legacy-peer-deps
+
+REM Clean previous build
+echo 🧹 Cleaning previous build...
+if exist build rmdir /s /q build
+if exist node_modules rmdir /s /q node_modules
+
+REM Install dependencies with compatibility flags
+echo 📦 Installing dependencies with Node.js compatibility...
+call npm install --legacy-peer-deps --force
+
+REM Set Node.js options for older compatibility
+set NODE_OPTIONS=--openssl-legacy-provider
+
+REM Build with error handling
+echo 🏗️ Building revolutionary dashboard...
 call npm run build
+
+REM Check if build was successful
+if exist build (
+    echo ✅ Dashboard build successful!
+) else (
+    echo ❌ Dashboard build failed, trying alternative approach...
+    
+    REM Try with different Node options
+    set NODE_OPTIONS=--max_old_space_size=4096
+    call npm run build
+    
+    if not exist build (
+        echo ⚠️ Build still failing, continuing with backend only...
+        echo ℹ️ Dashboard will run in development mode
+    )
+)
+
 cd ..
 
 REM Stop existing processes
