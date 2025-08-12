@@ -99,10 +99,14 @@ def create_app(config_name='development'):
         logger.warning("⚠️ Simplified orchestrator not available")
         orchestrator = None
     
+    # Import dashboard routes
+    from api.routes import dashboard
+    
     app.register_blueprint(auth.bp, url_prefix='/auth')
     app.register_blueprint(trading.bp, url_prefix='/api/v1/trading')
     app.register_blueprint(monitoring.bp, url_prefix='/api/v1/monitoring')
     app.register_blueprint(strategies.bp, url_prefix='/api/v1/strategies')
+    app.register_blueprint(dashboard.bp, url_prefix='/api/v1/dashboard')
     
     if orchestrator:
         app.register_blueprint(orchestrator.bp, url_prefix='/api/v1/orchestrator')
@@ -168,7 +172,8 @@ def create_app(config_name='development'):
                 'docs': '/api/docs',
                 'trading': '/api/v1/trading',
                 'monitoring': '/api/v1/monitoring',
-                'strategies': '/api/v1/strategies'
+                'strategies': '/api/v1/strategies',
+                'dashboard': '/api/v1/dashboard'
             }
         }), 200
     
