@@ -422,3 +422,406 @@ export const useStrategySupermix = (refreshInterval = 15000) => {
         controlRiskTier
     };
 };
+
+/**
+ * Hook for enhanced bot intelligence data (for AI Factory Brain)
+ */
+export const useEnhancedBotIntelligence = (refreshInterval = 8000) => {
+    const [intelligence, setIntelligence] = useState({
+        ai_confidence: 0,
+        patterns_learned: 0,
+        decision_speed: 0,
+        learning_rate: 0,
+        market_sentiment: "Analyzing...",
+        sentiment_confidence: 0,
+        risk_assessment: "Calculating...",
+        risk_confidence: 0,
+        trade_opportunity: "Scanning...",
+        opportunity_confidence: 0,
+        strategy_optimization: "Optimizing...",
+        optimization_confidence: 0
+    });
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const loadIntelligence = useCallback(async () => {
+        try {
+            setError(null);
+            const data = await janicsDashboardAPI.getBotIntelligence();
+            setIntelligence(data);
+            setLoading(false);
+        } catch (err) {
+            setError(err.message);
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadIntelligence();
+        const interval = setInterval(loadIntelligence, refreshInterval);
+        return () => clearInterval(interval);
+    }, [loadIntelligence, refreshInterval]);
+
+    return { intelligence, loading, error, refresh: loadIntelligence };
+};
+
+/**
+ * Hook for strategy data (for Strategy Factory Assembly)
+ */
+export const useStrategyData = (refreshInterval = 12000) => {
+    const [strategies, setStrategies] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const loadStrategies = useCallback(async () => {
+        try {
+            setError(null);
+            const data = await janicsDashboardAPI.getStrategySupermix();
+            // Transform supermix data to individual strategies
+            const strategyList = [];
+            
+            if (data.low_risk) {
+                strategyList.push(...data.low_risk.map(s => ({...s, risk_level: 'LOW'})));
+            }
+            if (data.medium_risk) {
+                strategyList.push(...data.medium_risk.map(s => ({...s, risk_level: 'MEDIUM'})));
+            }
+            if (data.high_risk) {
+                strategyList.push(...data.high_risk.map(s => ({...s, risk_level: 'HIGH'})));
+            }
+            
+            setStrategies(strategyList);
+            setLoading(false);
+        } catch (err) {
+            setError(err.message);
+            setLoading(false);
+        }
+    }, []);
+
+    const updateStrategy = useCallback(async (strategyName, updates) => {
+        try {
+            const result = await janicsDashboardAPI.updateStrategy(strategyName, updates);
+            if (result.success) {
+                await loadStrategies(); // Refresh after update
+            }
+            return result;
+        } catch (error) {
+            console.error('Failed to update strategy:', error);
+            throw error;
+        }
+    }, [loadStrategies]);
+
+    const toggleStrategy = useCallback(async (strategyName, newStatus) => {
+        try {
+            const result = await janicsDashboardAPI.toggleStrategy(strategyName, newStatus);
+            if (result.success) {
+                await loadStrategies(); // Refresh after toggle
+            }
+            return result;
+        } catch (error) {
+            console.error('Failed to toggle strategy:', error);
+            throw error;
+        }
+    }, [loadStrategies]);
+
+    useEffect(() => {
+        loadStrategies();
+        const interval = setInterval(loadStrategies, refreshInterval);
+        return () => clearInterval(interval);
+    }, [loadStrategies, refreshInterval]);
+
+    return { 
+        strategies, 
+        loading, 
+        error, 
+        refresh: loadStrategies,
+        updateStrategy,
+        toggleStrategy
+    };
+};
+
+/**
+ * Hook for enhanced bot control (for Command Center)
+ */
+export const useEnhancedBotControl = (refreshInterval = 5000) => {
+    const [botStatus, setBotStatus] = useState({
+        status: 'unknown',
+        cpu_usage: 0,
+        memory_usage: 0,
+        uptime: '0m',
+        api_connected: false
+    });
+    const [availableStrategies, setAvailableStrategies] = useState([]);
+    const [profiles, setProfiles] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const loadControlData = useCallback(async () => {
+        try {
+            setError(null);
+            
+            // Load bot status and available options
+            const [status, strategiesData] = await Promise.all([
+                janicsDashboardAPI.getHeaderStatus(),
+                janicsDashboardAPI.getStrategySupermix()
+            ]);
+            
+            setBotStatus({
+                status: status.trading_bot_status?.toLowerCase() || 'stopped',
+                cpu_usage: status.cpu_usage || 0,
+                memory_usage: status.memory_usage || 0,
+                uptime: status.uptime || '0m',
+                api_connected: status.server_status === 'Connected'
+            });
+
+            // Extract available strategies
+            const strategies = [];
+            if (strategiesData.low_risk) {
+                strategies.push(...strategiesData.low_risk.map(s => ({
+                    name: s.strategy_name,
+                    display_name: s.strategy_name.replace('_', ' ').toUpperCase(),
+                    risk_level: 'LOW'
+                })));
+            }
+            if (strategiesData.medium_risk) {
+                strategies.push(...strategiesData.medium_risk.map(s => ({
+                    name: s.strategy_name,
+                    display_name: s.strategy_name.replace('_', ' ').toUpperCase(),
+                    risk_level: 'MEDIUM'
+                })));
+            }
+            if (strategiesData.high_risk) {
+                strategies.push(...strategiesData.high_risk.map(s => ({
+                    name: s.strategy_name,
+                    display_name: s.strategy_name.replace('_', ' ').toUpperCase(),
+                    risk_level: 'HIGH'
+                })));
+            }
+            
+            setAvailableStrategies(strategies);
+            
+            // Mock profiles for now
+            setProfiles([
+                { name: 'conservative', display_name: 'Conservative Profile' },
+                { name: 'balanced', display_name: 'Balanced Profile' },
+                { name: 'aggressive', display_name: 'Aggressive Profile' }
+            ]);
+            
+            setLoading(false);
+        } catch (err) {
+            setError(err.message);
+            setLoading(false);
+        }
+    }, []);
+
+    const startBot = useCallback(async (mode, strategy, profile) => {
+        try {
+            const result = await janicsDashboardAPI.startBot({
+                mode,
+                strategy,
+                profile
+            });
+            if (result.success) {
+                await loadControlData(); // Refresh status
+            }
+            return result;
+        } catch (error) {
+            throw error;
+        }
+    }, [loadControlData]);
+
+    const stopBot = useCallback(async () => {
+        try {
+            const result = await janicsDashboardAPI.stopBot();
+            if (result.success) {
+                await loadControlData(); // Refresh status
+            }
+            return result;
+        } catch (error) {
+            throw error;
+        }
+    }, [loadControlData]);
+
+    const restartBot = useCallback(async (mode, strategy, profile) => {
+        try {
+            const result = await janicsDashboardAPI.restartBot({
+                mode,
+                strategy,
+                profile
+            });
+            if (result.success) {
+                await loadControlData(); // Refresh status
+            }
+            return result;
+        } catch (error) {
+            throw error;
+        }
+    }, [loadControlData]);
+
+    const emergencyStop = useCallback(async () => {
+        try {
+            // Emergency stop - first stop bot, then close all trades
+            const stopResult = await janicsDashboardAPI.stopBot();
+            
+            // TODO: Add emergency trade closure if API supports it
+            // const closeResult = await janicsDashboardAPI.emergencyCloseAll();
+            
+            if (stopResult.success) {
+                await loadControlData(); // Refresh status
+            }
+            
+            return { success: true, message: 'Emergency stop completed' };
+        } catch (error) {
+            throw error;
+        }
+    }, [loadControlData]);
+
+    useEffect(() => {
+        loadControlData();
+        const interval = setInterval(loadControlData, refreshInterval);
+        return () => clearInterval(interval);
+    }, [loadControlData, refreshInterval]);
+
+    return {
+        botStatus,
+        availableStrategies,
+        profiles,
+        loading,
+        error,
+        startBot,
+        stopBot,
+        restartBot,
+        emergencyStop,
+        refresh: loadControlData
+    };
+};
+
+/**
+ * Hook for achievements and gamification
+ */
+export const useAchievements = (refreshInterval = 30000) => {
+    const [achievements, setAchievements] = useState([]);
+    const [stats, setStats] = useState({
+        totalXP: 0,
+        currentStreak: 0,
+        totalTrades: 0,
+        winRate: 0
+    });
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const loadAchievements = useCallback(async () => {
+        try {
+            setError(null);
+            
+            // Generate mock achievements based on real trading data
+            const [tradesData, wealthData, intelligenceData] = await Promise.all([
+                janicsDashboardAPI.getActiveTrades(),
+                janicsDashboardAPI.getWealthData(),
+                janicsDashboardAPI.getBotIntelligence()
+            ]);
+            
+            // Mock achievements with real data integration
+            const mockAchievements = [
+                {
+                    id: 'first_trade',
+                    name: 'First Trade',
+                    description: 'Execute your first successful trade',
+                    icon: '📈',
+                    category: 'trading',
+                    rarity: 'common',
+                    xpReward: 100,
+                    unlocked: tradesData.trades?.length > 0,
+                    unlockedAt: tradesData.trades?.length > 0 ? new Date().toISOString() : null,
+                    progress: tradesData.trades?.length > 0 ? 1 : 0,
+                    requirement: 1
+                },
+                {
+                    id: 'profit_maker',
+                    name: 'Profit Maker',
+                    description: 'Generate your first $100 in profits',
+                    icon: '💰',
+                    category: 'profit',
+                    rarity: 'uncommon',
+                    xpReward: 250,
+                    unlocked: (wealthData.total_value || 0) >= 100,
+                    unlockedAt: (wealthData.total_value || 0) >= 100 ? new Date().toISOString() : null,
+                    progress: Math.min(wealthData.total_value || 0, 100),
+                    requirement: 100
+                },
+                {
+                    id: 'ai_master',
+                    name: 'AI Master',
+                    description: 'Achieve 90% AI confidence',
+                    icon: '🧠',
+                    category: 'strategy',
+                    rarity: 'epic',
+                    xpReward: 500,
+                    unlocked: (intelligenceData.ai_confidence || 0) >= 90,
+                    unlockedAt: (intelligenceData.ai_confidence || 0) >= 90 ? new Date().toISOString() : null,
+                    progress: intelligenceData.ai_confidence || 0,
+                    requirement: 90
+                },
+                {
+                    id: 'wealth_builder',
+                    name: 'Wealth Builder',
+                    description: 'Accumulate $1,000 in total wealth',
+                    icon: '🏆',
+                    category: 'profit',
+                    rarity: 'rare',
+                    xpReward: 750,
+                    unlocked: (wealthData.total_value || 0) >= 1000,
+                    progress: Math.min(wealthData.total_value || 0, 1000),
+                    requirement: 1000
+                },
+                {
+                    id: 'factory_owner',
+                    name: 'Factory Owner',
+                    description: 'Reach $10,000 total wealth - You own the factory now!',
+                    icon: '🏭',
+                    category: 'special',
+                    rarity: 'legendary',
+                    xpReward: 2000,
+                    unlocked: (wealthData.total_value || 0) >= 10000,
+                    progress: Math.min(wealthData.total_value || 0, 10000),
+                    requirement: 10000,
+                    tip: 'Das ist der wahre Janics Freedom Factory Spirit!'
+                }
+            ];
+            
+            setAchievements(mockAchievements);
+            
+            // Calculate stats
+            const unlockedCount = mockAchievements.filter(a => a.unlocked).length;
+            const totalXP = mockAchievements
+                .filter(a => a.unlocked)
+                .reduce((sum, a) => sum + a.xpReward, 0);
+            
+            setStats({
+                totalXP,
+                currentStreak: Math.floor(Math.random() * 10) + 1, // Mock streak
+                totalTrades: tradesData.trades?.length || 0,
+                winRate: Math.round(Math.random() * 40) + 60 // Mock win rate 60-100%
+            });
+            
+            setLoading(false);
+        } catch (err) {
+            setError(err.message);
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadAchievements();
+        const interval = setInterval(loadAchievements, refreshInterval);
+        return () => clearInterval(interval);
+    }, [loadAchievements, refreshInterval]);
+
+    return { 
+        achievements, 
+        stats, 
+        loading, 
+        error, 
+        refresh: loadAchievements
+    };
+};

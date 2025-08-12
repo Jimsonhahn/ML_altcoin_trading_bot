@@ -1,0 +1,427 @@
+/* 🏭 JANICS FREEDOM FACTORY - ULTIMATE DASHBOARD STYLING 🏭 */
+
+/* Import Google Fonts for futuristic typography */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600;800&display=swap');
+
+/* CSS Variables for consistent theming */
+:root {
+  /* Factory Color Palette */
+  --factory-primary: #00ff88;
+  --factory-secondary: #ffa500;
+  --factory-danger: #ff4757;
+  --factory-warning: #ffa502;
+  --factory-info: #3742fa;
+  --factory-success: #2ed573;
+  --factory-gold: #ffd700;
+  --factory-platinum: #e5e5e5;
+  
+  /* Neon Glow Effects */
+  --neon-green: #00ff88;
+  --neon-blue: #00ffff;
+  --neon-purple: #ff00ff;
+  --neon-orange: #ff6600;
+  
+  /* Background Gradients */
+  --factory-bg: radial-gradient(circle at center, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+  --factory-card-bg: linear-gradient(145deg, rgba(26, 26, 46, 0.95), rgba(22, 33, 62, 0.9));
+  --factory-header-bg: linear-gradient(90deg, #000000, #1a1a2e, #16213e, #1a1a2e, #000000);
+  
+  /* Factory Typography */
+  --font-display: 'Orbitron', monospace;
+  --font-body: 'Exo 2', sans-serif;
+  
+  /* Animation Timings */
+  --anim-fast: 0.3s;
+  --anim-normal: 0.6s;
+  --anim-slow: 1.2s;
+}
+
+/* Global Factory Styling */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--factory-bg);
+  color: var(--factory-platinum);
+  font-family: var(--font-body);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* 🏭 MAIN FACTORY CONTAINER */
+.janics-freedom-factory {
+  min-height: 100vh;
+  background: var(--factory-bg);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated Factory Particles Background */
+.janics-freedom-factory::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, var(--factory-primary), transparent),
+    radial-gradient(2px 2px at 40px 70px, var(--factory-secondary), transparent),
+    radial-gradient(1px 1px at 90px 40px, var(--factory-info), transparent),
+    radial-gradient(1px 1px at 130px 80px, var(--factory-danger), transparent);
+  background-repeat: repeat;
+  background-size: 200px 100px;
+  animation: factory-particles 20s linear infinite;
+  opacity: 0.3;
+  z-index: -1;
+}
+
+@keyframes factory-particles {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-200px, -100px); }
+}
+
+/* 💎 NEON TEXT EFFECTS */
+.neon-text {
+  font-family: var(--font-display);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: var(--neon-green);
+  text-shadow: 
+    0 0 5px var(--neon-green),
+    0 0 10px var(--neon-green),
+    0 0 20px var(--neon-green),
+    0 0 40px var(--neon-green);
+  animation: neon-flicker 2s infinite alternate;
+}
+
+@keyframes neon-flicker {
+  0%, 100% {
+    text-shadow: 
+      0 0 5px var(--neon-green),
+      0 0 10px var(--neon-green),
+      0 0 20px var(--neon-green),
+      0 0 40px var(--neon-green);
+  }
+  50% {
+    text-shadow: 
+      0 0 2px var(--neon-green),
+      0 0 5px var(--neon-green),
+      0 0 8px var(--neon-green),
+      0 0 12px var(--neon-green);
+  }
+}
+
+/* 🔥 HOLOGRAPHIC EFFECTS */
+.holographic {
+  background: linear-gradient(45deg, 
+    transparent 30%, 
+    rgba(255, 255, 255, 0.1) 50%, 
+    transparent 70%);
+  background-size: 200% 200%;
+  animation: holographic-sweep 3s ease-in-out infinite;
+  position: relative;
+}
+
+.holographic::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, 
+    var(--neon-blue), 
+    var(--neon-purple), 
+    var(--neon-green),
+    var(--neon-orange));
+  opacity: 0.1;
+  animation: rainbow-shift 4s linear infinite;
+}
+
+@keyframes holographic-sweep {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes rainbow-shift {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+/* 💰 MONEY ANIMATION EFFECTS */
+.money-printer-animation {
+  position: relative;
+  overflow: hidden;
+}
+
+.money-printer-animation::before {
+  content: "$$$";
+  position: absolute;
+  font-size: 24px;
+  color: var(--factory-gold);
+  font-weight: bold;
+  animation: money-flow 3s infinite ease-out;
+  z-index: 10;
+}
+
+@keyframes money-flow {
+  0% { 
+    transform: translateY(100px) scale(0.5) rotate(0deg);
+    opacity: 0;
+  }
+  25% {
+    transform: translateY(50px) scale(0.8) rotate(90deg);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(0px) scale(1) rotate(180deg);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(-50px) scale(0.8) rotate(270deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-100px) scale(0.5) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* ⚡ PULSING ANIMATIONS */
+.pulsing-green {
+  animation: pulse-green 1.5s infinite ease-in-out;
+}
+
+.pulsing-orange {
+  animation: pulse-orange 1.5s infinite ease-in-out;
+}
+
+.pulsing-red {
+  animation: pulse-red 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse-green {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 255, 136, 0.8);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes pulse-orange {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 165, 0, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(255, 165, 0, 0.8);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes pulse-red {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 71, 87, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(255, 71, 87, 0.8);
+    transform: scale(1.05);
+  }
+}
+
+/* 🎛️ BUTTON STYLES */
+.factory-button {
+  background: var(--factory-card-bg);
+  border: 2px solid var(--factory-primary);
+  color: var(--factory-platinum);
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--anim-fast) ease;
+}
+
+.factory-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 0 20px var(--factory-primary),
+    0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.factory-button:active {
+  transform: translateY(0);
+}
+
+.factory-button.danger {
+  border-color: var(--factory-danger);
+}
+
+.factory-button.danger:hover {
+  box-shadow: 
+    0 0 20px var(--factory-danger),
+    0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.factory-button.success {
+  border-color: var(--factory-success);
+}
+
+.factory-button.success:hover {
+  box-shadow: 
+    0 0 20px var(--factory-success),
+    0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* 📊 CARD STYLES */
+.factory-card {
+  background: var(--factory-card-bg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 24px;
+  position: relative;
+  backdrop-filter: blur(10px);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: transform var(--anim-fast) ease;
+}
+
+.factory-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* 💫 LOADING ANIMATIONS */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top: 3px solid var(--factory-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 🎯 RESPONSIVE DESIGN */
+@media (max-width: 1200px) {
+  .neon-text {
+    font-size: 2rem;
+    letter-spacing: 2px;
+  }
+}
+
+@media (max-width: 768px) {
+  .neon-text {
+    font-size: 1.5rem;
+    letter-spacing: 1px;
+  }
+  
+  .factory-card {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .neon-text {
+    font-size: 1.2rem;
+  }
+}
+
+/* 🚀 VICTORY ANIMATIONS */
+.victory-glow {
+  animation: victory-pulse 2s infinite ease-in-out;
+}
+
+@keyframes victory-pulse {
+  0%, 100% {
+    color: var(--factory-gold);
+    text-shadow: 
+      0 0 10px var(--factory-gold),
+      0 0 20px var(--factory-gold),
+      0 0 30px var(--factory-gold);
+    transform: scale(1);
+  }
+  50% {
+    color: #ffffff;
+    text-shadow: 
+      0 0 20px var(--factory-gold),
+      0 0 40px var(--factory-gold),
+      0 0 60px var(--factory-gold);
+    transform: scale(1.1);
+  }
+}
+
+/* 🎪 SPECIAL EFFECTS */
+.factory-steam {
+  position: absolute;
+  top: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1), transparent);
+  border-radius: 50%;
+  animation: steam-rise 4s infinite ease-out;
+  opacity: 0.6;
+}
+
+@keyframes steam-rise {
+  0% {
+    transform: translateX(-50%) translateY(0) scale(0.5);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateX(-45%) translateY(-30px) scale(0.8);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateX(-40%) translateY(-60px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* 🌟 ACHIEVEMENT STYLES */
+.achievement-unlocked {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(45deg, var(--factory-gold), #ffed4a);
+  color: #000;
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  box-shadow: 0 0 30px var(--factory-gold);
+  animation: achievement-slide-in 0.5s ease-out;
+  z-index: 1000;
+}
+
+@keyframes achievement-slide-in {
+  0% {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
