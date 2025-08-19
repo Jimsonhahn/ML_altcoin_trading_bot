@@ -60,6 +60,26 @@ def emit_market_data(symbol: str, data: Dict[str, Any]):
         logger.error(f"Failed to emit market data: {e}")
 
 
+def emit_dashboard_update(data: Dict[str, Any]):
+    """Emit dashboard update to all connected clients"""
+    try:
+        event_data = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'type': 'dashboard_update',
+            **data
+        }
+        
+        # Broadcast to dashboard updates channel
+        broadcast_to_channel('dashboard_updates', 'dashboard_update', event_data)
+        broadcast_to_role('trader', 'dashboard_update', event_data)
+        broadcast_to_role('admin', 'dashboard_update', event_data)
+        
+        logger.info(f"Dashboard update broadcasted: {data.get('type', 'unknown')}")
+        
+    except Exception as e:
+        logger.error(f"Failed to emit dashboard update: {e}")
+
+
 def emit_performance_update(data: Dict[str, Any]):
     """Emit performance metrics update"""
     try:

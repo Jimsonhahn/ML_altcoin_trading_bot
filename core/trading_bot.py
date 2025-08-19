@@ -28,6 +28,7 @@ from core.position import PositionManager
 from core.order_manager import OrderManager
 from core.risk_manager import RiskManager
 from Analysis.performance_tracker import PerformanceTracker
+from core.paper_trading_engine import PaperTradingEngine
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,8 @@ class TradingBot:
         data_manager: DataManager,
         ml_components: Optional[Any] = None,
         strategy_router: Optional[Any] = None,
-        safety_manager: Optional[ISafetyManager] = None
+        safety_manager: Optional[ISafetyManager] = None,
+        paper_trading: bool = False
     ):
         """
         Initialisiert den Trading Bot
@@ -65,10 +67,21 @@ class TradingBot:
         
         # Core-Konfiguration
         self.mode = mode
+        self.paper_trading = paper_trading
         self.strategy_name = strategy_name
         self.settings = settings
         self.data_manager = data_manager
         self.is_running = False
+        
+        # Paper Trading Engine initialisieren wenn aktiviert
+        self.paper_engine = None
+        if self.paper_trading:
+            initial_balance = self.settings.get('paper_trading.initial_balance', 10000.0)
+            self.paper_engine = PaperTradingEngine(
+                initial_balance=initial_balance,
+                exchange_client=self.data_manager.exchange if hasattr(self.data_manager, 'exchange') else None
+            )
+            logger.info(f"📝 Paper Trading Mode aktiviert mit ${initial_balance} virtueller Balance")
         
         # Symbol-Konfigurationen
         self.symbol_configs = self._build_symbol_configs()
@@ -107,7 +120,8 @@ class TradingBot:
         
         logger.info(
             f"Trading Bot initialisiert - Modus: {mode}, "
-            f"Strategie: {strategy_name}, ML: {self.ml_enhanced}"
+            f"Strategie: {strategy_name}, ML: {self.ml_enhanced}, "
+            f"Paper Trading: {self.paper_trading}"
         )
     
     def _validate_configuration(self, mode: str, strategy_name: str, settings: Settings):

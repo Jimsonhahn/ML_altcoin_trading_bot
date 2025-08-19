@@ -102,11 +102,17 @@ def create_app(config_name='development'):
     # Import dashboard routes
     from api.routes import dashboard
     
+    # Import new Trading Mode Manager routes (extends existing system)
+    from api.routes import trading_mode_manager
+    
     app.register_blueprint(auth.bp, url_prefix='/auth')
     app.register_blueprint(trading.bp, url_prefix='/api/v1/trading')
     app.register_blueprint(monitoring.bp, url_prefix='/api/v1/monitoring')
     app.register_blueprint(strategies.bp, url_prefix='/api/v1/strategies')
     app.register_blueprint(dashboard.bp, url_prefix='/api/v1/dashboard')
+    
+    # Register new Trading Mode Manager (extends existing functionality)
+    app.register_blueprint(trading_mode_manager.bp, url_prefix='/api/v1/trading-modes')
     
     if orchestrator:
         app.register_blueprint(orchestrator.bp, url_prefix='/api/v1/orchestrator')

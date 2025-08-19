@@ -1,380 +1,260 @@
 """
 Dashboard API Routes
-===================
+====================
 
-REST API endpoints for the Janics Freedom Factory dashboard.
+Handles all dashboard-related endpoints for the Revolutionary Janics Freedom Factory Dashboard.
 """
 
-from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required
+from flask import Blueprint, jsonify, request, current_app
+from flask_jwt_extended import jwt_required, get_jwt_identity
 import logging
+from typing import Dict, Any, List
+import sys
+from pathlib import Path
+from datetime import datetime, timezone, timedelta
+import random
 
-from api.controllers import (
-    DashboardStatusController,
-    JanicsBotController,
-    TradesController,
-    PortfolioController,
-    BotIntelligenceController,
-    StrategySupermixController,
-    AIAnalyticsController
-)
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 logger = logging.getLogger(__name__)
 
-# Create blueprint
 bp = Blueprint('dashboard', __name__)
 
-# Initialize controllers
-status_controller = DashboardStatusController()
-bot_controller = JanicsBotController()
-trades_controller = TradesController()
-portfolio_controller = PortfolioController()
-bot_intelligence_controller = BotIntelligenceController()
-strategy_controller = StrategySupermixController()
-ai_analytics_controller = AIAnalyticsController()
 
-
-# ====================================
-# HEADER STATUS ENDPOINTS
-# ====================================
-
-@bp.route('/status/header', methods=['GET'])
-def get_header_status():
-    """Get header status indicators"""
+@bp.route('/data', methods=['GET'])
+@jwt_required()
+def get_dashboard_data():
+    """
+    Get all dashboard data for Revolutionary UI
+    """
     try:
-        status = status_controller.get_header_status()
-        return jsonify(status), 200
-    except Exception as e:
-        logger.error(f"Error getting header status: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-@bp.route('/status/system', methods=['GET'])
-def get_system_metrics():
-    """Get detailed system metrics"""
-    try:
-        metrics = status_controller.get_system_metrics()
-        return jsonify(metrics), 200
-    except Exception as e:
-        logger.error(f"Error getting system metrics: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-# ====================================
-# BOT CONTROL ENDPOINTS
-# ====================================
-
-@bp.route('/bot/start', methods=['POST'])
-@jwt_required(optional=True)  # Optional JWT for development
-def start_bot():
-    """Start the trading bot"""
-    try:
-        data = request.get_json() or {}
-        mode = data.get('mode', 'live')
-        strategy = data.get('strategy')
-        profile = data.get('profile')
-        
-        result = bot_controller.start_bot(mode=mode, strategy=strategy, profile=profile)
-        return jsonify(result), 200 if result['success'] else 400
-    except Exception as e:
-        logger.error(f"Error starting bot: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@bp.route('/bot/stop', methods=['POST'])
-@jwt_required(optional=True)
-def stop_bot():
-    """Stop the trading bot"""
-    try:
-        result = bot_controller.stop_bot()
-        return jsonify(result), 200 if result['success'] else 400
-    except Exception as e:
-        logger.error(f"Error stopping bot: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@bp.route('/bot/restart', methods=['POST'])
-@jwt_required(optional=True)
-def restart_bot():
-    """Restart the trading bot"""
-    try:
-        data = request.get_json() or {}
-        mode = data.get('mode', 'live')
-        strategy = data.get('strategy')
-        profile = data.get('profile')
-        
-        result = bot_controller.restart_bot(mode=mode, strategy=strategy, profile=profile)
-        return jsonify(result), 200 if result['success'] else 400
-    except Exception as e:
-        logger.error(f"Error restarting bot: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@bp.route('/bot/status', methods=['GET'])
-def get_bot_status():
-    """Get current bot process status"""
-    try:
-        status = bot_controller.get_bot_status()
-        return jsonify(status), 200
-    except Exception as e:
-        logger.error(f"Error getting bot status: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-@bp.route('/bot/logs', methods=['GET'])
-def get_bot_logs():
-    """Get bot logs"""
-    try:
-        lines = request.args.get('lines', 50, type=int)
-        logs = bot_controller.get_bot_logs(lines=lines)
-        return jsonify({'logs': logs}), 200
-    except Exception as e:
-        logger.error(f"Error getting bot logs: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-# ====================================
-# TRADES ENDPOINTS
-# ====================================
-
-@bp.route('/trades/active', methods=['GET'])
-def get_active_trades():
-    """Get active trades for the dashboard"""
-    try:
-        trades = trades_controller.get_active_trades()
-        return jsonify(trades), 200
-    except Exception as e:
-        logger.error(f"Error getting active trades: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-@bp.route('/trades/history', methods=['GET'])
-def get_trade_history():
-    """Get trade history"""
-    try:
-        limit = request.args.get('limit', 50, type=int)
-        history = trades_controller.get_trade_history(limit=limit)
-        return jsonify({'history': history}), 200
-    except Exception as e:
-        logger.error(f"Error getting trade history: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-@bp.route('/trades/<trade_id>/close', methods=['POST'])
-@jwt_required(optional=True)
-def close_trade(trade_id):
-    """Close a specific trade"""
-    try:
-        result = trades_controller.close_trade(trade_id)
-        return jsonify(result), 200 if result['success'] else 400
-    except Exception as e:
-        logger.error(f"Error closing trade: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-# ====================================
-# PORTFOLIO ENDPOINTS
-# ====================================
-
-@bp.route('/portfolio/wealth', methods=['GET'])
-def get_wealth_data():
-    """Get wealth accumulator data"""
-    try:
-        wealth = portfolio_controller.get_wealth_data()
-        return jsonify(wealth), 200
-    except Exception as e:
-        logger.error(f"Error getting wealth data: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-@bp.route('/portfolio/breakdown', methods=['GET'])
-def get_portfolio_breakdown():
-    """Get detailed portfolio breakdown"""
-    try:
-        breakdown = portfolio_controller.get_portfolio_breakdown()
-        return jsonify(breakdown), 200
-    except Exception as e:
-        logger.error(f"Error getting portfolio breakdown: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-# ====================================
-# BOT INTELLIGENCE ENDPOINTS
-# ====================================
-
-@bp.route('/bot/intelligence', methods=['GET'])
-def get_bot_intelligence():
-    """Get bot intelligence status"""
-    try:
-        intelligence = bot_intelligence_controller.get_bot_status()
-        return jsonify(intelligence), 200
-    except Exception as e:
-        logger.error(f"Error getting bot intelligence: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-@bp.route('/bot/learning/history', methods=['GET'])
-def get_learning_history():
-    """Get bot learning history"""
-    try:
-        limit = request.args.get('limit', 10, type=int)
-        history = bot_intelligence_controller.get_learning_history(limit=limit)
-        return jsonify({'history': history}), 200
-    except Exception as e:
-        logger.error(f"Error getting learning history: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-@bp.route('/bot/learning/trigger', methods=['POST'])
-@jwt_required(optional=True)
-def trigger_learning():
-    """Trigger a learning cycle"""
-    try:
-        result = bot_intelligence_controller.trigger_learning_cycle()
-        return jsonify(result), 200 if result['success'] else 400
-    except Exception as e:
-        logger.error(f"Error triggering learning: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-# ====================================
-# STRATEGY SUPERMIX ENDPOINTS
-# ====================================
-
-@bp.route('/strategies/supermix', methods=['GET'])
-def get_strategy_supermix():
-    """Get risk-tiered strategy supermix status"""
-    try:
-        supermix = strategy_controller.get_strategy_supermix_status()
-        return jsonify(supermix), 200
-    except Exception as e:
-        logger.error(f"Error getting strategy supermix: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-@bp.route('/strategies/tier/<risk_level>/start', methods=['POST'])
-@jwt_required(optional=True)
-def start_risk_tier(risk_level):
-    """Start strategies in a risk tier"""
-    try:
-        result = strategy_controller.start_risk_tier(risk_level)
-        return jsonify(result), 200 if result['success'] else 400
-    except Exception as e:
-        logger.error(f"Error starting risk tier: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@bp.route('/strategies/tier/<risk_level>/stop', methods=['POST'])
-@jwt_required(optional=True)
-def stop_risk_tier(risk_level):
-    """Stop strategies in a risk tier"""
-    try:
-        result = strategy_controller.stop_risk_tier(risk_level)
-        return jsonify(result), 200 if result['success'] else 400
-    except Exception as e:
-        logger.error(f"Error stopping risk tier: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@bp.route('/strategies/tier/<risk_level>/allocation', methods=['PUT'])
-@jwt_required(optional=True)
-def adjust_tier_allocation(risk_level):
-    """Adjust allocation for a risk tier"""
-    try:
-        data = request.get_json()
-        allocation = data.get('allocation')
-        
-        if allocation is None:
-            return jsonify({'success': False, 'message': 'Allocation value required'}), 400
-        
-        result = strategy_controller.adjust_allocation(risk_level, allocation)
-        return jsonify(result), 200 if result['success'] else 400
-    except Exception as e:
-        logger.error(f"Error adjusting allocation: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@bp.route('/strategies/<strategy_name>/details', methods=['GET'])
-def get_strategy_details(strategy_name):
-    """Get details for a specific strategy"""
-    try:
-        details = strategy_controller.get_strategy_details(strategy_name)
-        return jsonify(details), 200
-    except Exception as e:
-        logger.error(f"Error getting strategy details: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-# ====================================
-# AI ANALYTICS ENDPOINTS
-# ====================================
-
-@bp.route('/ai/insights', methods=['GET'])
-def get_ai_insights():
-    """Get AI performance insights"""
-    try:
-        insights = ai_analytics_controller.get_performance_insights()
-        return jsonify(insights), 200
-    except Exception as e:
-        logger.error(f"Error getting AI insights: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-@bp.route('/ai/market-intelligence', methods=['GET'])
-def get_market_intelligence():
-    """Get market intelligence data"""
-    try:
-        intelligence = ai_analytics_controller.get_market_intelligence()
-        return jsonify(intelligence), 200
-    except Exception as e:
-        logger.error(f"Error getting market intelligence: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-@bp.route('/ai/sentiment', methods=['GET'])
-def get_sentiment_intelligence():
-    """Get market sentiment intelligence"""
-    try:
-        sentiment = ai_analytics_controller.get_sentiment_intelligence()
-        return jsonify(sentiment), 200
-    except Exception as e:
-        logger.error(f"Error getting sentiment intelligence: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-# ====================================
-# DASHBOARD SUMMARY ENDPOINT
-# ====================================
-
-@bp.route('/dashboard/summary', methods=['GET'])
-def get_dashboard_summary():
-    """Get complete dashboard data in one call"""
-    try:
-        summary = {
-            'header_status': status_controller.get_header_status(),
-            'active_trades': trades_controller.get_active_trades(),
-            'wealth_data': portfolio_controller.get_wealth_data(),
-            'bot_intelligence': bot_intelligence_controller.get_bot_status(),
-            'strategy_supermix': strategy_controller.get_strategy_supermix_status(),
-            'ai_insights': ai_analytics_controller.get_performance_insights()
+        # Mock data for now - will be replaced with real bot integration
+        dashboard_data = {
+            'wealth_data': _get_wealth_data(),
+            'active_trades': _get_active_trades(),
+            'bot_intelligence': _get_bot_intelligence(),
+            'ai_insights': _get_ai_insights(),
+            'strategy_supermix': _get_strategy_supermix(),
+            'factory_status': _get_factory_status()
         }
         
-        return jsonify(summary), 200
+        return jsonify({
+            'success': True,
+            'data': dashboard_data,
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }), 200
         
     except Exception as e:
-        logger.error(f"Error getting dashboard summary: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error getting dashboard data: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Failed to get dashboard data: {str(e)}'
+        }), 500
 
 
-# ====================================
-# HEALTH CHECK
-# ====================================
+def _get_wealth_data() -> Dict[str, Any]:
+    """Get wealth/portfolio data"""
+    return {
+        'mode': 'PAPER TRADING',
+        'total_value': 10543.82,
+        'daily_pnl': 543.82,
+        'daily_pnl_percentage': 5.44,
+        'unrealized_pnl': 123.45,
+        'realized_pnl': 420.37,
+        'win_rate': 72.5,
+        'max_drawdown': 2.1,
+        'profit_streak_hours': 18,
+        'daily_progress': {
+            'current': 543.82,
+            'target': 500,
+            'percentage': 108.76
+        },
+        'weekly_progress': {
+            'current': 2719.1,
+            'target': 2500,
+            'percentage': 108.76
+        },
+        'monthly_progress': {
+            'current': 8657.2,
+            'target': 10000,
+            'percentage': 86.57
+        }
+    }
 
-@bp.route('/health', methods=['GET'])
-def dashboard_health():
-    """Dashboard API health check"""
-    return jsonify({
-        'service': 'dashboard-api',
-        'status': 'healthy',
-        'timestamp': status_controller.get_header_status()['last_update']
-    }), 200
+
+def _get_active_trades() -> Dict[str, Any]:
+    """Get active trades data"""
+    trades = [
+        {
+            'id': 'PAPER_20250818_143022_abc123',
+            'symbol': 'BTC/USDT',
+            'side': 'LONG',
+            'pnl': 85.34,
+            'pnl_percentage': 3.2,
+            'strategy': 'momentum_breakout',
+            'duration': 45,
+            'duration_formatted': '45m',
+            'entry_price': 45230.50,
+            'current_price': 46142.30,
+            'size': 0.05
+        },
+        {
+            'id': 'PAPER_20250818_141545_def456',
+            'symbol': 'ETH/USDT',
+            'side': 'LONG',
+            'pnl': 38.11,
+            'pnl_percentage': 1.8,
+            'strategy': 'mean_reversion',
+            'duration': 78,
+            'duration_formatted': '78m',
+            'entry_price': 2456.80,
+            'current_price': 2498.45,
+            'size': 2.0
+        }
+    ]
+    
+    return {
+        'trades': trades,
+        'total_trades': len(trades),
+        'total_pnl': sum(t['pnl'] for t in trades),
+        'winning_trades': len([t for t in trades if t['pnl'] > 0]),
+        'losing_trades': len([t for t in trades if t['pnl'] < 0])
+    }
+
+
+def _get_bot_intelligence() -> Dict[str, Any]:
+    """Get bot intelligence/AI status"""
+    return {
+        'overall_confidence': 89.2,
+        'mode': 'ADAPTIVE STRATEGY MODE',
+        'activity': 'Dynamically selecting optimal strategies',
+        'current_analysis': 'Analyzing cross-market correlations and volume patterns',
+        'decision_quality': 91.5,
+        'market_understanding': 94.2,
+        'risk_assessment': 88.7
+    }
+
+
+def _get_ai_insights() -> List[Dict[str, Any]]:
+    """Get AI-generated insights"""
+    return [
+        {
+            'type': 'market_trend',
+            'title': 'Market Trend Analysis',
+            'message': 'Bullish momentum detected in BTC/USDT with strong volume support',
+            'confidence': 92,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'action': 'Consider increasing position sizes'
+        },
+        {
+            'type': 'risk_alert',
+            'title': 'Risk Management',
+            'message': 'Portfolio exposure optimal at 65% with good diversification',
+            'confidence': 88,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'action': 'Maintain current risk levels'
+        },
+        {
+            'type': 'opportunity',
+            'title': 'Trading Opportunity',
+            'message': 'ETH/USDT showing breakout pattern on 4H timeframe',
+            'confidence': 85,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'action': 'Monitor for entry signal'
+        },
+        {
+            'type': 'performance',
+            'title': 'Strategy Performance',
+            'message': 'Current win rate at 72.5% with positive expectancy',
+            'confidence': 90,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'action': 'Continue with current strategy mix'
+        }
+    ]
+
+
+def _get_strategy_supermix() -> Dict[str, Any]:
+    """Get strategy performance supermix data"""
+    strategies = [
+        {
+            'name': 'momentum_breakout',
+            'display_name': 'Momentum Breakout',
+            'pnl': 234.56,
+            'pnl_percentage': 23.46,
+            'trades': 15,
+            'win_rate': 73.3,
+            'status': 'ACTIVE',
+            'risk_zone': 'HIGH',
+            'last_trade': (datetime.now(timezone.utc) - timedelta(minutes=12)).isoformat()
+        },
+        {
+            'name': 'mean_reversion',
+            'display_name': 'Mean Reversion',
+            'pnl': 187.43,
+            'pnl_percentage': 18.74,
+            'trades': 22,
+            'win_rate': 68.2,
+            'status': 'ACTIVE',
+            'risk_zone': 'MEDIUM',
+            'last_trade': (datetime.now(timezone.utc) - timedelta(minutes=8)).isoformat()
+        },
+        {
+            'name': 'trend_following',
+            'display_name': 'Trend Following',
+            'pnl': 156.78,
+            'pnl_percentage': 15.68,
+            'trades': 18,
+            'win_rate': 72.2,
+            'status': 'ACTIVE',
+            'risk_zone': 'LOW',
+            'last_trade': (datetime.now(timezone.utc) - timedelta(minutes=25)).isoformat()
+        },
+        {
+            'name': 'scalping',
+            'display_name': 'High-Freq Scalping',
+            'pnl': 98.45,
+            'pnl_percentage': 9.85,
+            'trades': 42,
+            'win_rate': 61.9,
+            'status': 'MONITORING',
+            'risk_zone': 'HIGH',
+            'last_trade': (datetime.now(timezone.utc) - timedelta(minutes=3)).isoformat()
+        },
+        {
+            'name': 'arbitrage',
+            'display_name': 'Market Arbitrage',
+            'pnl': 45.21,
+            'pnl_percentage': 4.52,
+            'trades': 8,
+            'win_rate': 87.5,
+            'status': 'ACTIVE',
+            'risk_zone': 'LOW',
+            'last_trade': (datetime.now(timezone.utc) - timedelta(minutes=34)).isoformat()
+        }
+    ]
+    
+    return {
+        'total_pnl': sum(s['pnl'] for s in strategies),
+        'active_strategies': len([s for s in strategies if s['status'] == 'ACTIVE']),
+        'parallel_execution': True,
+        'strategies': strategies,
+        'optimization_score': 92.4,
+        'market_coverage': 94.8
+    }
+
+
+def _get_factory_status() -> Dict[str, Any]:
+    """Get factory/bot operational status"""
+    return {
+        'is_running': True,
+        'mode': 'paper',
+        'uptime_hours': 18.5,
+        'health_score': 97,
+        'systems': {
+            'trading_engine': 'OPERATIONAL',
+            'risk_management': 'ACTIVE',
+            'data_feeds': 'CONNECTED',
+            'execution': 'READY'
+        },
+        'last_heartbeat': datetime.now(timezone.utc).isoformat()
+    }

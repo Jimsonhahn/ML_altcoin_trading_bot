@@ -1,486 +1,433 @@
-#!/usr/bin/env python3
 """
-Paper Trading Engine - Event-Driven Live Strategy Testing
-=========================================================
-
-Real-time paper trading for the Ultimate BTC Strategy without risk
+Paper Trading Engine for Janics Freedom Factory
+Simulates real trading without using actual funds
 """
-
-import asyncio
-import logging
+import uuid
 import json
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
+import logging
+from datetime import datetime
+from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
-import pandas as pd
-import numpy as np
+import asyncio
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class PaperTrade:
-    """Paper trade record"""
+class VirtualPosition:
+    """Represents a virtual trading position"""
     id: str
-    entry_time: datetime
-    entry_price: float
-    direction: str  # 'long' or 'short'
+    symbol: str
+    side: str  # 'LONG' or 'SHORT'
     size: float
-    signal_strength: float
-    signal_confidence: float
-    regime: str
-    exit_time: Optional[datetime] = None
+    entry_price: float
+    current_price: float
+    timestamp: datetime
+    strategy: str
+    status: str  # 'OPEN', 'CLOSED'
+    fee: float
     exit_price: Optional[float] = None
-    pnl: float = 0.0
-    commission: float = 0.0
-    slippage: float = 0.0
-    exit_reason: str = ""
-    
-    @property
-    def is_open(self) -> bool:
-        return self.exit_time is None
-    
-    @property
-    def duration_minutes(self) -> float:
-        if self.exit_time:
-            return (self.exit_time - self.entry_time).total_seconds() / 60
-        return (datetime.now() - self.entry_time).total_seconds() / 60
-    
-    @property
-    def unrealized_pnl(self) -> float:
-        if self.is_open:
-            return self.pnl  # Current unrealized PnL
-        return 0.0
-
-
-@dataclass
-class PaperTradingMetrics:
-    """Real-time paper trading metrics"""
-    total_trades: int = 0
-    open_trades: int = 0
-    winning_trades: int = 0
-    losing_trades: int = 0
-    total_pnl: float = 0.0
-    unrealized_pnl: float = 0.0
-    win_rate: float = 0.0
-    avg_win: float = 0.0
-    avg_loss: float = 0.0
-    largest_win: float = 0.0
-    largest_loss: float = 0.0
-    current_drawdown: float = 0.0
-    max_drawdown: float = 0.0
-    total_return: float = 0.0
-    daily_pnl: List[float] = None
-    
-    def __post_init__(self):
-        if self.daily_pnl is None:
-            self.daily_pnl = []
+    exit_timestamp: Optional[datetime] = None
+    pnl: Optional[float] = None
+    pnl_percentage: Optional[float] = None
+    duration_minutes: Optional[int] = None
 
 
 class PaperTradingEngine:
     """
-    Real-time paper trading engine that simulates live trading
-    without actual financial risk
+    Revolutionary Paper Trading Engine for risk-free strategy testing
+    Simulates all trading operations with virtual money
     """
     
-    def __init__(self, initial_capital: float = 100000.0, commission_rate: float = 0.001,
-                 slippage_rate: float = 0.0005, max_position_size: float = 0.8):
-        """Initialize paper trading engine"""
-        self.initial_capital = initial_capital
-        self.current_capital = initial_capital
-        self.commission_rate = commission_rate
-        self.slippage_rate = slippage_rate
-        self.max_position_size = max_position_size
+    def __init__(self, initial_balance: float = 10000.0, exchange_client=None):
+        self.initial_balance = initial_balance
+        self.virtual_balance = initial_balance
+        self.virtual_positions: Dict[str, VirtualPosition] = {}
+        self.trade_history: List[VirtualPosition] = []
+        self.performance_metrics = {
+            'total_trades': 0,
+            'winning_trades': 0,
+            'losing_trades': 0,
+            'total_pnl': 0.0,
+            'max_drawdown': 0.0,
+            'win_rate': 0.0,
+            'average_win': 0.0,
+            'average_loss': 0.0,
+            'profit_factor': 0.0,
+            'sharpe_ratio': 0.0,
+            'best_trade': 0.0,
+            'worst_trade': 0.0,
+            'consecutive_wins': 0,
+            'consecutive_losses': 0,
+            'max_consecutive_wins': 0,
+            'max_consecutive_losses': 0
+        }
+        self.exchange_client = exchange_client
+        self.daily_pnl_history = []
+        self.peak_balance = initial_balance
+        self.current_drawdown = 0.0
         
-        # Trading state
-        self.is_active = False
-        self.start_time = None
-        self.last_update = None
+        # Trading limits
+        self.max_position_size = 0.1  # Max 10% of portfolio per trade
+        self.max_open_positions = 10
+        self.min_trade_amount = 10.0  # Minimum $10 per trade
         
-        # Trades and metrics
-        self.trades: List[PaperTrade] = []
-        self.equity_history: List[Dict[str, Any]] = []
-        self.daily_snapshots: List[Dict[str, Any]] = []
-        
-        # Performance tracking
-        self.peak_equity = initial_capital
-        self.current_equity = initial_capital
-        self.max_drawdown = 0.0
-        
-        # Strategy integration
-        self.strategy = None
-        self.last_signal = None
-        
-        logger.info(f"Paper Trading Engine initialized with ${initial_capital:,.0f}")
+        logger.info(f"🏭 Paper Trading Engine initialized with ${initial_balance} virtual balance")
     
-    def start_trading(self, strategy_adapter) -> bool:
-        """Start paper trading with given strategy"""
-        try:
-            self.strategy = strategy_adapter
-            self.is_active = True
-            self.start_time = datetime.now()
-            self.last_update = self.start_time
-            
-            # Initialize equity tracking
-            self._update_equity_history(self.start_time, 0.0, "trading_started")
-            
-            logger.info(f"Paper trading started with {strategy_adapter.__class__.__name__}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Failed to start paper trading: {e}")
-            return False
+    def generate_trade_id(self) -> str:
+        """Generate unique trade ID"""
+        return f"PAPER_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
     
-    def stop_trading(self) -> Dict[str, Any]:
-        """Stop paper trading and return final metrics"""
-        try:
-            if not self.is_active:
-                return {"error": "Trading not active"}
-            
-            # Close all open positions
-            stop_time = datetime.now()
-            for trade in self.trades:
-                if trade.is_open:
-                    # Simulate closing at current market price (would need real price feed)
-                    self._close_trade(trade.id, 50000.0, stop_time, "trading_stopped")
-            
-            self.is_active = False
-            final_metrics = self.get_current_metrics()
-            
-            logger.info(f"Paper trading stopped. Final PnL: ${final_metrics.total_pnl:,.2f}")
-            return {"status": "stopped", "metrics": asdict(final_metrics)}
-            
-        except Exception as e:
-            logger.error(f"Failed to stop paper trading: {e}")
-            return {"error": str(e)}
+    async def get_current_price(self, symbol: str) -> float:
+        """Get current market price for symbol"""
+        if self.exchange_client:
+            try:
+                ticker = await self.exchange_client.fetch_ticker(symbol)
+                return ticker['last']
+            except Exception as e:
+                logger.error(f"Error fetching price for {symbol}: {e}")
+                # Return last known price or raise
+                raise
+        else:
+            # Mock price for testing
+            return 100.0
     
-    def process_market_update(self, price: float, volume: float, timestamp: datetime = None) -> Dict[str, Any]:
-        """Process real-time market data update"""
-        if not self.is_active or not self.strategy:
-            return {"status": "inactive"}
+    def calculate_position_size(self, balance_percentage: float, price: float) -> float:
+        """Calculate position size based on balance percentage"""
+        position_value = self.virtual_balance * balance_percentage
+        position_size = position_value / price
+        return position_size
+    
+    async def execute_virtual_trade(
+        self,
+        symbol: str,
+        side: str,
+        size: float,
+        price: Optional[float] = None,
+        strategy: str = "manual",
+        balance_percentage: Optional[float] = None
+    ) -> Optional[VirtualPosition]:
+        """
+        Execute a virtual trade without using real money
         
+        Args:
+            symbol: Trading pair (e.g., 'BTC/USDT')
+            side: 'LONG' or 'SHORT'
+            size: Position size (if not provided, use balance_percentage)
+            price: Entry price (if not provided, use current market price)
+            strategy: Strategy name that triggered the trade
+            balance_percentage: Percentage of balance to use (if size not provided)
+        
+        Returns:
+            VirtualPosition object if successful, None otherwise
+        """
         try:
-            if timestamp is None:
-                timestamp = datetime.now()
+            # Validation checks
+            if len(self.virtual_positions) >= self.max_open_positions:
+                logger.warning(f"Maximum open positions ({self.max_open_positions}) reached")
+                return None
             
-            # Update strategy with new market data
-            market_state = self.strategy.process_market_tick(price, volume, timestamp)
+            # Get current price if not provided
+            if price is None:
+                price = await self.get_current_price(symbol)
             
-            # Generate trading signal
-            signal = self.strategy.generate_quantum_signal(market_state)
-            self.last_signal = signal
+            # Calculate size from balance percentage if not provided
+            if size is None and balance_percentage is not None:
+                size = self.calculate_position_size(balance_percentage, price)
             
-            # Process signal for trading
-            trade_result = self._process_trading_signal(signal, price, timestamp)
+            # Calculate trade costs
+            fee_rate = 0.001  # 0.1% trading fee
+            slippage_rate = 0.0005  # 0.05% slippage
             
-            # Update open positions with current price
-            self._update_open_positions(price, timestamp)
+            # Apply slippage
+            if side == 'LONG':
+                entry_price = price * (1 + slippage_rate)
+            else:
+                entry_price = price * (1 - slippage_rate)
             
-            # Update equity tracking
-            self._update_equity_history(timestamp, price, "market_update")
+            # Calculate fees
+            position_value = size * entry_price
+            fee = position_value * fee_rate
             
-            # Update metrics
-            current_metrics = self.get_current_metrics()
+            # Check if we have enough balance
+            total_cost = position_value + fee
+            if total_cost > self.virtual_balance:
+                logger.warning(f"Insufficient virtual balance. Required: ${total_cost:.2f}, Available: ${self.virtual_balance:.2f}")
+                return None
             
-            self.last_update = timestamp
+            # Check minimum trade amount
+            if position_value < self.min_trade_amount:
+                logger.warning(f"Trade value ${position_value:.2f} below minimum ${self.min_trade_amount}")
+                return None
             
-            return {
-                "status": "active",
-                "timestamp": timestamp.isoformat(),
-                "price": price,
-                "signal": signal,
-                "trade_result": trade_result,
-                "metrics": asdict(current_metrics),
-                "open_trades": len([t for t in self.trades if t.is_open])
-            }
-            
-        except Exception as e:
-            logger.error(f"Market update processing failed: {e}")
-            return {"status": "error", "error": str(e)}
-    
-    def _process_trading_signal(self, signal: Dict[str, Any], price: float, timestamp: datetime) -> Dict[str, Any]:
-        """Process trading signal and execute paper trades"""
-        try:
-            direction = signal.get('direction', 'hold')
-            strength = signal.get('strength', 0.0)
-            confidence = signal.get('confidence', 0.0)
-            
-            # Skip if holding or weak signal
-            if direction == 'hold' or confidence < 0.4 or strength < 0.3:
-                return {"action": "hold", "reason": "weak_signal"}
-            
-            # Close existing position if reversing
-            open_trades = [t for t in self.trades if t.is_open]
-            if open_trades and direction != open_trades[-1].direction:
-                for trade in open_trades:
-                    self._close_trade(trade.id, price, timestamp, "signal_reversal")
-            
-            # Calculate position size
-            position_size = self._calculate_position_size(strength, confidence)
-            position_value = self.current_capital * position_size
-            
-            # Check minimum position size
-            if position_value < self.current_capital * 0.02:  # Minimum 2%
-                return {"action": "hold", "reason": "position_too_small"}
-            
-            # Open new position
-            trade_id = f"trade_{len(self.trades) + 1}_{timestamp.strftime('%H%M%S')}"
-            
-            # Calculate costs
-            commission = position_value * self.commission_rate
-            slippage = position_value * self.slippage_rate
-            
-            # Adjust execution price for slippage
-            execution_price = price * (1 + self.slippage_rate) if direction == 'buy' else price * (1 - self.slippage_rate)
-            
-            # Create paper trade
-            paper_trade = PaperTrade(
+            # Create virtual position
+            trade_id = self.generate_trade_id()
+            virtual_position = VirtualPosition(
                 id=trade_id,
-                entry_time=timestamp,
-                entry_price=execution_price,
-                direction='long' if direction == 'buy' else 'short',
-                size=position_value / execution_price,
-                signal_strength=strength,
-                signal_confidence=confidence,
-                regime=signal.get('regime', 'unknown'),
-                commission=commission,
-                slippage=slippage
+                symbol=symbol,
+                side=side,
+                size=size,
+                entry_price=entry_price,
+                current_price=entry_price,
+                timestamp=datetime.now(),
+                strategy=strategy,
+                status='OPEN',
+                fee=fee
             )
             
-            self.trades.append(paper_trade)
+            # Update virtual balance (deduct cost for long positions)
+            if side == 'LONG':
+                self.virtual_balance -= total_cost
             
-            # Update capital (subtract costs)
-            self.current_capital -= (commission + slippage)
+            # Store position
+            self.virtual_positions[trade_id] = virtual_position
             
-            logger.info(f"Paper trade opened: {direction} ${position_value:,.0f} @ ${execution_price:.2f}")
+            logger.info(f"📝 Paper Trade Executed: {side} {size:.4f} {symbol} @ ${entry_price:.2f}")
+            logger.info(f"💰 Virtual Balance: ${self.virtual_balance:.2f}")
             
-            return {
-                "action": "trade_opened",
-                "trade_id": trade_id,
-                "direction": direction,
-                "size": position_value,
-                "price": execution_price,
-                "costs": commission + slippage
-            }
+            return virtual_position
             
         except Exception as e:
-            logger.error(f"Signal processing failed: {e}")
-            return {"action": "error", "error": str(e)}
+            logger.error(f"Error executing virtual trade: {e}")
+            return None
     
-    def _calculate_position_size(self, strength: float, confidence: float) -> float:
-        """Calculate position size based on signal quality"""
-        # Base position size from signal strength
-        base_size = abs(strength) * self.max_position_size
+    async def close_virtual_trade(
+        self,
+        trade_id: str,
+        exit_price: Optional[float] = None
+    ) -> Optional[VirtualPosition]:
+        """
+        Close a virtual trading position and calculate P&L
         
-        # Adjust by confidence
-        adjusted_size = base_size * confidence
+        Args:
+            trade_id: ID of the trade to close
+            exit_price: Exit price (if not provided, use current market price)
+            
+        Returns:
+            Updated VirtualPosition with P&L data
+        """
+        try:
+            # Get position
+            position = self.virtual_positions.get(trade_id)
+            if not position:
+                logger.error(f"Position {trade_id} not found")
+                return None
+            
+            # Get exit price if not provided
+            if exit_price is None:
+                exit_price = await self.get_current_price(position.symbol)
+            
+            # Apply slippage for exit
+            slippage_rate = 0.0005
+            if position.side == 'LONG':
+                exit_price = exit_price * (1 - slippage_rate)
+            else:
+                exit_price = exit_price * (1 + slippage_rate)
+            
+            # Calculate P&L
+            if position.side == 'LONG':
+                pnl = position.size * (exit_price - position.entry_price)
+            else:
+                pnl = position.size * (position.entry_price - exit_price)
+            
+            # Deduct exit fee
+            exit_fee = position.size * exit_price * 0.001
+            pnl -= (position.fee + exit_fee)
+            
+            # Calculate percentage P&L
+            position_value = position.size * position.entry_price
+            pnl_percentage = (pnl / position_value) * 100
+            
+            # Calculate duration
+            duration = datetime.now() - position.timestamp
+            duration_minutes = int(duration.total_seconds() / 60)
+            
+            # Update position
+            position.exit_price = exit_price
+            position.exit_timestamp = datetime.now()
+            position.pnl = pnl
+            position.pnl_percentage = pnl_percentage
+            position.duration_minutes = duration_minutes
+            position.status = 'CLOSED'
+            position.fee += exit_fee
+            
+            # Update virtual balance
+            if position.side == 'LONG':
+                self.virtual_balance += (position.size * exit_price)
+            else:
+                # For short positions, return the borrowed amount and add/subtract P&L
+                self.virtual_balance += pnl
+            
+            # Move to history
+            self.trade_history.append(position)
+            del self.virtual_positions[trade_id]
+            
+            # Update performance metrics
+            self._update_performance_metrics(position)
+            
+            logger.info(f"📊 Paper Trade Closed: {position.symbol}")
+            logger.info(f"   P&L: ${pnl:.2f} ({pnl_percentage:.2f}%)")
+            logger.info(f"   Duration: {duration_minutes} minutes")
+            logger.info(f"💰 Virtual Balance: ${self.virtual_balance:.2f}")
+            
+            return position
+            
+        except Exception as e:
+            logger.error(f"Error closing virtual trade: {e}")
+            return None
+    
+    def _update_performance_metrics(self, closed_position: VirtualPosition):
+        """Update performance metrics after closing a position"""
+        self.performance_metrics['total_trades'] += 1
+        self.performance_metrics['total_pnl'] += closed_position.pnl
         
-        # Conservative position sizing for paper trading
-        final_size = min(adjusted_size * 0.5, 0.2)  # Max 20% per trade
+        if closed_position.pnl > 0:
+            self.performance_metrics['winning_trades'] += 1
+            self.performance_metrics['consecutive_wins'] += 1
+            self.performance_metrics['consecutive_losses'] = 0
+            
+            if self.performance_metrics['consecutive_wins'] > self.performance_metrics['max_consecutive_wins']:
+                self.performance_metrics['max_consecutive_wins'] = self.performance_metrics['consecutive_wins']
+        else:
+            self.performance_metrics['losing_trades'] += 1
+            self.performance_metrics['consecutive_losses'] += 1
+            self.performance_metrics['consecutive_wins'] = 0
+            
+            if self.performance_metrics['consecutive_losses'] > self.performance_metrics['max_consecutive_losses']:
+                self.performance_metrics['max_consecutive_losses'] = self.performance_metrics['consecutive_losses']
         
-        return final_size
-    
-    def _close_trade(self, trade_id: str, price: float, timestamp: datetime, reason: str = "signal") -> bool:
-        """Close a paper trade"""
-        try:
-            trade = next((t for t in self.trades if t.id == trade_id and t.is_open), None)
-            if not trade:
-                return False
-            
-            # Calculate exit value
-            gross_proceeds = trade.size * price
-            exit_commission = gross_proceeds * self.commission_rate
-            exit_slippage = gross_proceeds * self.slippage_rate
-            net_proceeds = gross_proceeds - exit_commission - exit_slippage
-            
-            # Calculate PnL
-            original_investment = trade.size * trade.entry_price
-            pnl = net_proceeds - original_investment - trade.commission - trade.slippage
-            
-            # Update trade
-            trade.exit_time = timestamp
-            trade.exit_price = price
-            trade.pnl = pnl
-            trade.exit_reason = reason
-            
-            # Update capital
-            self.current_capital += net_proceeds
-            
-            logger.info(f"Paper trade closed: {trade.direction} PnL=${pnl:.2f} ({reason})")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Trade closing failed: {e}")
-            return False
-    
-    def _update_open_positions(self, current_price: float, timestamp: datetime):
-        """Update unrealized PnL for open positions"""
-        try:
-            for trade in self.trades:
-                if trade.is_open:
-                    # Calculate unrealized PnL
-                    current_value = trade.size * current_price
-                    original_investment = trade.size * trade.entry_price
-                    
-                    if trade.direction == 'long':
-                        unrealized_pnl = current_value - original_investment
-                    else:  # short
-                        unrealized_pnl = original_investment - current_value
-                    
-                    # Subtract costs
-                    unrealized_pnl -= (trade.commission + trade.slippage)
-                    trade.pnl = unrealized_pnl
-                    
-        except Exception as e:
-            logger.error(f"Position update failed: {e}")
-    
-    def _update_equity_history(self, timestamp: datetime, price: float, event: str):
-        """Update equity curve history"""
-        try:
-            # Calculate total equity
-            realized_pnl = sum(t.pnl for t in self.trades if not t.is_open)
-            unrealized_pnl = sum(t.pnl for t in self.trades if t.is_open)
-            total_equity = self.current_capital + unrealized_pnl
-            
-            # Update drawdown tracking
-            if total_equity > self.peak_equity:
-                self.peak_equity = total_equity
-            
-            current_drawdown = (self.peak_equity - total_equity) / self.peak_equity if self.peak_equity > 0 else 0
-            if current_drawdown > self.max_drawdown:
-                self.max_drawdown = current_drawdown
-            
-            self.current_equity = total_equity
-            
-            # Add to history
-            equity_point = {
-                "timestamp": timestamp,
-                "price": price,
-                "capital": self.current_capital,
-                "realized_pnl": realized_pnl,
-                "unrealized_pnl": unrealized_pnl,
-                "total_equity": total_equity,
-                "drawdown": current_drawdown,
-                "event": event,
-                "open_trades": len([t for t in self.trades if t.is_open])
-            }
-            
-            self.equity_history.append(equity_point)
-            
-            # Limit history size
-            if len(self.equity_history) > 10000:
-                self.equity_history = self.equity_history[-5000:]
-                
-        except Exception as e:
-            logger.error(f"Equity history update failed: {e}")
-    
-    def get_current_metrics(self) -> PaperTradingMetrics:
-        """Calculate current performance metrics"""
-        try:
-            closed_trades = [t for t in self.trades if not t.is_open]
-            open_trades = [t for t in self.trades if t.is_open]
-            
-            winning_trades = [t for t in closed_trades if t.pnl > 0]
-            losing_trades = [t for t in closed_trades if t.pnl <= 0]
-            
-            total_pnl = sum(t.pnl for t in closed_trades)
-            unrealized_pnl = sum(t.pnl for t in open_trades)
-            
-            win_rate = len(winning_trades) / len(closed_trades) if closed_trades else 0
-            avg_win = np.mean([t.pnl for t in winning_trades]) if winning_trades else 0
-            avg_loss = np.mean([t.pnl for t in losing_trades]) if losing_trades else 0
-            
-            total_return = (self.current_equity / self.initial_capital) - 1
-            
-            return PaperTradingMetrics(
-                total_trades=len(closed_trades),
-                open_trades=len(open_trades),
-                winning_trades=len(winning_trades),
-                losing_trades=len(losing_trades),
-                total_pnl=total_pnl,
-                unrealized_pnl=unrealized_pnl,
-                win_rate=win_rate,
-                avg_win=avg_win,
-                avg_loss=avg_loss,
-                largest_win=max([t.pnl for t in closed_trades]) if closed_trades else 0,
-                largest_loss=min([t.pnl for t in closed_trades]) if closed_trades else 0,
-                current_drawdown=(self.peak_equity - self.current_equity) / self.peak_equity if self.peak_equity > 0 else 0,
-                max_drawdown=self.max_drawdown,
-                total_return=total_return
-            )
-            
-        except Exception as e:
-            logger.error(f"Metrics calculation failed: {e}")
-            return PaperTradingMetrics()
-    
-    def export_results(self, filename: str = None) -> Dict[str, Any]:
-        """Export paper trading results"""
-        if filename is None:
-            filename = f"paper_trading_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        # Update best/worst trade
+        if closed_position.pnl > self.performance_metrics['best_trade']:
+            self.performance_metrics['best_trade'] = closed_position.pnl
+        if closed_position.pnl < self.performance_metrics['worst_trade']:
+            self.performance_metrics['worst_trade'] = closed_position.pnl
         
-        try:
-            metrics = self.get_current_metrics()
-            
-            results = {
-                "paper_trading_session": {
-                    "start_time": self.start_time.isoformat() if self.start_time else None,
-                    "end_time": datetime.now().isoformat(),
-                    "duration_hours": (datetime.now() - self.start_time).total_seconds() / 3600 if self.start_time else 0,
-                    "initial_capital": self.initial_capital,
-                    "final_equity": self.current_equity,
-                    "is_active": self.is_active
-                },
-                "performance_metrics": asdict(metrics),
-                "trades": [asdict(trade) for trade in self.trades],
-                "equity_curve": self.equity_history[-1000:],  # Last 1000 points
-                "configuration": {
-                    "commission_rate": self.commission_rate,
-                    "slippage_rate": self.slippage_rate,
-                    "max_position_size": self.max_position_size
-                }
-            }
-            
-            with open(filename, 'w') as f:
-                json.dump(results, f, indent=2, default=str)
-            
-            logger.info(f"Paper trading results exported to {filename}")
-            return results
-            
-        except Exception as e:
-            logger.error(f"Export failed: {e}")
-            return {}
+        # Update win rate
+        if self.performance_metrics['total_trades'] > 0:
+            self.performance_metrics['win_rate'] = (
+                self.performance_metrics['winning_trades'] / 
+                self.performance_metrics['total_trades']
+            ) * 100
+        
+        # Update drawdown
+        current_balance = self.virtual_balance
+        if current_balance > self.peak_balance:
+            self.peak_balance = current_balance
+        
+        self.current_drawdown = ((self.peak_balance - current_balance) / self.peak_balance) * 100
+        if self.current_drawdown > self.performance_metrics['max_drawdown']:
+            self.performance_metrics['max_drawdown'] = self.current_drawdown
     
-    def get_dashboard_data(self) -> Dict[str, Any]:
-        """Get data formatted for dashboard display"""
-        try:
-            metrics = self.get_current_metrics()
-            recent_trades = self.trades[-10:] if self.trades else []
+    async def update_open_positions(self):
+        """Update current prices for all open positions"""
+        for position in self.virtual_positions.values():
+            try:
+                current_price = await self.get_current_price(position.symbol)
+                position.current_price = current_price
+            except Exception as e:
+                logger.error(f"Error updating price for {position.symbol}: {e}")
+    
+    def get_virtual_portfolio_status(self) -> Dict:
+        """Get comprehensive virtual portfolio status"""
+        # Calculate unrealized P&L
+        unrealized_pnl = 0.0
+        open_positions_data = []
+        
+        for position in self.virtual_positions.values():
+            # Calculate current P&L
+            if position.side == 'LONG':
+                position_pnl = position.size * (position.current_price - position.entry_price)
+            else:
+                position_pnl = position.size * (position.entry_price - position.current_price)
             
-            return {
-                "status": "active" if self.is_active else "inactive",
-                "current_equity": self.current_equity,
-                "total_pnl": metrics.total_pnl,
-                "unrealized_pnl": metrics.unrealized_pnl,
-                "total_return_pct": metrics.total_return * 100,
-                "win_rate_pct": metrics.win_rate * 100,
-                "current_drawdown_pct": metrics.current_drawdown * 100,
-                "max_drawdown_pct": metrics.max_drawdown * 100,
-                "total_trades": metrics.total_trades,
-                "open_trades": metrics.open_trades,
-                "last_signal": self.last_signal,
-                "recent_trades": [
-                    {
-                        "id": t.id,
-                        "direction": t.direction,
-                        "entry_time": t.entry_time.isoformat(),
-                        "entry_price": t.entry_price,
-                        "pnl": t.pnl,
-                        "is_open": t.is_open
-                    } for t in recent_trades
-                ],
-                "equity_curve": self.equity_history[-100:] if self.equity_history else []
-            }
+            position_pnl -= position.fee  # Deduct fees
+            unrealized_pnl += position_pnl
             
-        except Exception as e:
-            logger.error(f"Dashboard data generation failed: {e}")
-            return {"status": "error", "error": str(e)}
+            # Add position data
+            open_positions_data.append({
+                'id': position.id,
+                'symbol': position.symbol,
+                'side': position.side,
+                'size': position.size,
+                'entry_price': position.entry_price,
+                'current_price': position.current_price,
+                'pnl': position_pnl,
+                'pnl_percentage': (position_pnl / (position.size * position.entry_price)) * 100,
+                'strategy': position.strategy,
+                'duration': int((datetime.now() - position.timestamp).total_seconds() / 60)
+            })
+        
+        # Calculate total portfolio value
+        total_portfolio_value = self.virtual_balance + unrealized_pnl
+        
+        # Calculate daily P&L
+        daily_pnl = total_portfolio_value - self.initial_balance
+        daily_pnl_percentage = (daily_pnl / self.initial_balance) * 100
+        
+        return {
+            'mode': 'PAPER TRADING',
+            'initial_balance': self.initial_balance,
+            'virtual_balance': self.virtual_balance,
+            'unrealized_pnl': unrealized_pnl,
+            'realized_pnl': self.performance_metrics['total_pnl'],
+            'total_portfolio_value': total_portfolio_value,
+            'daily_pnl': daily_pnl,
+            'daily_pnl_percentage': daily_pnl_percentage,
+            'open_positions': len(self.virtual_positions),
+            'open_positions_data': open_positions_data,
+            'total_trades': self.performance_metrics['total_trades'],
+            'winning_trades': self.performance_metrics['winning_trades'],
+            'losing_trades': self.performance_metrics['losing_trades'],
+            'win_rate': self.performance_metrics['win_rate'],
+            'max_drawdown': self.performance_metrics['max_drawdown'],
+            'current_drawdown': self.current_drawdown,
+            'best_trade': self.performance_metrics['best_trade'],
+            'worst_trade': self.performance_metrics['worst_trade'],
+            'consecutive_wins': self.performance_metrics['consecutive_wins'],
+            'consecutive_losses': self.performance_metrics['consecutive_losses'],
+            'performance_metrics': self.performance_metrics
+        }
+    
+    def reset_paper_account(self):
+        """Reset paper trading account to initial state"""
+        self.virtual_balance = self.initial_balance
+        self.virtual_positions.clear()
+        self.trade_history.clear()
+        self.performance_metrics = {
+            'total_trades': 0,
+            'winning_trades': 0,
+            'losing_trades': 0,
+            'total_pnl': 0.0,
+            'max_drawdown': 0.0,
+            'win_rate': 0.0,
+            'average_win': 0.0,
+            'average_loss': 0.0,
+            'profit_factor': 0.0,
+            'sharpe_ratio': 0.0,
+            'best_trade': 0.0,
+            'worst_trade': 0.0,
+            'consecutive_wins': 0,
+            'consecutive_losses': 0,
+            'max_consecutive_wins': 0,
+            'max_consecutive_losses': 0
+        }
+        self.peak_balance = self.initial_balance
+        self.current_drawdown = 0.0
+        logger.info("🔄 Paper trading account reset to initial state")
+    
+    def export_trade_history(self, filepath: str = "paper_trades_history.json"):
+        """Export trade history to JSON file"""
+        history_data = {
+            'export_timestamp': datetime.now().isoformat(),
+            'initial_balance': self.initial_balance,
+            'final_balance': self.virtual_balance,
+            'total_pnl': self.performance_metrics['total_pnl'],
+            'performance_metrics': self.performance_metrics,
+            'trades': [asdict(trade) for trade in self.trade_history]
+        }
+        
+        with open(filepath, 'w') as f:
+            json.dump(history_data, f, indent=2, default=str)
+        
+        logger.info(f"📁 Trade history exported to {filepath}")

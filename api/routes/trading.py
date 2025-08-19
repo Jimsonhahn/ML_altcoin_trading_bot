@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from core.trading_bot import TradingBot
+from core.paper_trading_engine import PaperTradingEngine
 from utils.validators import validate_trading_symbol, validate_amount, validate_order
 from utils.error_handler import ValidationTradingError, ExchangeTradingError
 from api.middleware.auth import require_trader, require_admin
@@ -753,3 +754,265 @@ def run_backtest():
     except Exception as e:
         logger.error(f"Backtest failed: {e}")
         raise ExchangeTradingError(f"Backtest failed: {str(e)}")
+
+
+@bp.route('/mode', methods=['POST'])
+@jwt_required()
+def switch_trading_mode():
+    """
+    Switch between Paper and Live trading modes
+    ---
+    tags:
+      - Trading
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              mode:
+                type: string
+                enum: [paper, live]
+                description: Trading mode to switch to
+              initial_balance:
+                type: number
+                description: Initial balance for paper trading (optional)
+    responses:
+      200:
+        description: Trading mode switched successfully
+      400:
+        description: Invalid mode or bot not running
+    """
+    try:
+        data = request.json
+        mode = data.get('mode')
+        
+        if mode not in ['paper', 'live']:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid mode. Must be "paper" or "live"'
+            }), 400
+        
+        # Check if bot is running
+        status = bot_manager.get_status()
+        if not status['is_running']:
+            return jsonify({
+                'success': False,
+                'message': 'Bot must be running to switch modes'
+            }), 400
+        
+        # Get current config and update mode
+        current_config = bot_manager.get_bot_config()
+        new_config = current_config.copy() if current_config else {}
+        
+        # Set paper trading flag
+        if mode == 'paper':
+            new_config['paper_trading'] = True
+            new_config['paper_trading_balance'] = data.get('initial_balance', 10000.0)
+            message = f'Switched to Paper Trading mode with ${new_config["paper_trading_balance"]} virtual balance'
+        else:
+            new_config['paper_trading'] = False
+            message = 'Switched to Live Trading mode'
+        
+        # Restart bot with new configuration
+        result = bot_manager.restart_bot(new_config)
+        
+        if result['success']:
+            # Emit mode change event via WebSocket
+            emit_trade_update({
+                'type': 'mode_changed',
+                'mode': mode,
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            })
+            
+            return jsonify({
+                'success': True,
+                'message': message,
+                'mode': mode
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'Failed to switch mode: {result.get("message", "Unknown error")}'
+            }), 400
+            
+    except Exception as e:
+        logger.error(f"Error switching trading mode: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Failed to switch trading mode: {str(e)}'
+        }), 500
+
+
+@bp.route('/paper/status', methods=['GET'])
+@jwt_required()
+def get_paper_trading_status():
+    """
+    Get Paper Trading portfolio status
+    ---
+    tags:
+      - Trading
+    security:
+      - BearerAuth: []
+    responses:
+      200:
+        description: Paper trading portfolio status
+      404:
+        description: Paper trading not active
+    """
+    try:
+        # Check if bot is running and in paper mode
+        status = bot_manager.get_status()
+        if not status['is_running']:
+            return jsonify({
+                'success': False,
+                'message': 'Bot is not running'
+            }), 404
+        
+        # Get bot instance
+        bot_instance = bot_manager.get_bot_instance()
+        if not bot_instance or not hasattr(bot_instance, 'paper_engine') or not bot_instance.paper_engine:
+            return jsonify({
+                'success': False,
+                'message': 'Paper trading is not active'
+            }), 404
+        
+        # Get paper trading status
+        paper_status = bot_instance.paper_engine.get_virtual_portfolio_status()
+        
+        return jsonify({
+            'success': True,
+            'data': paper_status
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting paper trading status: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Failed to get paper trading status: {str(e)}'
+        }), 500
+
+
+@bp.route('/paper/reset', methods=['POST'])
+@jwt_required()
+@require_admin
+def reset_paper_account():
+    """
+    Reset Paper Trading account to initial state
+    ---
+    tags:
+      - Trading
+    security:
+      - BearerAuth: []
+    responses:
+      200:
+        description: Paper account reset successfully
+      404:
+        description: Paper trading not active
+    """
+    try:
+        # Get bot instance
+        bot_instance = bot_manager.get_bot_instance()
+        if not bot_instance or not hasattr(bot_instance, 'paper_engine') or not bot_instance.paper_engine:
+            return jsonify({
+                'success': False,
+                'message': 'Paper trading is not active'
+            }), 404
+        
+        # Reset paper account
+        bot_instance.paper_engine.reset_paper_account()
+        
+        # Emit reset event
+        emit_trade_update({
+            'type': 'paper_account_reset',
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        })
+        
+        return jsonify({
+            'success': True,
+            'message': 'Paper trading account reset successfully'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error resetting paper account: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Failed to reset paper account: {str(e)}'
+        }), 500
+
+
+@bp.route('/paper/history', methods=['GET'])
+@jwt_required()
+def get_paper_trade_history():
+    """
+    Get Paper Trading trade history
+    ---
+    tags:
+      - Trading
+    security:
+      - BearerAuth: []
+    parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 50
+        description: Number of trades to return
+    responses:
+      200:
+        description: Paper trading history
+      404:
+        description: Paper trading not active
+    """
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        
+        # Get bot instance
+        bot_instance = bot_manager.get_bot_instance()
+        if not bot_instance or not hasattr(bot_instance, 'paper_engine') or not bot_instance.paper_engine:
+            return jsonify({
+                'success': False,
+                'message': 'Paper trading is not active'
+            }), 404
+        
+        # Get trade history
+        all_trades = bot_instance.paper_engine.trade_history
+        
+        # Convert to serializable format and limit
+        trade_data = []
+        for trade in all_trades[-limit:]:
+            trade_dict = {
+                'id': trade.id,
+                'symbol': trade.symbol,
+                'side': trade.side,
+                'size': trade.size,
+                'entry_price': trade.entry_price,
+                'exit_price': trade.exit_price,
+                'pnl': trade.pnl,
+                'pnl_percentage': trade.pnl_percentage,
+                'strategy': trade.strategy,
+                'timestamp': trade.timestamp.isoformat(),
+                'exit_timestamp': trade.exit_timestamp.isoformat() if trade.exit_timestamp else None,
+                'duration_minutes': trade.duration_minutes,
+                'fee': trade.fee
+            }
+            trade_data.append(trade_dict)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'trades': trade_data,
+                'total_trades': len(all_trades),
+                'showing': len(trade_data)
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting paper trade history: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Failed to get trade history: {str(e)}'
+        }), 500

@@ -12,6 +12,7 @@ import AIFactoryBrain from './AIFactoryBrain';
 import StrategyFactoryAssembly from './StrategyFactoryAssembly';
 import FactoryCommandCenter from './FactoryCommandCenter';
 import FactoryAchievements from './FactoryAchievements';
+import TradingModeManager from './TradingModeManager';
 import factorySoundSystem from '../utils/FactorySoundSystem';
 import ParticleSystem from '../utils/ParticleSystem';
 
@@ -66,7 +67,7 @@ const RevolutionaryJanicsDashboard = () => {
         };
     }, [soundEnabled, particlesEnabled]);
 
-    // Navigation sections
+    // Navigation sections (erweitert um Trading Mode Manager)
     const sections = [
         { id: 'overview', name: 'Factory Overview', icon: '🏭', component: 'overview' },
         { id: 'wealth', name: 'Wealth Center', icon: '💰', component: WealthGenerationCenter },
@@ -74,6 +75,7 @@ const RevolutionaryJanicsDashboard = () => {
         { id: 'brain', name: 'AI Brain', icon: '🧠', component: AIFactoryBrain },
         { id: 'strategy', name: 'Strategy Assembly', icon: '⚙️', component: StrategyFactoryAssembly },
         { id: 'control', name: 'Command Center', icon: '🎮', component: FactoryCommandCenter },
+        { id: 'trading-modes', name: 'Trading Modes', icon: '🔄', component: TradingModeManager },
         { id: 'achievements', name: 'Achievements', icon: '🏆', component: FactoryAchievements }
     ];
 
