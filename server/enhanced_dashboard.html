@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🤖 AI Trading Bot - Intelligence Dashboard</title>
+    <style>
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'SF Mono', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        
+        /* Animated Background Particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #00ff88;
+            border-radius: 50%;
+            opacity: 0.5;
+            animation: float 6s infinite ease-in-out;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.5; }
+            50% { transform: translateY(-20px) rotate(180deg); opacity: 1; }
+        }
+        
+        /* Container */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Header with AI Pulse */
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.3);
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #00ff88, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .ai-brain {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 15px;
+            position: relative;
+        }
+        
+        .brain-core {
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, #00ff88 0%, #00d4ff 100%);
+            border-radius: 50%;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            animation: pulse-brain 2s infinite;
+        }
+        
+        .brain-node {
+            width: 8px;
+            height: 8px;
+            background: #00ff88;
+            border-radius: 50%;
+            position: absolute;
+            animation: node-pulse 1.5s infinite ease-in-out;
+        }
+        
+        .node-1 { top: 5px; left: 20px; animation-delay: 0s; }
+        .node-2 { top: 20px; left: 5px; animation-delay: 0.3s; }
+        .node-3 { top: 20px; left: 45px; animation-delay: 0.6s; }
+        .node-4 { top: 45px; left: 20px; animation-delay: 0.9s; }
+        
+        @keyframes pulse-brain {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
+            50% { transform: scale(1.1); box-shadow: 0 0 40px rgba(0, 255, 136, 0.6); }
+        }
+        
+        @keyframes node-pulse {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: status-pulse 2s infinite;
+        }
+        
+        .status-running { 
+            background: #00ff88; 
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
+        }
+        .status-stopped { 
+            background: #ff4757; 
+            box-shadow: 0 0 10px rgba(255, 71, 87, 0.6);
+        }
+        .status-thinking {
+            background: #ffa502;
+            box-shadow: 0 0 10px rgba(255, 165, 2, 0.6);
+        }
+        
+        @keyframes status-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Bot Intelligence Panel */
+        .bot-intelligence {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .bot-intelligence::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.1), transparent);
+            animation: scan 3s infinite;
+        }
+        
+        @keyframes scan {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .intelligence-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .bot-mood {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: mood-glow 2s infinite;
+        }
+        
+        .mood-aggressive { background: #ff6b35; }
+        .mood-cautious { background: #3742fa; }
+        .mood-opportunistic { background: #00ff88; }
+        .mood-learning { background: #ffa502; }
+        
+        @keyframes mood-glow {
+            0%, 100% { box-shadow: 0 0 5px currentColor; }
+            50% { box-shadow: 0 0 15px currentColor; }
+        }
+        
+        .thinking-process {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 3px solid #00ff88;
+        }
+        
+        .decision-tree {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .decision-step {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 6px;
+            border-left: 3px solid #00ff88;
+            animation: step-highlight 0.5s ease-in-out;
+        }
+        
+        .decision-step.active {
+            background: rgba(0, 255, 136, 0.2);
+            animation: step-pulse 1s infinite;
+        }
+        
+        @keyframes step-highlight {
+            from { transform: translateX(-10px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes step-pulse {
+            0%, 100% { background: rgba(0, 255, 136, 0.2); }
+            50% { background: rgba(0, 255, 136, 0.3); }
+        }
+        
+        .step-icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            font-size: 12px;
+        }
+        
+        /* Portfolio Value with Slot Machine Effect */
+        .portfolio-section {
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .portfolio-section::before {
+            content: '💰';
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            opacity: 0.3;
+        }
+        
+        .portfolio-label {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+        
+        .portfolio-value {
+            font-size: 48px;
+            font-weight: bold;
+            font-family: 'SF Mono', 'Courier New', monospace;
+            background: linear-gradient(45deg, #00ff88, #00d4ff, #ff6b35);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 10px 0;
+            position: relative;
+        }
+        
+        .money-rain {
+            position: absolute;
+            top: -50px;
+            width: 100%;
+            height: 200px;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        
+        .money-symbol {
+            position: absolute;
+            color: #00ff88;
+            font-size: 20px;
+            animation: money-fall 2s infinite ease-in;
+            opacity: 0;
+        }
+        
+        @keyframes money-fall {
+            0% { 
+                top: -30px; 
+                opacity: 0; 
+                transform: rotate(0deg) scale(0.5); 
+            }
+            20% { 
+                opacity: 1; 
+                transform: rotate(180deg) scale(1); 
+            }
+            100% { 
+                top: 150px; 
+                opacity: 0; 
+                transform: rotate(360deg) scale(0.5); 
+            }
+        }
+        
+        .growth-indicator {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 5px;
+        }
+        
+        .growth-positive {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+        
+        .growth-negative {
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+        }
+        
+        /* Strategy Orchestra */
+        .strategy-orchestra {
+            background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+        
+        .orchestra-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .orchestra-icon {
+            font-size: 20px;
+            margin-right: 10px;
+        }
+        
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+        }
+        
+        .strategy-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .strategy-card.active {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+            animation: strategy-glow 2s infinite;
+        }
+        
+        .strategy-card.pending {
+            border-color: #ffa502;
+            background: rgba(255, 165, 2, 0.1);
+        }
+        
+        @keyframes strategy-glow {
+            0%, 100% { box-shadow: 0 0 10px rgba(0, 255, 136, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.6); }
+        }
+        
+        .strategy-name {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .strategy-performance {
+            font-size: 10px;
+            opacity: 0.7;
+        }
+        
+        /* Achievement System */
+        .achievements {
+            background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .achievement-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .achievement-list {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 5px 0;
+        }
+        
+        .achievement-badge {
+            min-width: 80px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #333;
+            transition: all 0.3s ease;
+        }
+        
+        .achievement-badge.unlocked {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+            animation: badge-unlock 0.5s ease-in-out;
+        }
+        
+        @keyframes badge-unlock {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .badge-icon {
+            font-size: 16px;
+            margin-bottom: 3px;
+        }
+        
+        .badge-text {
+            font-size: 10px;
+            line-height: 1.2;
+        }
+        
+        /* Control Buttons */
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 30px 0;
+        }
+        
+        .btn {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s, height 0.3s;
+        }
+        
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .btn-start {
+            background: linear-gradient(45deg, #00ff88, #00d4ff);
+            color: #000;
+            font-weight: bold;
+        }
+        
+        .btn-stop {
+            background: linear-gradient(45deg, #ff4757, #ff6b35);
+            color: #fff;
+        }
+        
+        .btn-paper {
+            background: linear-gradient(45deg, #3742fa, #5352ed);
+            color: #fff;
+        }
+        
+        .btn-live {
+            background: linear-gradient(45deg, #ff6348, #ff4757);
+            color: #fff;
+        }
+        
+        /* Live Trading Feed */
+        .trading-feed {
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .feed-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            animation: feed-slide-in 0.3s ease-in-out;
+        }
+        
+        @keyframes feed-slide-in {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .feed-time {
+            font-size: 10px;
+            opacity: 0.5;
+            margin-right: 10px;
+            min-width: 40px;
+        }
+        
+        .feed-icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+        }
+        
+        .feed-message {
+            flex: 1;
+            font-size: 12px;
+        }
+        
+        .feed-profit {
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        .feed-loss {
+            font-weight: bold;
+            color: #ff4757;
+        }
+        
+        /* Emergency Button */
+        .emergency-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 71, 87, 0.3);
+        }
+        
+        .btn-emergency {
+            width: 100%;
+            background: linear-gradient(45deg, #ff0000, #cc0000);
+            color: #fff;
+            padding: 20px;
+            font-size: 18px;
+            border: 2px solid #ff0000;
+            animation: emergency-pulse 2s infinite;
+        }
+        
+        @keyframes emergency-pulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 0, 0, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(255, 0, 0, 0.7); }
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .portfolio-value {
+                font-size: 36px;
+            }
+            
+            .strategy-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .achievement-list {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        /* Loading and Toast Notifications */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #00ff88;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+            border: 1px solid #00ff88;
+        }
+        
+        .toast.show {
+            opacity: 1;
+        }
+        
+        .toast.success {
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+        
+        .toast.error {
+            border-color: #ff4757;
+            box-shadow: 0 0 20px rgba(255, 71, 87, 0.3);
+        }
+        
+        /* Celebration Effects */
+        .celebration {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        
+        .firework {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: firework-explosion 1s ease-out forwards;
+        }
+        
+        @keyframes firework-explosion {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(20);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="particles" id="particles"></div>
+    
+    <div class="container">
+        <!-- Header with AI Brain -->
+        <div class="header">
+            <div class="ai-brain">
+                <div class="brain-core"></div>
+                <div class="brain-node node-1"></div>
+                <div class="brain-node node-2"></div>
+                <div class="brain-node node-3"></div>
+                <div class="brain-node node-4"></div>
+            </div>
+            <h1>🤖 AI Trading Intelligence</h1>
+            <div id="botStatus">
+                <span class="status-indicator status-stopped"></span>
+                <span>Status: Initializing AI Systems...</span>
+            </div>
+        </div>
+        
+        <!-- Bot Intelligence Panel -->
+        <div class="bot-intelligence">
+            <div class="intelligence-header">
+                <div class="bot-mood mood-learning" id="botMood"></div>
+                <h3>🧠 Bot Intelligence</h3>
+            </div>
+            
+            <div class="thinking-process">
+                <div class="decision-tree" id="decisionTree">
+                    <div class="decision-step">
+                        <div class="step-icon">📊</div>
+                        <div>Analyzing market conditions...</div>
+                    </div>
+                    <div class="decision-step">
+                        <div class="step-icon">🎯</div>
+                        <div>Calculating optimal strategy...</div>
+                    </div>
+                    <div class="decision-step">
+                        <div class="step-icon">⚡</div>
+                        <div>Awaiting trading signals...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="botThoughts" style="font-size: 12px; opacity: 0.8; margin-top: 10px;">
+                💭 "Scanning for profitable opportunities..."
+            </div>
+        </div>
+        
+        <!-- Portfolio with Money Rain Effect -->
+        <div class="portfolio-section">
+            <div class="money-rain" id="moneyRain"></div>
+            <div class="portfolio-label">Total Portfolio Value</div>
+            <div class="portfolio-value" id="portfolioValue">$1,000.00</div>
+            <div>
+                <span class="growth-indicator growth-positive" id="dailyGrowth">+0.00% Today</span>
+                <span class="growth-indicator growth-positive" id="weeklyGrowth">+0.00% Week</span>
+            </div>
+        </div>
+        
+        <!-- Strategy Orchestra -->
+        <div class="strategy-orchestra">
+            <div class="orchestra-header">
+                <div class="orchestra-icon">🎼</div>
+                <h3>Strategy Orchestra</h3>
+            </div>
+            <div class="strategy-grid" id="strategyGrid">
+                <div class="strategy-card active">
+                    <div class="strategy-name">Auto-Strategy</div>
+                    <div class="strategy-performance">🎯 Active</div>
+                </div>
+                <div class="strategy-card">
+                    <div class="strategy-name">Momentum</div>
+                    <div class="strategy-performance">+12.3%</div>
+                </div>
+                <div class="strategy-card">
+                    <div class="strategy-name">Mean Rev.</div>
+                    <div class="strategy-performance">+8.7%</div>
+                </div>
+                <div class="strategy-card pending">
+                    <div class="strategy-name">High Risk</div>
+                    <div class="strategy-performance">Standby</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Achievement System -->
+        <div class="achievements">
+            <div class="achievement-header">
+                <div>🏆</div>
+                <h3 style="margin-left: 8px;">Achievements</h3>
+            </div>
+            <div class="achievement-list">
+                <div class="achievement-badge unlocked">
+                    <div class="badge-icon">🚀</div>
+                    <div class="badge-text">First Trade</div>
+                </div>
+                <div class="achievement-badge">
+                    <div class="badge-icon">💰</div>
+                    <div class="badge-text">10 Wins</div>
+                </div>
+                <div class="achievement-badge">
+                    <div class="badge-icon">🎯</div>
+                    <div class="badge-text">Streak 5</div>
+                </div>
+                <div class="achievement-badge">
+                    <div class="badge-icon">🧠</div>
+                    <div class="badge-text">AI Master</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Control Buttons -->
+        <div class="controls">
+            <button class="btn btn-start" onclick="startBot('paper')">
+                🚀 Start AI Trading
+            </button>
+            <button class="btn btn-stop" onclick="stopBot()">
+                ⏹️ Stop Bot
+            </button>
+            <button class="btn btn-paper" onclick="switchMode('paper')">
+                📝 Paper Mode
+            </button>
+            <button class="btn btn-live" onclick="startBot('live')">
+                💎 Live Trading
+            </button>
+        </div>
+        
+        <!-- Live Trading Feed -->
+        <div class="trading-feed">
+            <h3 style="margin-bottom: 15px;">📡 Live Trading Feed</h3>
+            <div id="tradingFeed">
+                <div class="feed-item">
+                    <div class="feed-time">09:15</div>
+                    <div class="feed-icon">🔍</div>
+                    <div class="feed-message">Bot analyzing BTC/USDT patterns...</div>
+                </div>
+                <div class="feed-item">
+                    <div class="feed-time">09:14</div>
+                    <div class="feed-icon">🧠</div>
+                    <div class="feed-message">AI detected bullish momentum signal</div>
+                </div>
+                <div class="feed-item">
+                    <div class="feed-time">09:13</div>
+                    <div class="feed-icon">⚡</div>
+                    <div class="feed-message">Risk parameters adjusted for volatility</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Emergency Stop -->
+        <div class="emergency-section">
+            <button class="btn btn-emergency" onclick="emergencyStop()">
+                🚨 EMERGENCY STOP
+            </button>
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+        </div>
+        
+        <!-- Toast Container -->
+        <div class="toast" id="toast"></div>
+        
+        <!-- Celebration Container -->
+        <div class="celebration" id="celebration"></div>
+    </div>
+    
+    <script>
+        // API Configuration
+        const API_BASE = window.location.origin.replace(':3000', ':5000').replace(':80', ':5000');
+        
+        // State Management
+        let isLoading = false;
+        let updateInterval = null;
+        let botRunning = false;
+        let achievementProgress = {
+            trades: 0,
+            wins: 0,
+            streak: 0,
+            dailyProfit: 0
+        };
+        
+        // Initialize particles background
+        function initParticles() {
+            const particlesContainer = document.getElementById('particles');
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (Math.random() * 4 + 4) + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+        
+        // Money rain effect
+        function triggerMoneyRain() {
+            const moneyRain = document.getElementById('moneyRain');
+            const symbols = ['💰', '💵', '💸', '🤑', '💲'];
+            
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    const symbol = document.createElement('div');
+                    symbol.className = 'money-symbol';
+                    symbol.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                    symbol.style.left = Math.random() * 100 + '%';
+                    symbol.style.animationDelay = Math.random() * 0.5 + 's';
+                    
+                    moneyRain.appendChild(symbol);
+                    
+                    setTimeout(() => {
+                        if (symbol.parentNode) {
+                            symbol.parentNode.removeChild(symbol);
+                        }
+                    }, 2000);
+                }, i * 100);
+            }
+        }
+        
+        // Slot machine number animation
+        function animatePortfolioValue(newValue) {
+            const element = document.getElementById('portfolioValue');
+            const currentValue = parseFloat(element.textContent.replace(/[$,]/g, '')) || 0;
+            const increment = (newValue - currentValue) / 20;
+            let step = 0;
+            
+            const timer = setInterval(() => {
+                step++;
+                const displayValue = currentValue + (increment * step);
+                element.textContent = '$' + displayValue.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+                
+                if (step >= 20) {
+                    clearInterval(timer);
+                    if (newValue > currentValue) {
+                        triggerMoneyRain();
+                        playSound('profit');
+                    }
+                }
+            }, 50);
+        }
+        
+        // Update bot thoughts and decision tree
+        function updateBotIntelligence() {
+            const thoughts = [
+                "💭 Analyzing RSI divergence on BTC/USDT...",
+                "🔍 Detected ascending triangle pattern",
+                "⚡ Volume spike confirmed - potential breakout",
+                "🎯 Risk/reward ratio optimal at 1:3",
+                "🧠 Neural network suggests 73% win probability",
+                "📊 Market regime changed to 'trending bullish'",
+                "🔄 Switching to momentum strategy",
+                "💎 Diamond hands pattern forming",
+                "🚀 Accumulation phase detected",
+                "⚖️ Rebalancing position sizes for volatility"
+            ];
+            
+            const decisions = [
+                "📊 Market analysis complete",
+                "🎯 Strategy optimization active", 
+                "⚡ Signal generation enabled",
+                "🛡️ Risk management engaged",
+                "🎼 Strategy orchestra synchronized"
+            ];
+            
+            // Update bot thoughts
+            const thoughtElement = document.getElementById('botThoughts');
+            thoughtElement.textContent = thoughts[Math.floor(Math.random() * thoughts.length)];
+            
+            // Update decision tree
+            const treeElement = document.getElementById('decisionTree');
+            const steps = treeElement.children;
+            
+            // Reset all steps
+            for (let step of steps) {
+                step.classList.remove('active');
+            }
+            
+            // Activate random step
+            if (botRunning) {
+                const randomStep = Math.floor(Math.random() * steps.length);
+                steps[randomStep].classList.add('active');
+                
+                // Update step text
+                steps[randomStep].querySelector('div:last-child').textContent = 
+                    decisions[Math.floor(Math.random() * decisions.length)];
+            }
+        }
+        
+        // Update bot mood
+        function updateBotMood() {
+            const moods = ['aggressive', 'cautious', 'opportunistic', 'learning'];
+            const moodElement = document.getElementById('botMood');
+            const currentMood = moods[Math.floor(Math.random() * moods.length)];
+            
+            moodElement.className = `bot-mood mood-${currentMood}`;
+        }
+        
+        // Add trading feed messages
+        function addTradingFeedMessage(message, type = 'info') {
+            const feed = document.getElementById('tradingFeed');
+            const feedItem = document.createElement('div');
+            feedItem.className = 'feed-item';
+            
+            const now = new Date();
+            const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
+                             now.getMinutes().toString().padStart(2, '0');
+            
+            const icons = {
+                'profit': '💰',
+                'loss': '📉',
+                'analysis': '🔍',
+                'trade': '⚡',
+                'info': '🤖'
+            };
+            
+            feedItem.innerHTML = `
+                <div class="feed-time">${timeString}</div>
+                <div class="feed-icon">${icons[type] || '🤖'}</div>
+                <div class="feed-message ${type === 'profit' ? 'feed-profit' : type === 'loss' ? 'feed-loss' : ''}">${message}</div>
+            `;
+            
+            feed.insertBefore(feedItem, feed.firstChild);
+            
+            // Keep only last 10 messages
+            while (feed.children.length > 10) {
+                feed.removeChild(feed.lastChild);
+            }
+        }
+        
+        // Achievement system
+        function checkAchievements() {
+            const badges = document.querySelectorAll('.achievement-badge');
+            
+            if (achievementProgress.trades >= 1 && !badges[0].classList.contains('unlocked')) {
+                unlockAchievement(badges[0], "First Trade Complete!");
+            }
+            if (achievementProgress.wins >= 10 && !badges[1].classList.contains('unlocked')) {
+                unlockAchievement(badges[1], "10 Wins Achieved!");
+            }
+            if (achievementProgress.streak >= 5 && !badges[2].classList.contains('unlocked')) {
+                unlockAchievement(badges[2], "5 Win Streak!");
+            }
+            if (achievementProgress.dailyProfit >= 50 && !badges[3].classList.contains('unlocked')) {
+                unlockAchievement(badges[3], "AI Master Trader!");
+            }
+        }
+        
+        function unlockAchievement(badge, message) {
+            badge.classList.add('unlocked');
+            showToast(message, 'success');
+            triggerCelebration();
+            playSound('achievement');
+        }
+        
+        // Celebration effects
+        function triggerCelebration() {
+            const celebration = document.getElementById('celebration');
+            
+            for (let i = 0; i < 15; i++) {
+                setTimeout(() => {
+                    const firework = document.createElement('div');
+                    firework.className = 'firework';
+                    firework.style.left = Math.random() * 100 + '%';
+                    firework.style.top = Math.random() * 100 + '%';
+                    firework.style.background = `hsl(${Math.random() * 360}, 70%, 50%)`;
+                    
+                    celebration.appendChild(firework);
+                    
+                    setTimeout(() => {
+                        if (firework.parentNode) {
+                            firework.parentNode.removeChild(firework);
+                        }
+                    }, 1000);
+                }, i * 100);
+            }
+        }
+        
+        // Sound effects (placeholder)
+        function playSound(type) {
+            // In a real implementation, you would play actual sounds
+            console.log(`Playing ${type} sound effect`);
+        }
+        
+        // Toast notifications
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Loading state
+        function setLoading(loading) {
+            isLoading = loading;
+            document.getElementById('loading').style.display = loading ? 'block' : 'none';
+            
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.disabled = loading;
+            });
+        }
+        
+        // Bot control functions
+        async function startBot(mode) {
+            if (isLoading) return;
+            
+            setLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/bot/start`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({mode: mode, strategy: 'adaptive_auto_strategy'})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    botRunning = true;
+                    showToast(`🤖 AI Bot activated in ${mode} mode!`, 'success');
+                    addTradingFeedMessage(`🚀 Bot started in ${mode} mode with Auto-Strategy`, 'info');
+                    updateDashboard();
+                } else {
+                    showToast(result.message || 'Failed to start bot', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error', 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        async function stopBot() {
+            if (isLoading) return;
+            
+            setLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/bot/stop`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    botRunning = false;
+                    showToast('🛑 Bot stopped safely', 'success');
+                    addTradingFeedMessage('Bot stopped by user command', 'info');
+                    updateDashboard();
+                } else {
+                    showToast(result.message || 'Failed to stop bot', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error', 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        async function switchMode(newMode) {
+            if (isLoading) return;
+            
+            setLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/bot/switch-mode`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({mode: newMode})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast(`Switched to ${newMode} mode`, 'success');
+                    addTradingFeedMessage(`Mode switched to ${newMode}`, 'info');
+                    updateDashboard();
+                } else {
+                    showToast(result.message || 'Failed to switch mode', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error', 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        async function emergencyStop() {
+            if (!confirm('🚨 EMERGENCY STOP will immediately halt ALL trading! Continue?')) {
+                return;
+            }
+            
+            setLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/emergency-stop`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    botRunning = false;
+                    showToast('🚨 EMERGENCY STOP EXECUTED!', 'error');
+                    addTradingFeedMessage('🚨 EMERGENCY STOP - All trading halted', 'loss');
+                    updateDashboard();
+                } else {
+                    showToast('Emergency stop failed!', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error during emergency stop!', 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        // Dashboard updates
+        async function updateDashboard() {
+            try {
+                // Get bot status
+                const statusResponse = await fetch(`${API_BASE}/api/bot/status`);
+                const status = await statusResponse.json();
+                
+                // Update status indicator
+                const statusEl = document.getElementById('botStatus');
+                const isRunning = status.running;
+                botRunning = isRunning;
+                
+                const statusClass = isRunning ? 'status-running' : 'status-stopped';
+                const statusText = isRunning ? '🚀 AI Systems Online' : '⏹️ Systems Offline';
+                
+                statusEl.innerHTML = `
+                    <span class="status-indicator ${statusClass}"></span>
+                    <span>${statusText} ${status.mode ? `(${status.mode})` : ''}</span>
+                `;
+                
+                // Get portfolio data
+                const portfolioResponse = await fetch(`${API_BASE}/api/portfolio`);
+                const portfolio = await portfolioResponse.json();
+                
+                // Update portfolio with animation
+                const portfolioValue = portfolio.total_value || 1000;
+                animatePortfolioValue(portfolioValue);
+                
+                // Update growth indicators
+                const dailyPnL = portfolio.daily_pnl || 0;
+                const weeklyPnL = portfolio.weekly_pnl || 0;
+                
+                document.getElementById('dailyGrowth').textContent = 
+                    `${dailyPnL >= 0 ? '+' : ''}${dailyPnL.toFixed(2)}% Today`;
+                document.getElementById('dailyGrowth').className = 
+                    `growth-indicator ${dailyPnL >= 0 ? 'growth-positive' : 'growth-negative'}`;
+                
+                document.getElementById('weeklyGrowth').textContent = 
+                    `${weeklyPnL >= 0 ? '+' : ''}${weeklyPnL.toFixed(2)}% Week`;
+                document.getElementById('weeklyGrowth').className = 
+                    `growth-indicator ${weeklyPnL >= 0 ? 'growth-positive' : 'growth-negative'}`;
+                
+                // Update achievement progress
+                achievementProgress.trades = portfolio.total_trades || 0;
+                achievementProgress.wins = portfolio.winning_trades || 0;
+                achievementProgress.dailyProfit = Math.abs(dailyPnL);
+                
+                checkAchievements();
+                
+                // Simulate live feed messages if bot is running
+                if (isRunning && Math.random() > 0.7) {
+                    const messages = [
+                        "🎯 New trading opportunity identified",
+                        "⚡ Position opened: BTC/USDT Long",
+                        "📊 Market volatility: Medium",
+                        "🧠 AI confidence level: 85%",
+                        "💰 Profit target updated",
+                        "🛡️ Stop loss adjusted for safety"
+                    ];
+                    addTradingFeedMessage(messages[Math.floor(Math.random() * messages.length)], 'trade');
+                }
+                
+            } catch (error) {
+                console.error('Failed to update dashboard:', error);
+            }
+        }
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            initParticles();
+            updateDashboard();
+            
+            // Set up intervals
+            updateInterval = setInterval(updateDashboard, 5000);
+            setInterval(updateBotIntelligence, 3000);
+            setInterval(updateBotMood, 8000);
+            
+            // Initial animations
+            setTimeout(triggerMoneyRain, 1000);
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        });
+    </script>
+</body>
+</html>

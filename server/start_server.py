@@ -37,9 +37,17 @@ def main():
         logger.info(f"- Network: http://YOUR_SERVER_IP:{port}")
         logger.info(f"- Mobile Dashboard: http://YOUR_SERVER_IP:{port}/server/mobile_dashboard.html")
         
-        # Serve the mobile dashboard
+        # Serve the enhanced dashboard
         @app.route('/')
         def serve_dashboard():
+            """Serve the enhanced AI dashboard"""
+            dashboard_path = Path(__file__).parent / 'enhanced_dashboard.html'
+            with open(dashboard_path, 'r') as f:
+                return f.read()
+        
+        # Keep mobile dashboard available as alternative
+        @app.route('/mobile')
+        def serve_mobile_dashboard():
             """Serve the mobile dashboard"""
             dashboard_path = Path(__file__).parent / 'mobile_dashboard.html'
             with open(dashboard_path, 'r') as f:
