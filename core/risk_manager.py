@@ -29,9 +29,10 @@ logger = logging.getLogger(__name__)
 class RiskManager:
     """Comprehensive risk management system for trading bot"""
 
-    def __init__(self, settings):
+    def __init__(self, settings, position_manager=None):
         """Initialize Risk Manager with configuration"""
         self.settings = settings
+        self.position_manager = position_manager  # Store reference to position manager
         self.risk_config = settings.get('risk_management', {})
 
         # Risk parameters

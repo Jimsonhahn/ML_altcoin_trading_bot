@@ -6,6 +6,7 @@ from enum import Enum
 from typing import Dict, Tuple, Any, Optional
 import pandas as pd
 import logging
+from core.interfaces import IStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ class Signal(Enum):
     SELL = "SELL"
     HOLD = "HOLD"
 
-class Strategy(ABC):
+class Strategy(IStrategy):
     """Abstract base class for all trading strategies"""
 
     def __init__(self, params: Dict = None, ml_components: Optional[Any] = None):
@@ -228,3 +229,43 @@ class Strategy(ABC):
     def set_safety_manager(self, safety_manager):
         """Set safety manager reference for risk-adjusted position sizing"""
         self.safety_manager = safety_manager
+    
+    # Implementation of IStrategy interface methods
+    def generate_signals(self, data: pd.DataFrame, symbol: str) -> Dict[str, float]:
+        """
+        Generate trading signals for the given symbol and data
+        This method wraps the calculate_signal method to match the IStrategy interface
+        """
+        try:
+            current_price = data['close'].iloc[-1] if not data.empty else 0.0
+            signal, metadata = self.calculate_signal(symbol, data, current_price)
+            
+            # Convert signal to the expected format
+            confidence = metadata.get('confidence', 0.0)
+            signals = {
+                'signal_strength': confidence if signal == 'BUY' else -confidence if signal == 'SELL' else 0.0,
+                'buy_signal': confidence if signal == 'BUY' else 0.0,
+                'sell_signal': confidence if signal == 'SELL' else 0.0
+            }
+            
+            return signals
+            
+        except Exception as e:
+            logger.error(f"Error generating signals: {e}")
+            return {'signal_strength': 0.0, 'buy_signal': 0.0, 'sell_signal': 0.0}
+    
+    def get_name(self) -> str:
+        """Get the name of this strategy"""
+        return self.name
+    
+    def get_parameters(self) -> Dict[str, Any]:
+        """Get the parameters of this strategy"""
+        return self.params.copy()
+    
+    @abstractmethod
+    def calculate_signal(self, symbol: str, data: pd.DataFrame, current_price: float) -> Tuple[str, Dict[str, Any]]:
+        """
+        Abstract method that must be implemented by concrete strategy classes
+        Returns (signal, metadata) where signal is 'BUY', 'SELL', or 'HOLD'
+        """
+        pass

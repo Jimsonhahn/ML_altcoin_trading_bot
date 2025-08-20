@@ -58,9 +58,10 @@ class OrderSide(Enum):
 class OrderManager:
     """Comprehensive order management system"""
 
-    def __init__(self, settings):
+    def __init__(self, settings, position_manager=None):
         """Initialize Order Manager"""
         self.settings = settings
+        self.position_manager = position_manager  # Store reference to position manager
         self.execution_config = settings.get('execution', {})
 
         # Configuration

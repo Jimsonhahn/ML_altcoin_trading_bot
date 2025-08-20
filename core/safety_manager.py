@@ -348,3 +348,40 @@ class SafetyManager(ISafetyManager):
                 logger.info("Advanced risk monitoring stopped")
         except Exception as e:
             logger.error(f"Error stopping risk monitoring: {e}")
+    
+    # Implementation of abstract methods from ISafetyManager
+    def check_drawdown(self) -> bool:
+        """Check if current drawdown is within safe limits"""
+        if not self.killswitch_enabled:
+            return True
+        return self.current_drawdown_percent < self.max_drawdown_percent
+    
+    def emergency_stop(self, reason: str):
+        """Trigger emergency stop (killswitch)"""
+        self._activate_killswitch(reason)
+    
+    def is_safe_to_trade(self) -> bool:
+        """Check if it's safe to trade (not in emergency stop mode)"""
+        if self.is_killswitch_active:
+            return False
+        
+        # Additional safety checks
+        if not self.killswitch_enabled:
+            return True
+            
+        # Check if drawdown is within limits
+        if not self.check_drawdown():
+            return False
+            
+        # Check advanced risk metrics if available
+        if self.risk_monitor:
+            try:
+                risk_status = self.risk_monitor.get_current_risk_status()
+                if risk_status and hasattr(risk_status, 'overall_risk_score'):
+                    # If risk score is too high, don't trade
+                    if risk_status.overall_risk_score > 0.8:  # High risk threshold
+                        return False
+            except Exception as e:
+                logger.error(f"Error checking advanced risk status: {e}")
+        
+        return True

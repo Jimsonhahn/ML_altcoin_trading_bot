@@ -47,23 +47,26 @@ class ServerBotWrapper:
                 def __init__(self, mode, strategy):
                     self.mode = mode
                     self.strategy = strategy
-                    self.profile = 'default'
-                    self.ml = False
-                    self.ml_train = False
-                    self.optimize = False
-                    self.backtest_days = None
-                    self.no_risk_check = False
-                    self.debug = False
+                    self.config_profile = 'default'
+                    self.auto_strategy = False
+                    self.disable_ml = False
+                    self.symbols = None
+                    self.capital = None
+                    self.dry_run = False
+                    self.verbose = False
                     
             args = Args(mode, strategy)
             
             # Erstelle Bot-Instanz
             self.bot_instance = TradingBotApplication()
-            self.bot_instance.args = args
+            
+            # Logging einrichten
+            self.bot_instance.setup_logging(args.verbose)
             
             # Initialisiere Container und Komponenten
-            self.container = self.bot_instance.setup_container(args)
-            self.trading_bot = self.container.get('bot')
+            self.bot_instance.initialize_components(args)
+            self.container = self.bot_instance.di_container
+            self.trading_bot = self.bot_instance.trading_bot
             
             self.current_mode = mode
             logger.info(f"Bot initialized in {mode} mode with {strategy} strategy")
@@ -127,8 +130,11 @@ class ServerBotWrapper:
     def _run_bot(self):
         """Interne Methode um Bot in Thread zu starten"""
         try:
-            # Nutze die run() Methode des bestehenden Bots
-            self.bot_instance.run()
+            # Nutze die run() Methode des bestehenden Bots (async)
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self.bot_instance.run())
         except Exception as e:
             logger.error(f"Bot crashed: {str(e)}")
             self.is_running = False

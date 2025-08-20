@@ -285,8 +285,9 @@ class Position:
 class PositionManager:
     """Verwaltet mehrere Trading-Positionen"""
 
-    def __init__(self):
+    def __init__(self, settings=None):
         """Initialisiert den Position Manager"""
+        self.settings = settings  # Settings werden für zukünftige Erweiterungen gespeichert
         self.positions: Dict[str, Position] = {}  # Aktuelle offene Positionen
         self.closed_positions: List[Position] = []  # Historie geschlossener Positionen
         self.logger = logging.getLogger(__name__)
