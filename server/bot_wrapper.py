@@ -20,8 +20,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 from main import TradingBotApplication
 from core.trading_bot import TradingBot
 from config.settings import Settings
-from utils.dependency_injection import DependencyContainer
-from utils.notifier import Notifier
+from core.di_container import DIContainer
+from utils.notifier import TelegramNotifier
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class ServerBotWrapper:
     def __init__(self):
         self.bot_instance: Optional[TradingBotApplication] = None
         self.trading_bot: Optional[TradingBot] = None
-        self.container: Optional[DependencyContainer] = None
+        self.container: Optional[DIContainer] = None
         self.is_running = False
         self.current_mode = 'paper'
         self.start_time = None
