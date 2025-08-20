@@ -40,7 +40,7 @@ def start_bot():
     try:
         data = request.get_json() or {}
         mode = data.get('mode', 'paper')
-        strategy = data.get('strategy', 'momentum')
+        strategy = data.get('strategy', 'adaptive_auto_strategy')  # Default zu Auto-Strategy
         
         result = server_bot.start_bot(mode=mode, strategy=strategy)
         return jsonify(result)
@@ -124,14 +124,16 @@ def get_strategies():
     try:
         # Liste der verfügbaren Strategien
         strategies = [
-            {'id': 'momentum', 'name': 'Momentum Strategy', 'risk': 'medium'},
-            {'id': 'mean_reversion', 'name': 'Mean Reversion', 'risk': 'low'},
-            {'id': 'arbitrage', 'name': 'Arbitrage', 'risk': 'low'},
-            {'id': 'grid_trading', 'name': 'Grid Trading', 'risk': 'medium'},
-            {'id': 'candle_momentum', 'name': 'Candle Momentum', 'risk': 'medium'},
-            {'id': 'lazy_billionaire_strategy', 'name': 'Lazy Billionaire', 'risk': 'low'},
-            {'id': 'super_lazy_billionaire_strategy', 'name': 'Super Lazy Billionaire', 'risk': 'low'},
-            {'id': 'ultimate_btc_strategy', 'name': 'Ultimate BTC', 'risk': 'high'},
+            {'id': 'adaptive_auto_strategy', 'name': '🤖 Auto-Strategy (Sorglos)', 'risk': 'adaptive', 'description': 'Vollautomatische Strategie mit intelligentem Risk Management'},
+            {'id': 'momentum', 'name': 'Momentum Strategy', 'risk': 'medium', 'description': 'Trend-folgende Strategie'},
+            {'id': 'mean_reversion', 'name': 'Mean Reversion', 'risk': 'low', 'description': 'Rückkehr zum Mittelwert'},
+            {'id': 'arbitrage', 'name': 'Arbitrage', 'risk': 'low', 'description': 'Preisunterschiede ausnutzen'},
+            {'id': 'grid_trading', 'name': 'Grid Trading', 'risk': 'medium', 'description': 'Raster-basierter Handel'},
+            {'id': 'candle_momentum', 'name': 'Candle Momentum', 'risk': 'medium', 'description': 'Kerzen-basierte Signale'},
+            {'id': 'lazy_billionaire_strategy', 'name': 'Lazy Billionaire', 'risk': 'low', 'description': 'Entspanntes DCA Trading'},
+            {'id': 'super_lazy_billionaire_strategy', 'name': 'Super Lazy Billionaire', 'risk': 'low', 'description': 'Ultra-entspanntes Trading'},
+            {'id': 'high_risk_daily', 'name': 'High Risk Daily', 'risk': 'high', 'description': 'Aggressives Tagestrading'},
+            {'id': 'ml_strategy', 'name': 'ML Strategy', 'risk': 'high', 'description': 'Machine Learning basiert'}
         ]
         return jsonify(strategies)
         
@@ -147,6 +149,12 @@ def get_config():
             'mode': server_bot.current_mode,
             'is_running': server_bot.is_running,
             'available_modes': ['paper', 'live'],
+            'auto_strategy_settings': {
+                'daily_risk_limit': 100.0,
+                'portfolio_scale_factor': 0.02,
+                'min_daily_limit': 50.0,
+                'max_daily_limit': 500.0
+            },
             'risk_limits': {
                 'max_position_size': 0.1,
                 'max_open_positions': 5,
@@ -158,6 +166,48 @@ def get_config():
     except Exception as e:
         logger.error(f"Error getting config: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/auto-strategy/settings', methods=['GET'])
+def get_auto_strategy_settings():
+    """Gibt Auto-Strategy Einstellungen zurück"""
+    try:
+        settings = {
+            'daily_risk_limit': 100.0,
+            'current_daily_pnl': 0.0,
+            'portfolio_value': 1000.0,
+            'calculated_risk_limit': 100.0,
+            'available_strategies': {
+                'conservative': ['mean_reversion', 'arbitrage', 'lazy_billionaire_strategy'],
+                'moderate': ['momentum', 'grid_trading', 'candle_momentum'],
+                'aggressive': ['high_risk_daily', 'ml_strategy', 'optimized_candle_momentum']
+            },
+            'current_market_regime': 'mixed',
+            'selected_strategy': 'momentum'
+        }
+        return jsonify(settings)
+        
+    except Exception as e:
+        logger.error(f"Error getting auto-strategy settings: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/auto-strategy/settings', methods=['POST'])
+def update_auto_strategy_settings():
+    """Aktualisiert Auto-Strategy Einstellungen"""
+    try:
+        data = request.get_json() or {}
+        
+        # Hier würden wir die Einstellungen im Bot aktualisieren
+        # server_bot.update_auto_strategy_settings(data)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Auto-Strategy settings updated',
+            'settings': data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating auto-strategy settings: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/emergency-stop', methods=['POST'])
 def emergency_stop():

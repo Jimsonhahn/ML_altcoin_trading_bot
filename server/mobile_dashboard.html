@@ -297,6 +297,49 @@
         .toast.error {
             background: #ff4757;
         }
+        
+        /* Auto-Strategy Info Panel */
+        .auto-strategy-info {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #00ff88;
+        }
+        
+        .auto-strategy-info h3 {
+            margin-bottom: 10px;
+            color: #00ff88;
+        }
+        
+        .auto-strategy-info p {
+            line-height: 1.8;
+            margin-bottom: 15px;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .auto-stats {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+        
+        .auto-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+        }
+        
+        .auto-stat .label {
+            opacity: 0.7;
+            font-size: 14px;
+        }
+        
+        .auto-stat .value {
+            font-weight: 600;
+            color: #00ff88;
+        }
     </style>
 </head>
 <body>
@@ -314,14 +357,40 @@
         <div class="strategy-selector">
             <label for="strategySelect">Trading Strategy:</label>
             <select id="strategySelect">
+                <option value="adaptive_auto_strategy" selected>🤖 Auto-Strategy (Sorglos) - Empfohlen!</option>
                 <option value="momentum">Momentum Strategy</option>
                 <option value="mean_reversion">Mean Reversion</option>
                 <option value="arbitrage">Arbitrage</option>
                 <option value="grid_trading">Grid Trading</option>
                 <option value="candle_momentum">Candle Momentum</option>
                 <option value="lazy_billionaire_strategy">Lazy Billionaire</option>
-                <option value="ultimate_btc_strategy">Ultimate BTC</option>
+                <option value="high_risk_daily">High Risk Daily</option>
             </select>
+        </div>
+        
+        <!-- Auto-Strategy Info Panel -->
+        <div class="auto-strategy-info" id="autoStrategyInfo" style="display: block;">
+            <h3>🤖 Sorglos Auto-Strategy</h3>
+            <p>
+                ✅ Automatische Strategie-Auswahl<br>
+                ✅ Max 100€ Tagesrisiko (skaliert mit Portfolio)<br>
+                ✅ Nutzt auch High-Risk Strategien intelligent<br>
+                ✅ Vollständig autonom - einfach starten!
+            </p>
+            <div class="auto-stats">
+                <div class="auto-stat">
+                    <span class="label">Tagesrisiko:</span>
+                    <span class="value" id="dailyRiskUsed">0€ / 100€</span>
+                </div>
+                <div class="auto-stat">
+                    <span class="label">Aktive Strategie:</span>
+                    <span class="value" id="currentAutoStrategy">-</span>
+                </div>
+                <div class="auto-stat">
+                    <span class="label">Marktlage:</span>
+                    <span class="value" id="marketRegime">Analysiere...</span>
+                </div>
+            </div>
         </div>
         
         <!-- Control Buttons -->
