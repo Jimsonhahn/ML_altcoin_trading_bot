@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Trading Bot Control</title>
+    <style>
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        /* Container */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #333;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-running { background: #00ff88; }
+        .status-stopped { background: #ff4757; }
+        
+        /* Control Buttons */
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        .btn-start {
+            background: #00ff88;
+            color: #000;
+        }
+        
+        .btn-stop {
+            background: #ff4757;
+            color: #fff;
+        }
+        
+        .btn-paper {
+            background: #3742fa;
+            color: #fff;
+        }
+        
+        .btn-live {
+            background: #ff6348;
+            color: #fff;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Strategy Selector */
+        .strategy-selector {
+            margin-bottom: 20px;
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .strategy-selector label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .strategy-selector select {
+            width: 100%;
+            padding: 10px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 16px;
+        }
+        
+        /* Portfolio Card */
+        .portfolio-card {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #00ff88;
+        }
+        
+        .portfolio-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #00ff88;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .metric {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .metric-label {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+        
+        .positive { color: #00ff88; }
+        .negative { color: #ff4757; }
+        
+        /* Trades List */
+        .trades-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .trades-section h3 {
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .trade-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #333;
+        }
+        
+        .trade-item:last-child {
+            border-bottom: none;
+        }
+        
+        .trade-info {
+            flex: 1;
+        }
+        
+        .trade-symbol {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .trade-strategy {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        .trade-pnl {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        /* Emergency Button */
+        .emergency-section {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #333;
+        }
+        
+        .btn-emergency {
+            width: 100%;
+            background: #ff0000;
+            color: #fff;
+            padding: 20px;
+            font-size: 18px;
+            border: 2px solid #ff0000;
+        }
+        
+        .btn-emergency:active {
+            background: #cc0000;
+        }
+        
+        /* Loading Spinner */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #00ff88;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 480px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .portfolio-value {
+                font-size: 28px;
+            }
+        }
+        
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            opacity: 1;
+        }
+        
+        .toast.success {
+            background: #00ff88;
+            color: #000;
+        }
+        
+        .toast.error {
+            background: #ff4757;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Trading Bot Control</h1>
+            <div id="botStatus">
+                <span class="status-indicator status-stopped"></span>
+                <span>Status: Loading...</span>
+            </div>
+        </div>
+        
+        <!-- Strategy Selector -->
+        <div class="strategy-selector">
+            <label for="strategySelect">Trading Strategy:</label>
+            <select id="strategySelect">
+                <option value="momentum">Momentum Strategy</option>
+                <option value="mean_reversion">Mean Reversion</option>
+                <option value="arbitrage">Arbitrage</option>
+                <option value="grid_trading">Grid Trading</option>
+                <option value="candle_momentum">Candle Momentum</option>
+                <option value="lazy_billionaire_strategy">Lazy Billionaire</option>
+                <option value="ultimate_btc_strategy">Ultimate BTC</option>
+            </select>
+        </div>
+        
+        <!-- Control Buttons -->
+        <div class="controls">
+            <button class="btn btn-paper" onclick="startBot('paper')">
+                Start Paper Trading
+            </button>
+            <button class="btn btn-live" onclick="startBot('live')">
+                Start Live Trading
+            </button>
+            <button class="btn btn-stop" onclick="stopBot()">
+                Stop Bot
+            </button>
+            <button class="btn btn-paper" onclick="switchMode('paper')">
+                Switch to Paper
+            </button>
+        </div>
+        
+        <!-- Portfolio Overview -->
+        <div class="portfolio-card">
+            <h3>Portfolio Value</h3>
+            <div class="portfolio-value" id="portfolioValue">$0.00</div>
+        </div>
+        
+        <!-- Metrics -->
+        <div class="metrics-grid">
+            <div class="metric">
+                <div class="metric-value" id="dailyPnL">$0.00</div>
+                <div class="metric-label">Daily P&L</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="winRate">0%</div>
+                <div class="metric-label">Win Rate</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="activeTrades">0</div>
+                <div class="metric-label">Active Trades</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="totalTrades">0</div>
+                <div class="metric-label">Total Trades</div>
+            </div>
+        </div>
+        
+        <!-- Active Trades -->
+        <div class="trades-section">
+            <h3>Active Trades</h3>
+            <div id="tradesList">
+                <div style="text-align: center; opacity: 0.5; padding: 20px;">
+                    No active trades
+                </div>
+            </div>
+        </div>
+        
+        <!-- Emergency Stop -->
+        <div class="emergency-section">
+            <button class="btn btn-emergency" onclick="emergencyStop()">
+                EMERGENCY STOP
+            </button>
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+        </div>
+        
+        <!-- Toast Container -->
+        <div class="toast" id="toast"></div>
+    </div>
+    
+    <script>
+        // API Configuration
+        const API_BASE = window.location.origin.replace(':3000', ':5000').replace(':80', ':5000');
+        
+        // State
+        let isLoading = false;
+        let updateInterval = null;
+        
+        // Show toast notification
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Show/hide loading
+        function setLoading(loading) {
+            isLoading = loading;
+            document.getElementById('loading').style.display = loading ? 'block' : 'none';
+            
+            // Disable buttons while loading
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.disabled = loading;
+            });
+        }
+        
+        // Start bot
+        async function startBot(mode) {
+            if (isLoading) return;
+            
+            const strategy = document.getElementById('strategySelect').value;
+            
+            if (mode === 'live' && !confirm('Are you sure you want to start LIVE trading? Real money will be at risk!')) {
+                return;
+            }
+            
+            setLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/bot/start`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({mode: mode, strategy: strategy})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast(`Bot started in ${mode} mode with ${strategy}`, 'success');
+                    updateDashboard();
+                } else {
+                    showToast(result.message || 'Failed to start bot', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error', 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        // Stop bot
+        async function stopBot() {
+            if (isLoading) return;
+            
+            if (!confirm('Are you sure you want to stop the bot?')) {
+                return;
+            }
+            
+            setLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/bot/stop`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast('Bot stopped', 'success');
+                    updateDashboard();
+                } else {
+                    showToast(result.message || 'Failed to stop bot', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error', 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        // Switch mode
+        async function switchMode(newMode) {
+            if (isLoading) return;
+            
+            setLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/bot/switch-mode`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({mode: newMode})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast(`Switched to ${newMode} mode`, 'success');
+                    updateDashboard();
+                } else {
+                    showToast(result.message || 'Failed to switch mode', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error', 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        // Emergency stop
+        async function emergencyStop() {
+            if (!confirm('EMERGENCY STOP will immediately halt all trading! Continue?')) {
+                return;
+            }
+            
+            setLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/emergency-stop`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast('Emergency stop executed!', 'success');
+                    updateDashboard();
+                } else {
+                    showToast('Emergency stop failed!', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error during emergency stop!', 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        // Update dashboard
+        async function updateDashboard() {
+            try {
+                // Get bot status
+                const statusResponse = await fetch(`${API_BASE}/api/bot/status`);
+                const status = await statusResponse.json();
+                
+                // Update status indicator
+                const statusEl = document.getElementById('botStatus');
+                const isRunning = status.running;
+                statusEl.innerHTML = `
+                    <span class="status-indicator ${isRunning ? 'status-running' : 'status-stopped'}"></span>
+                    <span>Status: ${isRunning ? 'Running' : 'Stopped'} ${status.mode ? `(${status.mode})` : ''}</span>
+                `;
+                
+                // Get portfolio data
+                const portfolioResponse = await fetch(`${API_BASE}/api/portfolio`);
+                const portfolio = await portfolioResponse.json();
+                
+                // Update portfolio values
+                document.getElementById('portfolioValue').textContent = 
+                    `$${(portfolio.total_value || 0).toFixed(2)}`;
+                
+                const dailyPnL = portfolio.daily_pnl || 0;
+                const dailyPnLEl = document.getElementById('dailyPnL');
+                dailyPnLEl.textContent = `$${dailyPnL.toFixed(2)}`;
+                dailyPnLEl.className = `metric-value ${dailyPnL >= 0 ? 'positive' : 'negative'}`;
+                
+                document.getElementById('winRate').textContent = 
+                    `${(portfolio.win_rate || 0).toFixed(1)}%`;
+                document.getElementById('activeTrades').textContent = 
+                    portfolio.active_trades || 0;
+                document.getElementById('totalTrades').textContent = 
+                    portfolio.total_trades || 0;
+                
+                // Get active trades
+                const tradesResponse = await fetch(`${API_BASE}/api/trades/active`);
+                const trades = await tradesResponse.json();
+                
+                // Update trades list
+                const tradesList = document.getElementById('tradesList');
+                if (trades.length === 0) {
+                    tradesList.innerHTML = `
+                        <div style="text-align: center; opacity: 0.5; padding: 20px;">
+                            No active trades
+                        </div>
+                    `;
+                } else {
+                    tradesList.innerHTML = trades.map(trade => {
+                        const pnl = trade.pnl || 0;
+                        return `
+                            <div class="trade-item">
+                                <div class="trade-info">
+                                    <div class="trade-symbol">${trade.symbol}</div>
+                                    <div class="trade-strategy">${trade.strategy}</div>
+                                </div>
+                                <div class="trade-pnl ${pnl >= 0 ? 'positive' : 'negative'}">
+                                    $${pnl.toFixed(2)}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                
+            } catch (error) {
+                console.error('Failed to update dashboard:', error);
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initial update
+            updateDashboard();
+            
+            // Set up auto-update every 5 seconds
+            updateInterval = setInterval(updateDashboard, 5000);
+        });
+        
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        });
+    </script>
+</body>
+</html>

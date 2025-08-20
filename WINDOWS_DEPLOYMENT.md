@@ -1,37 +1,38 @@
-# 🚀 JANICS FREEDOM FACTORY - WINDOWS DEPLOYMENT GUIDE
+# Windows Server Deployment Guide - Mobile Dashboard
 
-## Für Windows PowerShell
+## Schnell-Start für Mobile Dashboard Control
 
-### 1️⃣ Repository klonen (falls noch nicht geschehen)
+### 1. Dependencies installieren
 ```powershell
-git clone https://github.com/Jimsonhahn/ML_altcoin_trading_bot.git
-cd ML_altcoin_trading_bot
-```
+# Python Virtual Environment erstellen
+python -m venv venv
+.\venv\Scripts\Activate.ps1
 
-### 2️⃣ Environment-Datei erstellen
-```powershell
-# Kopiere die Vorlage
-Copy-Item .env.production.example .env.production
-
-# Bearbeite mit Notepad
-notepad .env.production
-
-# Oder mit VSCode (falls installiert)
-code .env.production
-```
-
-### 3️⃣ Bot lokal auf Windows testen
-```powershell
-# Virtual Environment aktivieren (falls noch nicht aktiv)
-.\venv\Scripts\Activate
-
-# Dependencies installieren
+# Trading Bot Dependencies
 pip install -r requirements.txt
+pip install lightgbm xgboost
 
-# Bot starten
-$env:FLASK_PORT=8080
-$env:FLASK_HOST="0.0.0.0"
-python api\app.py
+# Windows Service Support (optional für 24/7)
+pip install pywin32
+```
+
+### 2. Dashboard API starten
+```powershell
+# Einfacher Start
+python server/start_server.py
+
+# Dashboard läuft auf:
+# http://localhost:5000 (lokal)
+# http://DEINE-SERVER-IP:5000 (mobile)
+```
+
+### 3. Firewall für Mobile-Zugriff konfigurieren
+```powershell
+# Als Administrator ausführen
+New-NetFirewallRule -DisplayName "Trading Bot Dashboard" -Direction Inbound -Protocol TCP -LocalPort 5000 -Action Allow
+
+# Server IP herausfinden
+ipconfig
 ```
 
 ### 4️⃣ Für Server-Deployment (Linux)
