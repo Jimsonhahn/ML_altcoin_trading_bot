@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Any
 import logging
 
 from .strategy_base import Strategy
+from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +24,10 @@ logger = logging.getLogger(__name__)
 class AdaptiveAutoStrategy(Strategy):
     """Vollautomatische adaptive Strategie mit intelligentem Risk Management"""
     
-    def __init__(self, exchange_manager, config: dict):
-        super().__init__(exchange_manager, config)
+    def __init__(self, params: Dict = None, ml_components: Optional[Any] = None):
+        super().__init__(params, ml_components)
+        self.exchange_manager = None  # Will be set later if needed
+        config = params if params else {}
         
         # Strategie-Konfiguration
         self.daily_risk_limit = config.get('daily_risk_limit', 100.0)  # 100€ Start-Limit
@@ -61,8 +64,11 @@ class AdaptiveAutoStrategy(Strategy):
         self.strategy_performance = {}
         self.market_conditions = {}
         
-    def calculate_signal(self, symbol: str, timeframe: str = '1h') -> Dict[str, Any]:
+    def calculate_signal(self, symbol: str, data: pd.DataFrame, current_price: float) -> Tuple[str, Dict[str, Any]]:
         """Hauptlogik: Wählt automatisch beste Strategie und generiert Signal"""
+        timeframe = '1h'  # Default timeframe
+        self._current_data = data  # Store data for use in other methods
+        self._current_price = current_price
         try:
             # 1. Tägliche Limits prüfen und zurücksetzen
             self._check_daily_reset()
@@ -96,11 +102,14 @@ class AdaptiveAutoStrategy(Strategy):
             logger.info(f"Auto-Strategy: {selected_strategy} | Market: {market_regime['regime']} | "
                        f"Risk: {current_daily_risk:.2f}€/{max_allowed_risk:.2f}€ | Signal: {signal['action']}")
             
-            return signal
+            # Convert to expected tuple format
+            action = signal.get('action', 'HOLD')
+            return action, signal
             
         except Exception as e:
             logger.error(f"Fehler in AdaptiveAutoStrategy: {str(e)}")
-            return self._create_no_trade_signal(symbol, f"Strategy error: {str(e)}")
+            signal = self._create_no_trade_signal(symbol, f"Strategy error: {str(e)}")
+            return 'HOLD', signal
     
     def _check_daily_reset(self):
         """Prüft ob neuer Tag und resettet Daily-Stats"""
@@ -144,8 +153,11 @@ class AdaptiveAutoStrategy(Strategy):
     def _analyze_market_conditions(self, symbol: str, timeframe: str) -> Dict[str, Any]:
         """Analysiert Marktbedingungen um optimale Strategie zu wählen"""
         try:
-            # Marktdaten holen
-            df = self.exchange_manager.get_ohlcv(symbol, timeframe, limit=100)
+            # Use data passed to calculate_signal if available
+            df = getattr(self, '_current_data', None)
+            if df is None and self.exchange_manager:
+                # Fallback to exchange manager if available
+                df = self.exchange_manager.get_ohlcv(symbol, timeframe, limit=100)
             
             if df is None or len(df) < 20:
                 return {'regime': 'unknown', 'volatility': 'medium', 'trend': 'sideways'}
@@ -270,7 +282,9 @@ class AdaptiveAutoStrategy(Strategy):
         # Für Demo: simuliere Strategien
         
         try:
-            df = self.exchange_manager.get_ohlcv(symbol, timeframe, limit=50)
+            df = getattr(self, '_current_data', None)
+            if df is None and self.exchange_manager:
+                df = self.exchange_manager.get_ohlcv(symbol, timeframe, limit=50)
             if df is None or len(df) < 10:
                 return self._create_no_trade_signal(symbol, "Insufficient data")
             
@@ -482,3 +496,38 @@ class AdaptiveAutoStrategy(Strategy):
             'available_strategies': self.available_strategies,
             'current_strategy': self.current_strategy
         }
+    
+    def get_parameters(self) -> Dict[str, Any]:
+        """Get the parameters of this strategy (IStrategy interface)"""
+        return {
+            'daily_risk_limit': self.daily_risk_limit,
+            'portfolio_scale_factor': self.portfolio_scale_factor,
+            'min_daily_limit': self.min_daily_limit,
+            'max_daily_limit': self.max_daily_limit
+        }
+    
+    def generate_signals(self, data: pd.DataFrame, symbol: str) -> Dict[str, float]:
+        """Generate trading signals for the given symbol and data (IStrategy interface)"""
+        try:
+            current_price = data['close'].iloc[-1] if not data.empty else 0.0
+            action, signal_data = self.calculate_signal(symbol, data, current_price)
+            
+            # Convert to expected format
+            confidence = signal_data.get('confidence', 0.0)
+            signals = {
+                'signal_strength': confidence if action == 'BUY' else -confidence if action == 'SELL' else 0.0,
+                'buy_signal': confidence if action == 'BUY' else 0.0,
+                'sell_signal': confidence if action == 'SELL' else 0.0,
+                'position_size': signal_data.get('position_size', 0.0),
+                'stop_loss': signal_data.get('stop_loss_pct', 0.0),
+                'take_profit': signal_data.get('take_profit_pct', 0.0)
+            }
+            return signals
+            
+        except Exception as e:
+            logger.error(f"Error generating signals: {e}")
+            return {'signal_strength': 0.0, 'buy_signal': 0.0, 'sell_signal': 0.0}
+    
+    def get_name(self) -> str:
+        """Get the name of this strategy (IStrategy interface)"""
+        return "AdaptiveAutoStrategy"
