@@ -16,28 +16,8 @@ from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 import logging
 
-# Direkter Import um zirkuläre Imports zu vermeiden
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
-
-from abc import ABC, abstractmethod
-from typing import Dict, Tuple, Any, Optional
-import pandas as pd
-
-# Basis Strategy Interface
-class Strategy(ABC):
-    """Basis Strategy Klasse"""
-    
-    def __init__(self, exchange_manager, config: dict):
-        self.exchange_manager = exchange_manager
-        self.config = config
-        self.name = self.__class__.__name__
-    
-    @abstractmethod
-    def calculate_signal(self, symbol: str, timeframe: str = '1h') -> Dict[str, Any]:
-        """Berechnet Trading-Signal"""
-        pass
+# Import bestehende Strategy Base
+from .strategy_base import Strategy, Signal
 
 logger = logging.getLogger(__name__)
 
@@ -90,15 +70,15 @@ class SmartMoneyMachine(Strategy):
     - Intelligent Risk Management für beide Portfolios
     """
     
-    def __init__(self, exchange_manager, config: dict):
-        super().__init__(exchange_manager, config)
+    def __init__(self, params: Dict = None, ml_components: Optional[Any] = None):
+        super().__init__(params, ml_components)
         
         # Portfolio Setup
-        total_capital = config.get('total_capital', 1000.0)
+        total_capital = params.get('total_capital', 1000.0) if params else 1000.0
         self.portfolio_allocation = PortfolioAllocation(
             total_capital=total_capital,
-            safe_allocation=config.get('safe_allocation', 0.85),
-            high_risk_allocation=config.get('high_risk_allocation', 0.15)
+            safe_allocation=params.get('safe_allocation', 0.85) if params else 0.85,
+            high_risk_allocation=params.get('high_risk_allocation', 0.15) if params else 0.15
         )
         
         # Trade Configurations
@@ -117,7 +97,7 @@ class SmartMoneyMachine(Strategy):
             max_position_size=self.portfolio_allocation.high_risk_capital * 0.3,  # Max 30% per trade
             stop_loss_pct=5.0,  # 5% Stop Loss (wider for leverage)
             take_profit_pct=15.0,  # 15% Take Profit (higher target)
-            leverage=config.get('max_leverage', 3.0),  # 3x Leverage
+            leverage=params.get('max_leverage', 3.0) if params else 3.0,  # 3x Leverage
             max_daily_trades=15,
             confidence_threshold=0.6  # Lower confidence ok for high-risk
         )
@@ -146,21 +126,22 @@ class SmartMoneyMachine(Strategy):
         
         logger.info(f"Smart Money Machine initialized: Safe ${self.portfolio_allocation.safe_capital:.2f} | "
                    f"High-Risk ${self.portfolio_allocation.high_risk_capital:.2f}")
-    
-    def calculate_signal(self, symbol: str, timeframe: str = '1h') -> Dict[str, Any]:
+
+    def calculate_signal(self, symbol: str, data: pd.DataFrame, current_price: float) -> Tuple[str, Dict[str, Any]]:
         """
         Hauptlogik: Generiert Signale für beide Portfolio-Teile
+        Compatible with existing Strategy interface
         """
         try:
             # Daily Reset
             self._check_daily_reset()
             
             # Market Analysis
-            market_analysis = self._analyze_market_conditions(symbol, timeframe)
+            market_analysis = self._analyze_market_conditions(data)
             
             # Generate signals for both portfolios
-            safe_signal = self._generate_safe_signal(symbol, timeframe, market_analysis)
-            high_risk_signal = self._generate_high_risk_signal(symbol, timeframe, market_analysis)
+            safe_signal = self._generate_safe_signal(symbol, data, current_price, market_analysis)
+            high_risk_signal = self._generate_high_risk_signal(symbol, data, current_price, market_analysis)
             
             # Select best signal based on conditions and limits
             selected_signal = self._select_optimal_signal(safe_signal, high_risk_signal, market_analysis)
@@ -168,35 +149,57 @@ class SmartMoneyMachine(Strategy):
             # Apply final risk checks
             final_signal = self._apply_risk_management(selected_signal, symbol)
             
-            return final_signal
+            return final_signal['action'], final_signal
             
         except Exception as e:
             logger.error(f"Error in Smart Money Machine: {str(e)}")
-            return self._create_hold_signal(symbol, f"Error: {str(e)}")
+            return 'HOLD', {'confidence': 0.0, 'reason': f"Error: {str(e)}"}
+
+    def generate_signals(self, data: pd.DataFrame, symbol: str) -> Dict[str, float]:
+        """
+        IStrategy interface compliance
+        """
+        try:
+            current_price = data['close'].iloc[-1]
+            action, signal_data = self.calculate_signal(symbol, data, current_price)
+            
+            # Convert to expected format
+            signals = {
+                'action': 1.0 if action == 'BUY' else (-1.0 if action == 'SELL' else 0.0),
+                'confidence': signal_data.get('confidence', 0.0),
+                'position_size': signal_data.get('position_size', 0.0),
+                'stop_loss': signal_data.get('stop_loss_pct', 0.0),
+                'take_profit': signal_data.get('take_profit_pct', 0.0),
+                'leverage': signal_data.get('leverage', 1.0)
+            }
+            return signals
+            
+        except Exception as e:
+            logger.error(f"Error generating signals: {e}")
+            return {'action': 0.0, 'confidence': 0.0, 'position_size': 0.0}
+
+    def get_name(self) -> str:
+        """IStrategy interface compliance"""
+        return "SmartMoneyMachine"
     
-    def _generate_safe_signal(self, symbol: str, timeframe: str, market_analysis: Dict) -> Dict[str, Any]:
+    def _generate_safe_signal(self, symbol: str, data: pd.DataFrame, current_price: float, market_analysis: Dict) -> Dict[str, Any]:
         """Generiert sicheres, konservatives Signal"""
         
         if self.daily_trades['safe'] >= self.safe_config.max_daily_trades:
             return self._create_hold_signal(symbol, "Safe daily limit reached")
         
         try:
-            df = self.exchange_manager.get_ohlcv(symbol, timeframe, limit=50)
-            if df is None or len(df) < 20:
-                return self._create_hold_signal(symbol, "Insufficient data for safe analysis")
-            
             # Conservative indicators
-            df['sma_20'] = df['close'].rolling(20).mean()
-            df['sma_50'] = df['close'].rolling(50).mean()
-            df['rsi'] = self._calculate_rsi(df['close'], 14)
-            df['bb_upper'], df['bb_lower'] = self._calculate_bollinger_bands(df['close'], 20)
+            data['sma_20'] = data['close'].rolling(20).mean()
+            data['sma_50'] = data['close'].rolling(50).mean()
+            data['rsi'] = self._calculate_rsi(data['close'], 14)
+            data['bb_upper'], data['bb_lower'] = self._calculate_bollinger_bands(data['close'], 20)
             
-            current_price = df['close'].iloc[-1]
-            sma_20 = df['sma_20'].iloc[-1]
-            sma_50 = df['sma_50'].iloc[-1] if len(df) >= 50 else sma_20
-            rsi = df['rsi'].iloc[-1]
-            bb_upper = df['bb_upper'].iloc[-1]
-            bb_lower = df['bb_lower'].iloc[-1]
+            sma_20 = data['sma_20'].iloc[-1]
+            sma_50 = data['sma_50'].iloc[-1] if len(data) >= 50 else sma_20
+            rsi = data['rsi'].iloc[-1]
+            bb_upper = data['bb_upper'].iloc[-1]
+            bb_lower = data['bb_lower'].iloc[-1]
             
             # Safe Trading Logic (sehr konservativ)
             confidence = 0.0
@@ -260,31 +263,26 @@ class SmartMoneyMachine(Strategy):
             logger.error(f"Error generating safe signal: {str(e)}")
             return self._create_hold_signal(symbol, f"Safe signal error: {str(e)}")
     
-    def _generate_high_risk_signal(self, symbol: str, timeframe: str, market_analysis: Dict) -> Dict[str, Any]:
+    def _generate_high_risk_signal(self, symbol: str, data: pd.DataFrame, current_price: float, market_analysis: Dict) -> Dict[str, Any]:
         """Generiert aggressive High-Risk Signal mit Leverage"""
         
         if self.daily_trades['high_risk'] >= self.high_risk_config.max_daily_trades:
             return self._create_hold_signal(symbol, "High-risk daily limit reached")
         
         try:
-            df = self.exchange_manager.get_ohlcv(symbol, timeframe, limit=100)
-            if df is None or len(df) < 30:
-                return self._create_hold_signal(symbol, "Insufficient data for high-risk analysis")
-            
             # Aggressive indicators
-            df['ema_12'] = df['close'].ewm(span=12).mean()
-            df['ema_26'] = df['close'].ewm(span=26).mean()
-            df['rsi'] = self._calculate_rsi(df['close'], 14)
-            df['macd'] = df['ema_12'] - df['ema_26']
-            df['volume_sma'] = df['volume'].rolling(20).mean()
+            data['ema_12'] = data['close'].ewm(span=12).mean()
+            data['ema_26'] = data['close'].ewm(span=26).mean()
+            data['rsi'] = self._calculate_rsi(data['close'], 14)
+            data['macd'] = data['ema_12'] - data['ema_26']
+            data['volume_sma'] = data['volume'].rolling(20).mean()
             
-            current_price = df['close'].iloc[-1]
-            ema_12 = df['ema_12'].iloc[-1]
-            ema_26 = df['ema_26'].iloc[-1]
-            rsi = df['rsi'].iloc[-1]
-            macd = df['macd'].iloc[-1]
-            prev_macd = df['macd'].iloc[-2]
-            volume_ratio = df['volume'].iloc[-1] / df['volume_sma'].iloc[-1]
+            ema_12 = data['ema_12'].iloc[-1]
+            ema_26 = data['ema_26'].iloc[-1]
+            rsi = data['rsi'].iloc[-1]
+            macd = data['macd'].iloc[-1]
+            prev_macd = data['macd'].iloc[-2]
+            volume_ratio = data['volume'].iloc[-1] / data['volume_sma'].iloc[-1]
             
             # High-Risk Trading Logic (aggressiv)
             confidence = 0.0
@@ -319,10 +317,10 @@ class SmartMoneyMachine(Strategy):
             # Volatility Breakout (high-risk favorite)
             elif (market_analysis.get('volatility', 'low') == 'high' and
                   volume_ratio > 1.5 and  # Strong volume
-                  abs(df['close'].pct_change().iloc[-1]) > 0.02):  # 2% move
+                  abs(data['close'].pct_change().iloc[-1]) > 0.02):  # 2% move
                 
                 # Direction based on price action
-                if df['close'].iloc[-1] > df['close'].iloc[-2]:
+                if data['close'].iloc[-1] > data['close'].iloc[-2]:
                     action = 'BUY'
                     reason = "Volatility breakout - bullish"
                 else:
@@ -431,15 +429,14 @@ class SmartMoneyMachine(Strategy):
         
         return signal
     
-    def _analyze_market_conditions(self, symbol: str, timeframe: str) -> Dict[str, Any]:
+    def _analyze_market_conditions(self, data: pd.DataFrame) -> Dict[str, Any]:
         """Analysiert aktuelle Marktbedingungen"""
         try:
-            df = self.exchange_manager.get_ohlcv(symbol, timeframe, limit=50)
-            if df is None or len(df) < 20:
+            if data is None or len(data) < 20:
                 return {'volatility': 'medium', 'trend_strength': 0.5}
             
             # Volatility
-            returns = df['close'].pct_change().dropna()
+            returns = data['close'].pct_change().dropna()
             volatility = returns.std()
             
             if volatility < 0.015:
@@ -450,13 +447,13 @@ class SmartMoneyMachine(Strategy):
                 vol_regime = 'high'
             
             # Trend strength
-            sma_20 = df['close'].rolling(20).mean().iloc[-1]
-            current_price = df['close'].iloc[-1]
+            sma_20 = data['close'].rolling(20).mean().iloc[-1]
+            current_price = data['close'].iloc[-1]
             trend_strength = abs(current_price - sma_20) / sma_20
             
             # Support/Resistance levels
-            recent_low = df['low'].tail(20).min()
-            recent_high = df['high'].tail(20).max()
+            recent_low = data['low'].tail(20).min()
+            recent_high = data['high'].tail(20).max()
             support_distance = (current_price - recent_low) / current_price
             resistance_distance = (recent_high - current_price) / current_price
             
