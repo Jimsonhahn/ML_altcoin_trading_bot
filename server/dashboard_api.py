@@ -15,8 +15,18 @@ from datetime import datetime
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from server.bot_wrapper import server_bot
-from orchestrator import StrategyOrchestrator
+try:
+    from server.bot_wrapper import ServerBotWrapper
+    server_bot = ServerBotWrapper()  # Erstelle Instanz hier statt beim Import
+except Exception as e:
+    logger.warning(f"Bot wrapper could not be imported: {e}")
+    server_bot = None
+
+try:
+    from orchestrator import StrategyOrchestrator
+except Exception as e:
+    logger.warning(f"Strategy orchestrator could not be imported: {e}")
+    StrategyOrchestrator = None
 
 # Configure logging
 logging.basicConfig(
@@ -40,6 +50,9 @@ def health_check():
 def start_bot():
     """Startet den Trading Bot"""
     try:
+        if server_bot is None:
+            return jsonify({'success': False, 'message': 'Bot system not available'}), 500
+            
         data = request.get_json() or {}
         mode = data.get('mode', 'paper')
         strategy = data.get('strategy', 'smart_money_machine')  # Default zu Smart Money Machine
@@ -55,6 +68,9 @@ def start_bot():
 def stop_bot():
     """Stoppt den Trading Bot"""
     try:
+        if server_bot is None:
+            return jsonify({'success': False, 'message': 'Bot system not available'}), 500
+            
         result = server_bot.stop_bot()
         return jsonify(result)
         
@@ -66,6 +82,9 @@ def stop_bot():
 def get_status():
     """Gibt Bot-Status zurück"""
     try:
+        if server_bot is None:
+            return jsonify({'running': False, 'mode': 'offline', 'message': 'Bot system not available'})
+            
         status = server_bot.get_status()
         return jsonify(status)
         
@@ -77,6 +96,9 @@ def get_status():
 def switch_mode():
     """Wechselt zwischen Paper und Live Mode"""
     try:
+        if server_bot is None:
+            return jsonify({'success': False, 'message': 'Bot system not available'}), 500
+            
         data = request.get_json() or {}
         new_mode = data.get('mode', 'paper')
         
@@ -91,6 +113,9 @@ def switch_mode():
 def get_portfolio():
     """Gibt Portfolio-Zusammenfassung zurück"""
     try:
+        if server_bot is None:
+            return jsonify({'total_balance': 0, 'message': 'Bot system not available'})
+            
         portfolio = server_bot.get_portfolio_summary()
         return jsonify(portfolio)
         
