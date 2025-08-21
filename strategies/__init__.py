@@ -73,7 +73,11 @@ def _load_strategies():
         # Optimized candle momentum strategy  
         ('optimized_candle_momentum', 'OptimizedCandleMomentumStrategy'),
         # High-risk daily trading strategy
-        ('high_risk_daily', 'HighRiskDailyStrategy')
+        ('high_risk_daily', 'HighRiskDailyStrategy'),
+        # Smart Money Machine portfolio-split strategy
+        ('smart_money_machine', 'SmartMoneyMachine'),
+        # Adaptive auto strategy
+        ('adaptive_auto_strategy', 'AdaptiveAutoStrategy')
     ]
     
     for strategy_name, class_name in strategies_to_load:
@@ -83,6 +87,10 @@ def _load_strategies():
                 module = __import__(f'strategies.optimized_candle_momentum', fromlist=[class_name])
             elif strategy_name == 'high_risk_daily':
                 module = __import__(f'strategies.high_risk_daily', fromlist=[class_name])
+            elif strategy_name == 'smart_money_machine':
+                module = __import__(f'strategies.smart_money_machine', fromlist=[class_name])
+            elif strategy_name == 'adaptive_auto_strategy':
+                module = __import__(f'strategies.adaptive_auto_strategy', fromlist=[class_name])
             else:
                 module = __import__(f'strategies.{strategy_name}', fromlist=[class_name])
             strategy_class = getattr(module, class_name)

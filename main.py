@@ -18,12 +18,16 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 # Logging früh konfigurieren
+log_dir = project_root / 'logs'
+log_dir.mkdir(exist_ok=True)
+log_file = log_dir / 'trading_bot.log'
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('logs/trading_bot.log', mode='a')
+        logging.FileHandler(str(log_file), mode='a')
     ]
 )
 

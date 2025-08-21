@@ -42,7 +42,7 @@ def start_bot():
     try:
         data = request.get_json() or {}
         mode = data.get('mode', 'paper')
-        strategy = data.get('strategy', 'adaptive_auto_strategy')  # Default zu Auto-Strategy
+        strategy = data.get('strategy', 'smart_money_machine')  # Default zu Smart Money Machine
         
         result = server_bot.start_bot(mode=mode, strategy=strategy)
         return jsonify(result)
@@ -126,6 +126,7 @@ def get_strategies():
     try:
         # Liste der verfügbaren Strategien
         strategies = [
+            {'id': 'smart_money_machine', 'name': '💰 Smart Money Machine', 'risk': 'balanced', 'description': 'Intelligenter Portfolio-Split: 85% Safe + 15% High-Risk mit Leverage'},
             {'id': 'adaptive_auto_strategy', 'name': '🤖 Auto-Strategy (Sorglos)', 'risk': 'adaptive', 'description': 'Vollautomatische Strategie mit intelligentem Risk Management'},
             {'id': 'momentum', 'name': 'Momentum Strategy', 'risk': 'medium', 'description': 'Trend-folgende Strategie'},
             {'id': 'mean_reversion', 'name': 'Mean Reversion', 'risk': 'low', 'description': 'Rückkehr zum Mittelwert'},
@@ -284,6 +285,43 @@ def force_orchestrator_rebalance():
         logger.error(f"Error forcing rebalance: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@app.route('/api/smart-money-machine/status', methods=['GET'])
+def get_smart_money_machine_status():
+    """Gibt Portfolio-Split Status der Smart Money Machine zurück"""
+    try:
+        if (hasattr(server_bot, 'trading_bot') and server_bot.trading_bot and 
+            hasattr(server_bot.trading_bot, 'current_strategy')):
+            
+            strategy = server_bot.trading_bot.current_strategy
+            
+            # Check if it's SmartMoneyMachine
+            if hasattr(strategy, 'get_portfolio_status'):
+                portfolio_status = strategy.get_portfolio_status()
+                return jsonify(portfolio_status)
+            else:
+                return jsonify({
+                    'error': 'Current strategy is not Smart Money Machine',
+                    'strategy_type': type(strategy).__name__
+                })
+        else:
+            return jsonify({
+                'error': 'Bot not running or strategy not initialized',
+                'default_status': {
+                    'total_capital': 1000.0,
+                    'safe_capital': 850.0,
+                    'high_risk_capital': 150.0,
+                    'safe_allocation': 0.85,
+                    'high_risk_allocation': 0.15,
+                    'safe_performance': {'total_pnl': 0.0, 'trades': 0, 'wins': 0, 'daily_pnl': 0.0},
+                    'high_risk_performance': {'total_pnl': 0.0, 'trades': 0, 'wins': 0, 'daily_pnl': 0.0},
+                    'daily_trades': {'safe': 0, 'high_risk': 0}
+                }
+            })
+        
+    except Exception as e:
+        logger.error(f"Error getting smart money machine status: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/orchestrator/strategies', methods=['GET'])
 def get_orchestrator_strategies():
     """Gibt detaillierte Informationen über alle Strategien zurück"""
@@ -329,6 +367,13 @@ def get_orchestrator_strategies():
                 'description': 'AI-powered predictions',
                 'optimal_conditions': {'any': True},
                 'risk_level': 'medium',
+                'performance': {'win_rate': 0.0, 'total_pnl': 0.0, 'confidence': 0.5}
+            },
+            'smart_money_machine': {
+                'name': 'Smart Money Machine',
+                'description': 'Portfolio-Split: 85% Safe + 15% High-Risk mit Leverage',
+                'optimal_conditions': {'any': True},
+                'risk_level': 'balanced',
                 'performance': {'win_rate': 0.0, 'total_pnl': 0.0, 'confidence': 0.5}
             }
         }

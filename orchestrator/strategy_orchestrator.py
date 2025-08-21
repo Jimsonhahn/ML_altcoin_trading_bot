@@ -170,6 +170,11 @@ class StrategyOrchestrator:
                 'optimal_conditions': {'any': True},  # Meta-strategy
                 'risk_weight': 0.8,
                 'min_confidence': 0.3
+            },
+            'smart_money_machine': {
+                'optimal_conditions': {'any': True},  # Portfolio-split strategy works in all conditions
+                'risk_weight': 1.0,
+                'min_confidence': 0.4
             }
         }
         
