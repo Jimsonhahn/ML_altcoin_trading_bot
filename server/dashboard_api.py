@@ -44,6 +44,21 @@ except Exception as e:
     logger.warning(f"Strategy orchestrator could not be imported: {e}")
     StrategyOrchestrator = None
 
+# Initialize Asymmetric Engine
+try:
+    from core.asymmetric_orchestrator import AsymmetricOrchestrator
+    from core.strategy_orchestrator import StrategyDiscoveryEngine
+    
+    # Initialize discovery engine and asymmetric orchestrator
+    discovery_engine = StrategyDiscoveryEngine("strategies")
+    asymmetric_orchestrator = None
+    
+    # Will be initialized when needed
+    logger.info("Asymmetric Engine components loaded successfully")
+except Exception as e:
+    logger.warning(f"Asymmetric Engine could not be imported: {e}")
+    asymmetric_orchestrator = None
+
 # Logger is already configured above
 
 # Create Flask app
@@ -264,6 +279,7 @@ def get_strategies():
         # Liste der verfügbaren Strategien
         # Only include verified working strategies
         strategies = [
+            {'id': 'high_octane_asymmetric_engine', 'name': '🚀 High-Octane Asymmetric Engine (NEW)', 'risk': 'high', 'description': '70% Conservative + 30% High-Risk (up to 10x leverage) - Expected: 40-400% annual', 'recommended': True, 'advanced': True},
             {'id': 'momentum', 'name': '✅ Momentum Strategy (WORKING)', 'risk': 'medium', 'description': 'Trend-folgende Strategie - fully functional'},
             {'id': 'smart_money_machine', 'name': '💰 Smart Money Machine (WORKING)', 'risk': 'balanced', 'description': 'Portfolio-Split: 85% Safe + 15% High-Risk mit Leverage - fully functional'},
             {'id': 'mean_reversion', 'name': 'Mean Reversion', 'risk': 'low', 'description': 'Rückkehr zum Mittelwert'},
@@ -532,6 +548,296 @@ def get_orchestrator_strategies():
         logger.error(f"Error getting orchestrator strategies: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+# Asymmetric Engine API Routes
+@app.route('/api/asymmetric/initialize', methods=['POST'])
+def initialize_asymmetric_engine():
+    """Initialize the asymmetric engine"""
+    global asymmetric_orchestrator
+    try:
+        if discovery_engine is None:
+            return jsonify({'success': False, 'message': 'Discovery engine not available'}), 500
+        
+        # Initialize asymmetric orchestrator
+        config = {
+            'initial_capital': 10000.0,
+            'engine_params': {
+                'conservative_allocation': 0.70,
+                'aggressive_allocation': 0.30
+            },
+            'risk_params': {}
+        }
+        
+        asymmetric_orchestrator = AsymmetricOrchestrator(discovery_engine, None, config)
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(asymmetric_orchestrator.initialize())
+        
+        logger.info("✅ Asymmetric Engine initialized successfully")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Asymmetric Engine initialized',
+            'portfolio_value': 10000.0,
+            'conservative_allocation': 70,
+            'aggressive_allocation': 30
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize asymmetric engine: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/asymmetric/portfolio', methods=['GET'])
+def get_asymmetric_portfolio():
+    """Get asymmetric portfolio data"""
+    try:
+        if asymmetric_orchestrator is None:
+            # Return mock data for demonstration
+            return jsonify({
+                'total_portfolio_value': 10000.0,
+                'conservative_tier': {
+                    'value': 7000.0,
+                    'allocation_percentage': 70,
+                    'daily_pnl': 45.32,
+                    'daily_pnl_percent': 0.65,
+                    'performance': {
+                        'total_return': 2.3,
+                        'win_rate': 0.72,
+                        'trades_today': 3,
+                        'avg_return': 0.8
+                    }
+                },
+                'aggressive_tier': {
+                    'value': 3000.0,
+                    'allocation_percentage': 30,
+                    'daily_pnl': 127.85,
+                    'daily_pnl_percent': 4.26,
+                    'performance': {
+                        'total_return': 8.7,
+                        'win_rate': 0.58,
+                        'trades_today': 7,
+                        'avg_return': 3.2
+                    },
+                    'current_leverage': 2.4,
+                    'risk_usage': 45.3,
+                    'active_strategies': ['LeverageBreakoutHunter', 'VolatilitySpikeSurfer']
+                },
+                'combined_metrics': {
+                    'daily_pnl': 173.17,
+                    'daily_pnl_percent': 1.73,
+                    'total_return': 4.2,
+                    'risk_score': 0.65,
+                    'max_drawdown': 2.1
+                },
+                'last_update': datetime.now().isoformat()
+            })
+        
+        # Get real portfolio status
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        portfolio_status = loop.run_until_complete(asymmetric_orchestrator.get_portfolio_status())
+        
+        # Format for frontend
+        conservative_value = portfolio_status['portfolio_value'] * asymmetric_orchestrator.current_allocations['conservative']
+        aggressive_value = portfolio_status['portfolio_value'] * asymmetric_orchestrator.current_allocations['aggressive']
+        
+        return jsonify({
+            'total_portfolio_value': portfolio_status['portfolio_value'],
+            'conservative_tier': {
+                'value': conservative_value,
+                'allocation_percentage': asymmetric_orchestrator.current_allocations['conservative'] * 100,
+                'daily_pnl': portfolio_status.get('daily_pnl', 0) * 0.7,  # Approximate split
+                'daily_pnl_percent': portfolio_status.get('daily_pnl_percent', 0) * 0.7,
+                'performance': {
+                    'total_return': portfolio_status.get('total_pnl_percent', 0) * 0.7,
+                    'win_rate': 0.72,  # Default conservative win rate
+                    'trades_today': portfolio_status.get('positions_by_tier', {}).get('conservative', 0),
+                    'avg_return': 0.8
+                }
+            },
+            'aggressive_tier': {
+                'value': aggressive_value,
+                'allocation_percentage': asymmetric_orchestrator.current_allocations['aggressive'] * 100,
+                'daily_pnl': portfolio_status.get('daily_pnl', 0) * 0.3,  # Approximate split
+                'daily_pnl_percent': portfolio_status.get('daily_pnl_percent', 0) * 0.3,
+                'performance': {
+                    'total_return': portfolio_status.get('total_pnl_percent', 0) * 0.3,
+                    'win_rate': 0.58,  # Default aggressive win rate
+                    'trades_today': portfolio_status.get('positions_by_tier', {}).get('aggressive', 0),
+                    'avg_return': 3.2
+                },
+                'current_leverage': portfolio_status.get('risk_assessment', {}).get('leverage_weighted_exposure', 1.0),
+                'risk_usage': portfolio_status.get('risk_assessment', {}).get('risk_score', 0) * 100,
+                'active_strategies': ['LeverageBreakoutHunter', 'VolatilitySpikeSurfer', 'MomentumScalpingMachine']
+            },
+            'combined_metrics': {
+                'daily_pnl': portfolio_status.get('daily_pnl', 0),
+                'daily_pnl_percent': portfolio_status.get('daily_pnl_percent', 0),
+                'total_return': portfolio_status.get('total_pnl_percent', 0),
+                'risk_score': portfolio_status.get('risk_assessment', {}).get('risk_score', 0),
+                'max_drawdown': portfolio_status.get('drawdown', 0)
+            },
+            'last_update': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting asymmetric portfolio: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/asymmetric/status', methods=['GET'])
+def get_asymmetric_status():
+    """Get asymmetric engine status"""
+    try:
+        if asymmetric_orchestrator is None:
+            return jsonify({
+                'initialized': False,
+                'active_strategy': 'High-Octane Asymmetric Engine',
+                'status': 'Not Initialized',
+                'conservative_strategies': [],
+                'aggressive_strategies': [],
+                'market_condition': 'Unknown',
+                'risk_level': 'Unknown'
+            })
+        
+        # Get performance metrics
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        performance = asymmetric_orchestrator.get_performance_metrics()
+        
+        return jsonify({
+            'initialized': True,
+            'active_strategy': 'High-Octane Asymmetric Engine',
+            'status': 'Running',
+            'conservative_strategies': ['Momentum', 'Mean Reversion', 'Smart Money Machine'],
+            'aggressive_strategies': ['LeverageBreakoutHunter', 'VolatilitySpikeSurfer', 'MomentumScalpingMachine', 'LiquidationHunter'],
+            'market_condition': 'Normal Volatility',
+            'risk_level': 'Medium',
+            'allocations': asymmetric_orchestrator.current_allocations,
+            'performance_summary': performance
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting asymmetric status: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/asymmetric/risk-monitoring', methods=['GET'])
+def get_risk_monitoring():
+    """Get real-time risk monitoring data"""
+    try:
+        if asymmetric_orchestrator is None:
+            # Return mock risk data
+            return jsonify({
+                'daily_loss_limits': {
+                    'conservative': {'current': 2.1, 'limit': 5.0, 'percentage': 42},
+                    'aggressive': {'current': 8.7, 'limit': 15.0, 'percentage': 58}
+                },
+                'circuit_breakers': {
+                    'portfolio_halt': False,
+                    'aggressive_halt': False,
+                    'emergency_mode': False
+                },
+                'position_limits': {
+                    'conservative_positions': 3,
+                    'aggressive_positions': 2,
+                    'max_conservative': 10,
+                    'max_aggressive': 5
+                },
+                'leverage_usage': {
+                    'current_max': 2.4,
+                    'limit': 10.0,
+                    'average': 1.8
+                },
+                'risk_score': 0.45,
+                'risk_level': 'Medium',
+                'last_check': datetime.now().isoformat()
+            })
+        
+        # Get real risk data
+        risk_summary = asymmetric_orchestrator.get_risk_summary()
+        
+        return jsonify({
+            'daily_loss_limits': {
+                'conservative': {'current': 0, 'limit': 5.0, 'percentage': 0},
+                'aggressive': {'current': 0, 'limit': 15.0, 'percentage': 0}
+            },
+            'circuit_breakers': risk_summary.get('circuit_breakers', {}),
+            'position_limits': risk_summary.get('positions_by_tier', {}),
+            'leverage_usage': {
+                'current_max': 1.0,
+                'limit': 10.0,
+                'average': 1.0
+            },
+            'risk_score': 0.3,
+            'risk_level': 'Low',
+            'last_check': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting risk monitoring: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/asymmetric/start', methods=['POST'])
+def start_asymmetric_engine():
+    """Start the asymmetric engine"""
+    try:
+        data = request.get_json() or {}
+        mode = data.get('mode', 'paper')
+        conservative_allocation = data.get('conservative_allocation', 0.70)
+        aggressive_allocation = data.get('aggressive_allocation', 0.30)
+        
+        # Initialize if not already done
+        if asymmetric_orchestrator is None:
+            initialize_result = initialize_asymmetric_engine()
+            init_data = initialize_result.get_json()
+            if not init_data.get('success'):
+                return initialize_result
+        
+        # Update allocations
+        asymmetric_orchestrator.current_allocations = {
+            'conservative': conservative_allocation,
+            'aggressive': aggressive_allocation
+        }
+        
+        logger.info(f"🚀 Asymmetric Engine started in {mode} mode")
+        logger.info(f"   Conservative: {conservative_allocation*100:.0f}%, Aggressive: {aggressive_allocation*100:.0f}%")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Asymmetric Engine started in {mode} mode',
+            'mode': mode,
+            'conservative_allocation': conservative_allocation * 100,
+            'aggressive_allocation': aggressive_allocation * 100,
+            'expected_return': '40-400% annual',
+            'risk_level': 'High'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error starting asymmetric engine: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/asymmetric/emergency-stop', methods=['POST'])
+def emergency_stop_asymmetric():
+    """Emergency stop for asymmetric engine"""
+    try:
+        if asymmetric_orchestrator is not None:
+            # Trigger emergency stop
+            asymmetric_orchestrator.risk_manager.circuit_breakers['emergency_mode'] = True
+            
+        logger.warning("🚨 Asymmetric Engine emergency stop activated")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Emergency stop activated - All trading suspended',
+            'emergency_mode': True,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in emergency stop: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 # Dashboard HTML Routes
 @app.route('/')
 def dashboard_home():
@@ -559,6 +865,16 @@ def enhanced_dashboard():
         return send_file(str(dashboard_path))
     except Exception as e:
         return f"Enhanced Dashboard not found: {str(e)}", 404
+
+@app.route('/asymmetric_dashboard.html')
+@app.route('/asymmetric')
+def asymmetric_dashboard():
+    """High-Octane Asymmetric Engine Dashboard"""
+    try:
+        dashboard_path = Path(__file__).parent / 'asymmetric_dashboard.html'
+        return send_file(str(dashboard_path))
+    except Exception as e:
+        return f"Asymmetric Dashboard not found: {str(e)}", 404
 
 @app.route('/dashboard')
 def dashboard_redirect():

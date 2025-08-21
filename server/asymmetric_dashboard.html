@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High-Octane Asymmetric Trading Engine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .status-running {
+            background: linear-gradient(45deg, #4CAF50, #8BC34A);
+        }
+
+        .status-stopped {
+            background: linear-gradient(45deg, #f44336, #FF5722);
+        }
+
+        .status-initializing {
+            background: linear-gradient(45deg, #FF9800, #FFC107);
+        }
+
+        .control-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .control-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .card-title {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .portfolio-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .tier-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tier-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--tier-color), var(--tier-color-light));
+        }
+
+        .conservative {
+            --tier-color: #4CAF50;
+            --tier-color-light: #8BC34A;
+        }
+
+        .aggressive {
+            --tier-color: #ff6b6b;
+            --tier-color-light: #ff9f9f;
+        }
+
+        .tier-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .tier-title {
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+
+        .tier-allocation {
+            background: var(--tier-color);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .tier-value {
+            font-size: 2.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: var(--tier-color);
+        }
+
+        .tier-performance {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+
+        .positive {
+            color: #4CAF50;
+        }
+
+        .negative {
+            color: #f44336;
+        }
+
+        .tier-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric {
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .risk-monitoring {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .risk-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .risk-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .risk-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 8px;
+        }
+
+        .risk-value {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .risk-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .risk-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #FF9800, #f44336);
+            transition: width 0.3s ease;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #4CAF50, #8BC34A);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #f44336, #FF5722);
+        }
+
+        .btn-emergency {
+            background: linear-gradient(45deg, #ff1744, #d50000);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 23, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 23, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 23, 68, 0); }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: linear-gradient(45deg, #4CAF50, #8BC34A);
+        }
+
+        .notification.error {
+            background: linear-gradient(45deg, #f44336, #FF5722);
+        }
+
+        .strategies-list {
+            margin-top: 15px;
+        }
+
+        .strategy-tag {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            margin: 2px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .portfolio-overview {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-panel {
+                grid-template-columns: 1fr;
+            }
+            
+            .tier-metrics {
+                grid-template-columns: 1fr;
+            }
+            
+            .risk-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="text-align: left; margin-bottom: 10px;">
+                <a href="/" style="display: inline-block; background: rgba(255, 255, 255, 0.2); color: white; text-decoration: none; padding: 6px 12px; border-radius: 15px; font-size: 0.8em;">
+                    ← Back to Main Dashboard
+                </a>
+            </div>
+            <h1>🚀 High-Octane Asymmetric Engine</h1>
+            <p class="subtitle">70% Conservative Foundation + 30% High-Risk Strategies</p>
+            <span class="status-indicator" id="statusIndicator">Initializing...</span>
+        </div>
+
+        <div class="control-panel">
+            <div class="control-card">
+                <div class="card-title">
+                    <span>🎮</span> Engine Controls
+                </div>
+                <button class="btn btn-success" onclick="startAsymmetricEngine('paper')">
+                    Start Paper Trading
+                </button>
+                <button class="btn" onclick="startAsymmetricEngine('live')">
+                    Start Live Trading
+                </button>
+                <button class="btn btn-danger" onclick="stopEngine()">
+                    Stop Engine
+                </button>
+                <button class="btn btn-emergency" onclick="emergencyStop()">
+                    🚨 Emergency Stop
+                </button>
+            </div>
+
+            <div class="control-card">
+                <div class="card-title">
+                    <span>⚙️</span> Current Strategy
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <strong id="activeStrategy">High-Octane Asymmetric Engine</strong>
+                </div>
+                <div style="font-size: 0.9em; opacity: 0.8;">
+                    Market Condition: <span id="marketCondition">Analyzing...</span>
+                </div>
+                <div style="font-size: 0.9em; opacity: 0.8; margin-top: 5px;">
+                    Risk Level: <span id="riskLevel">Medium</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="portfolio-overview">
+            <div class="tier-card conservative">
+                <div class="tier-header">
+                    <span class="tier-title">🛡️ Conservative Foundation</span>
+                    <span class="tier-allocation" id="conservativeAllocation">70%</span>
+                </div>
+                <div class="tier-value" id="conservativeValue">$7,000.00</div>
+                <div class="tier-performance" id="conservativePerformance">+$45.32 (+0.65%)</div>
+                
+                <div class="tier-metrics">
+                    <div class="metric">
+                        <div class="metric-label">Win Rate</div>
+                        <div class="metric-value" id="conservativeWinRate">72%</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Trades Today</div>
+                        <div class="metric-value" id="conservativeTrades">3</div>
+                    </div>
+                </div>
+
+                <div class="strategies-list">
+                    <div class="strategy-tag">Momentum</div>
+                    <div class="strategy-tag">Mean Reversion</div>
+                    <div class="strategy-tag">Smart Money</div>
+                </div>
+            </div>
+
+            <div class="tier-card aggressive">
+                <div class="tier-header">
+                    <span class="tier-title">🚀 High-Octane Tier</span>
+                    <span class="tier-allocation" id="aggressiveAllocation">30%</span>
+                </div>
+                <div class="tier-value" id="aggressiveValue">$3,000.00</div>
+                <div class="tier-performance" id="aggressivePerformance">+$127.85 (+4.26%)</div>
+                
+                <div class="tier-metrics">
+                    <div class="metric">
+                        <div class="metric-label">Leverage</div>
+                        <div class="metric-value" id="leverageUsage">2.4x</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Risk Usage</div>
+                        <div class="metric-value" id="riskUsage">45.3%</div>
+                    </div>
+                </div>
+
+                <div class="strategies-list">
+                    <div class="strategy-tag">Breakout Hunter</div>
+                    <div class="strategy-tag">Volatility Surfer</div>
+                    <div class="strategy-tag">Momentum Scalper</div>
+                    <div class="strategy-tag">Liquidation Hunter</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="risk-monitoring">
+            <div class="card-title">
+                <span>🛡️</span> Advanced Risk Monitoring
+            </div>
+            
+            <div class="risk-grid">
+                <div class="risk-item">
+                    <div class="risk-label">Conservative Daily Loss</div>
+                    <div class="risk-value" id="conservativeLoss">2.1% / 5.0%</div>
+                    <div class="risk-bar">
+                        <div class="risk-bar-fill" id="conservativeLossBar" style="width: 42%"></div>
+                    </div>
+                </div>
+
+                <div class="risk-item">
+                    <div class="risk-label">Aggressive Daily Loss</div>
+                    <div class="risk-value" id="aggressiveLoss">8.7% / 15.0%</div>
+                    <div class="risk-bar">
+                        <div class="risk-bar-fill" id="aggressiveLossBar" style="width: 58%"></div>
+                    </div>
+                </div>
+
+                <div class="risk-item">
+                    <div class="risk-label">Portfolio Risk Score</div>
+                    <div class="risk-value" id="portfolioRiskScore">Medium (0.45)</div>
+                    <div class="risk-bar">
+                        <div class="risk-bar-fill" id="riskScoreBar" style="width: 45%"></div>
+                    </div>
+                </div>
+
+                <div class="risk-item">
+                    <div class="risk-label">Circuit Breakers</div>
+                    <div class="risk-value" id="circuitBreakers">All OK ✅</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-card">
+            <div class="card-title">
+                <span>📊</span> Combined Portfolio Performance
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin-top: 15px;">
+                <div class="metric">
+                    <div class="metric-label">Total Value</div>
+                    <div class="metric-value" id="totalValue">$10,173.17</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Daily P&L</div>
+                    <div class="metric-value positive" id="dailyPnl">+$173.17 (+1.73%)</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Total Return</div>
+                    <div class="metric-value positive" id="totalReturn">+4.2%</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Max Drawdown</div>
+                    <div class="metric-value" id="maxDrawdown">-2.1%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        let isInitialized = false;
+        let updateInterval;
+
+        // Initialize dashboard
+        async function initializeDashboard() {
+            try {
+                await updateDashboard();
+                startAutoUpdate();
+            } catch (error) {
+                console.error('Dashboard initialization failed:', error);
+                showNotification('Dashboard initialization failed', 'error');
+            }
+        }
+
+        // Update dashboard data
+        async function updateDashboard() {
+            try {
+                // Update portfolio data
+                const portfolioResponse = await fetch('/api/asymmetric/portfolio');
+                if (portfolioResponse.ok) {
+                    const portfolioData = await portfolioResponse.json();
+                    updatePortfolioDisplay(portfolioData);
+                }
+
+                // Update status
+                const statusResponse = await fetch('/api/asymmetric/status');
+                if (statusResponse.ok) {
+                    const statusData = await statusResponse.json();
+                    updateStatusDisplay(statusData);
+                }
+
+                // Update risk monitoring
+                const riskResponse = await fetch('/api/asymmetric/risk-monitoring');
+                if (riskResponse.ok) {
+                    const riskData = await riskResponse.json();
+                    updateRiskMonitoring(riskData);
+                }
+
+            } catch (error) {
+                console.error('Dashboard update failed:', error);
+                updateStatusIndicator('Error', 'error');
+            }
+        }
+
+        // Update portfolio display
+        function updatePortfolioDisplay(data) {
+            // Conservative tier
+            document.getElementById('conservativeValue').textContent = 
+                `$${data.conservative_tier.value.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+            document.getElementById('conservativeAllocation').textContent = 
+                `${data.conservative_tier.allocation_percentage.toFixed(0)}%`;
+            
+            const conservativePnl = data.conservative_tier.daily_pnl;
+            const conservativePnlPercent = data.conservative_tier.daily_pnl_percent;
+            document.getElementById('conservativePerformance').textContent = 
+                `${conservativePnl >= 0 ? '+' : ''}$${conservativePnl.toFixed(2)} (${conservativePnlPercent >= 0 ? '+' : ''}${conservativePnlPercent.toFixed(2)}%)`;
+            document.getElementById('conservativePerformance').className = 
+                `tier-performance ${conservativePnl >= 0 ? 'positive' : 'negative'}`;
+
+            document.getElementById('conservativeWinRate').textContent = 
+                `${(data.conservative_tier.performance.win_rate * 100).toFixed(0)}%`;
+            document.getElementById('conservativeTrades').textContent = 
+                data.conservative_tier.performance.trades_today;
+
+            // Aggressive tier
+            document.getElementById('aggressiveValue').textContent = 
+                `$${data.aggressive_tier.value.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+            document.getElementById('aggressiveAllocation').textContent = 
+                `${data.aggressive_tier.allocation_percentage.toFixed(0)}%`;
+            
+            const aggressivePnl = data.aggressive_tier.daily_pnl;
+            const aggressivePnlPercent = data.aggressive_tier.daily_pnl_percent;
+            document.getElementById('aggressivePerformance').textContent = 
+                `${aggressivePnl >= 0 ? '+' : ''}$${aggressivePnl.toFixed(2)} (${aggressivePnlPercent >= 0 ? '+' : ''}${aggressivePnlPercent.toFixed(2)}%)`;
+            document.getElementById('aggressivePerformance').className = 
+                `tier-performance ${aggressivePnl >= 0 ? 'positive' : 'negative'}`;
+
+            document.getElementById('leverageUsage').textContent = 
+                `${data.aggressive_tier.current_leverage.toFixed(1)}x`;
+            document.getElementById('riskUsage').textContent = 
+                `${data.aggressive_tier.risk_usage.toFixed(1)}%`;
+
+            // Combined metrics
+            document.getElementById('totalValue').textContent = 
+                `$${data.total_portfolio_value.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+            
+            const dailyPnl = data.combined_metrics.daily_pnl;
+            const dailyPnlPercent = data.combined_metrics.daily_pnl_percent;
+            document.getElementById('dailyPnl').textContent = 
+                `${dailyPnl >= 0 ? '+' : ''}$${dailyPnl.toFixed(2)} (${dailyPnlPercent >= 0 ? '+' : ''}${dailyPnlPercent.toFixed(2)}%)`;
+            document.getElementById('dailyPnl').className = 
+                `metric-value ${dailyPnl >= 0 ? 'positive' : 'negative'}`;
+
+            document.getElementById('totalReturn').textContent = 
+                `${data.combined_metrics.total_return >= 0 ? '+' : ''}${data.combined_metrics.total_return.toFixed(1)}%`;
+            document.getElementById('totalReturn').className = 
+                `metric-value ${data.combined_metrics.total_return >= 0 ? 'positive' : 'negative'}`;
+
+            document.getElementById('maxDrawdown').textContent = 
+                `-${data.combined_metrics.max_drawdown.toFixed(1)}%`;
+        }
+
+        // Update status display
+        function updateStatusDisplay(data) {
+            document.getElementById('activeStrategy').textContent = data.active_strategy;
+            document.getElementById('marketCondition').textContent = data.market_condition;
+            document.getElementById('riskLevel').textContent = data.risk_level;
+
+            if (data.initialized) {
+                updateStatusIndicator('Running', 'success');
+                isInitialized = true;
+            } else {
+                updateStatusIndicator('Not Initialized', 'warning');
+            }
+        }
+
+        // Update risk monitoring
+        function updateRiskMonitoring(data) {
+            // Conservative loss
+            const conservativeLoss = data.daily_loss_limits.conservative;
+            document.getElementById('conservativeLoss').textContent = 
+                `${conservativeLoss.current.toFixed(1)}% / ${conservativeLoss.limit.toFixed(1)}%`;
+            document.getElementById('conservativeLossBar').style.width = 
+                `${conservativeLoss.percentage}%`;
+
+            // Aggressive loss
+            const aggressiveLoss = data.daily_loss_limits.aggressive;
+            document.getElementById('aggressiveLoss').textContent = 
+                `${aggressiveLoss.current.toFixed(1)}% / ${aggressiveLoss.limit.toFixed(1)}%`;
+            document.getElementById('aggressiveLossBar').style.width = 
+                `${aggressiveLoss.percentage}%`;
+
+            // Portfolio risk score
+            document.getElementById('portfolioRiskScore').textContent = 
+                `${data.risk_level} (${data.risk_score.toFixed(2)})`;
+            document.getElementById('riskScoreBar').style.width = 
+                `${data.risk_score * 100}%`;
+
+            // Circuit breakers
+            const breakers = data.circuit_breakers;
+            let breakerStatus = 'All OK ✅';
+            if (breakers.emergency_mode) {
+                breakerStatus = '🚨 EMERGENCY MODE';
+            } else if (breakers.aggressive_halt) {
+                breakerStatus = '⚠️ Aggressive Halted';
+            } else if (breakers.portfolio_halt) {
+                breakerStatus = '⛔ Portfolio Halted';
+            }
+            document.getElementById('circuitBreakers').textContent = breakerStatus;
+        }
+
+        // Update status indicator
+        function updateStatusIndicator(status, type) {
+            const indicator = document.getElementById('statusIndicator');
+            indicator.textContent = status;
+            indicator.className = `status-indicator status-${type}`;
+        }
+
+        // Start asymmetric engine
+        async function startAsymmetricEngine(mode) {
+            try {
+                updateStatusIndicator('Starting...', 'initializing');
+                
+                const response = await fetch('/api/asymmetric/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        mode: mode,
+                        conservative_allocation: 0.70,
+                        aggressive_allocation: 0.30
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(`Asymmetric Engine started in ${mode} mode!`, 'success');
+                    updateStatusIndicator('Running', 'success');
+                    await updateDashboard();
+                } else {
+                    showNotification(`Failed to start: ${result.message}`, 'error');
+                    updateStatusIndicator('Error', 'error');
+                }
+            } catch (error) {
+                showNotification('Connection error', 'error');
+                updateStatusIndicator('Error', 'error');
+            }
+        }
+
+        // Stop engine
+        async function stopEngine() {
+            try {
+                const response = await fetch('/api/bot/stop', {method: 'POST'});
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('Engine stopped', 'success');
+                    updateStatusIndicator('Stopped', 'stopped');
+                } else {
+                    showNotification(`Failed to stop: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showNotification('Connection error', 'error');
+            }
+        }
+
+        // Emergency stop
+        async function emergencyStop() {
+            if (!confirm('Are you sure you want to trigger an EMERGENCY STOP? This will halt all trading immediately.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/asymmetric/emergency-stop', {method: 'POST'});
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('🚨 EMERGENCY STOP ACTIVATED', 'error');
+                    updateStatusIndicator('Emergency Stop', 'stopped');
+                } else {
+                    showNotification(`Emergency stop failed: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showNotification('Emergency stop connection error', 'error');
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 5000);
+        }
+
+        // Start auto-update
+        function startAutoUpdate() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+            updateInterval = setInterval(updateDashboard, 5000); // Update every 5 seconds
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeDashboard);
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        });
+    </script>
+</body>
+</html>
