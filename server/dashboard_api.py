@@ -5,7 +5,7 @@ Dashboard API - Flask API für Mobile Dashboard Control
 Bietet REST API Endpoints für das Mobile Dashboard.
 """
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template_string, send_file
 from flask_cors import CORS
 import logging
 from pathlib import Path
@@ -394,6 +394,43 @@ def get_orchestrator_strategies():
     except Exception as e:
         logger.error(f"Error getting orchestrator strategies: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+# Dashboard HTML Routes
+@app.route('/')
+def dashboard_home():
+    """Haupt-Dashboard Route"""
+    try:
+        dashboard_path = Path(__file__).parent / 'mobile_dashboard.html'
+        return send_file(str(dashboard_path))
+    except Exception as e:
+        return f"Dashboard not found: {str(e)}", 404
+
+@app.route('/mobile_dashboard.html')
+def mobile_dashboard():
+    """Mobile Dashboard Route"""
+    try:
+        dashboard_path = Path(__file__).parent / 'mobile_dashboard.html'
+        return send_file(str(dashboard_path))
+    except Exception as e:
+        return f"Mobile Dashboard not found: {str(e)}", 404
+
+@app.route('/enhanced_dashboard.html')
+def enhanced_dashboard():
+    """Enhanced AI Dashboard Route"""
+    try:
+        dashboard_path = Path(__file__).parent / 'enhanced_dashboard.html'
+        return send_file(str(dashboard_path))
+    except Exception as e:
+        return f"Enhanced Dashboard not found: {str(e)}", 404
+
+@app.route('/dashboard')
+def dashboard_redirect():
+    """Redirect to main dashboard"""
+    try:
+        dashboard_path = Path(__file__).parent / 'mobile_dashboard.html'
+        return send_file(str(dashboard_path))
+    except Exception as e:
+        return f"Dashboard not found: {str(e)}", 404
 
 
 if __name__ == '__main__':
