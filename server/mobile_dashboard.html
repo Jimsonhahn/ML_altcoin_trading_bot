@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Trading Bot Control</title>
+    <title>🤖 Trading Bot Dashboard</title>
     <style>
         /* Reset and Base Styles */
         * {
@@ -15,7 +15,7 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0a0a0a;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
             color: #ffffff;
             line-height: 1.6;
             overflow-x: hidden;
@@ -23,79 +23,171 @@
         
         /* Container */
         .container {
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 15px;
             min-height: 100vh;
         }
         
-        /* Header */
+        /* Header with Status */
         .header {
-            text-align: center;
-            padding: 20px 0;
-            border-bottom: 1px solid #333;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 20px;
+            border-radius: 16px;
             margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
         }
         
         .header h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
+            font-size: 28px;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+        
+        .bot-status {
+            display: flex;
+            align-items: center;
+            margin-top: 15px;
         }
         
         .status-indicator {
-            display: inline-block;
             width: 12px;
             height: 12px;
             border-radius: 50%;
             margin-right: 8px;
+            animation: pulse 2s infinite;
         }
         
-        .status-running { background: #00ff88; }
-        .status-stopped { background: #ff4757; }
+        .status-indicator.online { background: #00ff88; }
+        .status-indicator.offline { background: #ff4444; }
         
-        /* Control Buttons */
-        .controls {
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .status-text {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .last-update {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+        
+        /* Cards */
+        .card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            background: rgba(255,255,255,0.08);
+            transform: translateY(-2px);
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #00ff88;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Portfolio Section */
+        .portfolio-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 15px;
-            margin-bottom: 30px;
+            margin-bottom: 15px;
+        }
+        
+        .portfolio-item {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .portfolio-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .portfolio-value.positive { color: #00ff88; }
+        .portfolio-value.negative { color: #ff4444; }
+        .portfolio-value.neutral { color: #ffffff; }
+        
+        .portfolio-label {
+            font-size: 12px;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .portfolio-change {
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        /* Trading Status */
+        .trading-status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .status-item {
+            padding: 15px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            border-left: 4px solid #00ff88;
+        }
+        
+        .status-label {
+            font-size: 12px;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
         }
         
         .btn {
-            padding: 15px 20px;
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 20px;
             border: none;
-            border-radius: 8px;
-            font-size: 16px;
+            border-radius: 12px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            text-align: center;
             position: relative;
             overflow: hidden;
-        }
-        
-        .btn:active {
-            transform: scale(0.95);
-        }
-        
-        .btn-start {
-            background: #00ff88;
-            color: #000;
-        }
-        
-        .btn-stop {
-            background: #ff4757;
-            color: #fff;
-        }
-        
-        .btn-paper {
-            background: #3742fa;
-            color: #fff;
-        }
-        
-        .btn-live {
-            background: #ff6348;
-            color: #fff;
         }
         
         .btn:disabled {
@@ -103,598 +195,605 @@
             cursor: not-allowed;
         }
         
-        /* Strategy Selector */
-        .strategy-selector {
-            margin-bottom: 20px;
-            background: #1a1a1a;
-            padding: 15px;
-            border-radius: 8px;
+        .btn-primary {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: #000000;
         }
         
-        .strategy-selector label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
+        .btn-secondary {
+            background: linear-gradient(135deg, #333333 0%, #555555 100%);
+            color: #ffffff;
         }
         
-        .strategy-selector select {
-            width: 100%;
-            padding: 10px;
-            background: #2a2a2a;
-            border: 1px solid #444;
-            border-radius: 6px;
-            color: #fff;
-            font-size: 16px;
+        .btn-danger {
+            background: linear-gradient(135deg, #ff4444 0%, #cc3333 100%);
+            color: #ffffff;
         }
         
-        /* Portfolio Card */
-        .portfolio-card {
-            background: #1a1a1a;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-left: 4px solid #00ff88;
+        .btn:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
         
-        .portfolio-value {
-            font-size: 36px;
-            font-weight: bold;
-            color: #00ff88;
-            text-align: center;
-            margin: 20px 0;
+        .btn.loading {
+            color: transparent;
         }
         
-        /* Metrics Grid */
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .metric {
-            background: #1a1a1a;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .metric-value {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .metric-label {
-            font-size: 14px;
-            opacity: 0.7;
-        }
-        
-        .positive { color: #00ff88; }
-        .negative { color: #ff4757; }
-        
-        /* Trades List */
-        .trades-section {
-            background: #1a1a1a;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .trades-section h3 {
-            margin-bottom: 15px;
-            font-size: 18px;
-        }
-        
-        .trade-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #333;
-        }
-        
-        .trade-item:last-child {
-            border-bottom: none;
-        }
-        
-        .trade-info {
-            flex: 1;
-        }
-        
-        .trade-symbol {
-            font-weight: 600;
-            font-size: 16px;
-        }
-        
-        .trade-strategy {
-            font-size: 12px;
-            opacity: 0.7;
-        }
-        
-        .trade-pnl {
-            font-size: 18px;
-            font-weight: bold;
-        }
-        
-        /* Emergency Button */
-        .emergency-section {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #333;
-        }
-        
-        .btn-emergency {
-            width: 100%;
-            background: #ff0000;
-            color: #fff;
-            padding: 20px;
-            font-size: 18px;
-            border: 2px solid #ff0000;
-        }
-        
-        .btn-emergency:active {
-            background: #cc0000;
-        }
-        
-        /* Loading Spinner */
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-        
-        .spinner {
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(255,255,255,.3);
+        .btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin-left: -8px;
+            margin-top: -8px;
+            border: 2px solid #ffffff;
             border-radius: 50%;
-            border-top-color: #00ff88;
-            animation: spin 1s ease-in-out infinite;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
         }
         
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
         
-        /* Responsive */
-        @media (max-width: 480px) {
-            .controls {
-                grid-template-columns: 1fr;
-            }
-            
-            .portfolio-value {
-                font-size: 28px;
-            }
+        /* Trading History */
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
         }
         
-        /* Toast Notifications */
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #333;
-            color: #fff;
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            z-index: 1000;
+        .history-table th,
+        .history-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 12px;
         }
         
-        .toast.show {
-            opacity: 1;
-        }
-        
-        .toast.success {
-            background: #00ff88;
-            color: #000;
-        }
-        
-        .toast.error {
-            background: #ff4757;
-        }
-        
-        /* Auto-Strategy Info Panel */
-        .auto-strategy-info {
-            background: #1a1a1a;
-            border-radius: 12px;
-            padding: 20px;
-            margin: 20px 0;
-            border-left: 4px solid #00ff88;
-        }
-        
-        .auto-strategy-info h3 {
-            margin-bottom: 10px;
-            color: #00ff88;
-        }
-        
-        .auto-strategy-info p {
-            line-height: 1.8;
-            margin-bottom: 15px;
-            opacity: 0.9;
-            font-size: 14px;
-        }
-        
-        .auto-stats {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 8px;
-        }
-        
-        .auto-stat {
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 0;
-        }
-        
-        .auto-stat .label {
-            opacity: 0.7;
-            font-size: 14px;
-        }
-        
-        .auto-stat .value {
+        .history-table th {
             font-weight: 600;
-            color: #00ff88;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .trade-positive { color: #00ff88; }
+        .trade-negative { color: #ff4444; }
+        
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.success {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: #000000;
+        }
+        
+        .notification.error {
+            background: linear-gradient(135deg, #ff4444 0%, #cc3333 100%);
+            color: #ffffff;
+        }
+        
+        .notification.info {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: #ffffff;
+        }
+        
+        /* Loading States */
+        .loading-text {
+            opacity: 0.5;
+            font-style: italic;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #00ff88;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container { padding: 10px; }
+            .portfolio-grid { grid-template-columns: repeat(2, 1fr); }
+            .trading-status { grid-template-columns: 1fr; }
+            .controls { flex-direction: column; }
+            .btn { min-width: auto; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
+        <!-- Header with Live Status -->
         <div class="header">
-            <h1>Trading Bot Control</h1>
-            <div id="botStatus">
-                <span class="status-indicator status-stopped"></span>
-                <span>Status: Loading...</span>
-            </div>
-        </div>
-        
-        <!-- Strategy Selector -->
-        <div class="strategy-selector">
-            <label for="strategySelect">Trading Strategy:</label>
-            <select id="strategySelect">
-                <option value="adaptive_auto_strategy" selected>🤖 Auto-Strategy (Sorglos) - Empfohlen!</option>
-                <option value="momentum">Momentum Strategy</option>
-                <option value="mean_reversion">Mean Reversion</option>
-                <option value="arbitrage">Arbitrage</option>
-                <option value="grid_trading">Grid Trading</option>
-                <option value="candle_momentum">Candle Momentum</option>
-                <option value="lazy_billionaire_strategy">Lazy Billionaire</option>
-                <option value="high_risk_daily">High Risk Daily</option>
-            </select>
-        </div>
-        
-        <!-- Auto-Strategy Info Panel -->
-        <div class="auto-strategy-info" id="autoStrategyInfo" style="display: block;">
-            <h3>🤖 Sorglos Auto-Strategy</h3>
-            <p>
-                ✅ Automatische Strategie-Auswahl<br>
-                ✅ Max 100€ Tagesrisiko (skaliert mit Portfolio)<br>
-                ✅ Nutzt auch High-Risk Strategien intelligent<br>
-                ✅ Vollständig autonom - einfach starten!
-            </p>
-            <div class="auto-stats">
-                <div class="auto-stat">
-                    <span class="label">Tagesrisiko:</span>
-                    <span class="value" id="dailyRiskUsed">0€ / 100€</span>
-                </div>
-                <div class="auto-stat">
-                    <span class="label">Aktive Strategie:</span>
-                    <span class="value" id="currentAutoStrategy">-</span>
-                </div>
-                <div class="auto-stat">
-                    <span class="label">Marktlage:</span>
-                    <span class="value" id="marketRegime">Analysiere...</span>
+            <h1>🤖 Trading Bot Dashboard</h1>
+            <div class="bot-status">
+                <div class="status-indicator offline" id="statusIndicator"></div>
+                <div>
+                    <div class="status-text" id="statusText">Connecting...</div>
+                    <div class="last-update" id="lastUpdate">Last update: Never</div>
                 </div>
             </div>
         </div>
-        
-        <!-- Control Buttons -->
-        <div class="controls">
-            <button class="btn btn-paper" onclick="startBot('paper')">
-                Start Paper Trading
-            </button>
-            <button class="btn btn-live" onclick="startBot('live')">
-                Start Live Trading
-            </button>
-            <button class="btn btn-stop" onclick="stopBot()">
-                Stop Bot
-            </button>
-            <button class="btn btn-paper" onclick="switchMode('paper')">
-                Switch to Paper
-            </button>
-        </div>
-        
+
         <!-- Portfolio Overview -->
-        <div class="portfolio-card">
-            <h3>Portfolio Value</h3>
-            <div class="portfolio-value" id="portfolioValue">$0.00</div>
-        </div>
-        
-        <!-- Metrics -->
-        <div class="metrics-grid">
-            <div class="metric">
-                <div class="metric-value" id="dailyPnL">$0.00</div>
-                <div class="metric-label">Daily P&L</div>
-            </div>
-            <div class="metric">
-                <div class="metric-value" id="winRate">0%</div>
-                <div class="metric-label">Win Rate</div>
-            </div>
-            <div class="metric">
-                <div class="metric-value" id="activeTrades">0</div>
-                <div class="metric-label">Active Trades</div>
-            </div>
-            <div class="metric">
-                <div class="metric-value" id="totalTrades">0</div>
-                <div class="metric-label">Total Trades</div>
-            </div>
-        </div>
-        
-        <!-- Active Trades -->
-        <div class="trades-section">
-            <h3>Active Trades</h3>
-            <div id="tradesList">
-                <div style="text-align: center; opacity: 0.5; padding: 20px;">
-                    No active trades
+        <div class="card">
+            <div class="card-title">💰 Portfolio Overview</div>
+            <div class="portfolio-grid">
+                <div class="portfolio-item">
+                    <div class="portfolio-value neutral" id="portfolioValue">$0.00</div>
+                    <div class="portfolio-label">Portfolio Value</div>
+                </div>
+                <div class="portfolio-item">
+                    <div class="portfolio-value neutral" id="dailyPnL">$0.00</div>
+                    <div class="portfolio-label">Daily P&L</div>
+                    <div class="portfolio-change" id="dailyPnLPercent">0.0%</div>
+                </div>
+                <div class="portfolio-item">
+                    <div class="portfolio-value neutral" id="totalPnL">$0.00</div>
+                    <div class="portfolio-label">Total P&L</div>
+                    <div class="portfolio-change" id="totalPnLPercent">0.0%</div>
+                </div>
+                <div class="portfolio-item">
+                    <div class="portfolio-value neutral" id="winRate">0%</div>
+                    <div class="portfolio-label">Win Rate</div>
                 </div>
             </div>
         </div>
-        
-        <!-- Emergency Stop -->
-        <div class="emergency-section">
-            <button class="btn btn-emergency" onclick="emergencyStop()">
-                EMERGENCY STOP
-            </button>
+
+        <!-- Trading Status -->
+        <div class="card">
+            <div class="card-title">📊 Trading Status</div>
+            <div class="trading-status">
+                <div class="status-item">
+                    <div class="status-label">Active Strategy</div>
+                    <div class="status-value" id="activeStrategy">-</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Market Analysis</div>
+                    <div class="status-value" id="marketAnalysis">Analyzing...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Active Positions</div>
+                    <div class="status-value" id="activePositions">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Total Trades</div>
+                    <div class="status-value" id="totalTrades">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Bot Uptime</div>
+                    <div class="status-value" id="botUptime">00:00:00</div>
+                </div>
+            </div>
         </div>
-        
-        <!-- Loading Indicator -->
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
+
+        <!-- Controls -->
+        <div class="card">
+            <div class="card-title">🎮 Bot Controls</div>
+            <div class="controls">
+                <button class="btn btn-primary" id="startBtn" onclick="startBot()">
+                    Start Trading
+                </button>
+                <button class="btn btn-danger" id="stopBtn" onclick="stopBot()" disabled>
+                    Stop Trading
+                </button>
+                <button class="btn btn-secondary" id="switchModeBtn" onclick="switchMode()">
+                    Switch Mode
+                </button>
+                <button class="btn btn-danger" id="emergencyBtn" onclick="emergencyStop()">
+                    🚨 Emergency Stop
+                </button>
+            </div>
         </div>
-        
-        <!-- Toast Container -->
-        <div class="toast" id="toast"></div>
+
+        <!-- Trading History -->
+        <div class="card">
+            <div class="card-title">📈 Recent Trading History</div>
+            <div id="historyContainer">
+                <div class="loading-text">
+                    <span class="loading-spinner"></span>
+                    Loading trade history...
+                </div>
+            </div>
+        </div>
     </div>
-    
+
     <script>
-        // API Configuration
-        const API_BASE = window.location.origin.replace(':3000', ':5000').replace(':80', ':5000');
-        
-        // State
-        let isLoading = false;
-        let updateInterval = null;
-        
-        // Show toast notification
-        function showToast(message, type = 'info') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = `toast ${type}`;
-            toast.classList.add('show');
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
+        // Global state
+        let isConnected = false;
+        let currentMode = 'paper';
+        let isRunning = false;
+        let updateInterval;
+
+        // DOM Elements
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const lastUpdate = document.getElementById('lastUpdate');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const switchModeBtn = document.getElementById('switchModeBtn');
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Trading Bot Dashboard Loading...');
+            startRealTimeUpdates();
+            loadInitialData();
+        });
+
+        // Real-time updates every 3 seconds
+        function startRealTimeUpdates() {
+            updateInterval = setInterval(() => {
+                updateDashboard();
             }, 3000);
-        }
-        
-        // Show/hide loading
-        function setLoading(loading) {
-            isLoading = loading;
-            document.getElementById('loading').style.display = loading ? 'block' : 'none';
             
-            // Disable buttons while loading
-            document.querySelectorAll('.btn').forEach(btn => {
-                btn.disabled = loading;
-            });
-        }
-        
-        // Start bot
-        async function startBot(mode) {
-            if (isLoading) return;
-            
-            const strategy = document.getElementById('strategySelect').value;
-            
-            if (mode === 'live' && !confirm('Are you sure you want to start LIVE trading? Real money will be at risk!')) {
-                return;
-            }
-            
-            setLoading(true);
-            
-            try {
-                const response = await fetch(`${API_BASE}/api/bot/start`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({mode: mode, strategy: strategy})
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showToast(`Bot started in ${mode} mode with ${strategy}`, 'success');
-                    updateDashboard();
-                } else {
-                    showToast(result.message || 'Failed to start bot', 'error');
-                }
-            } catch (error) {
-                showToast('Connection error', 'error');
-            } finally {
-                setLoading(false);
-            }
-        }
-        
-        // Stop bot
-        async function stopBot() {
-            if (isLoading) return;
-            
-            if (!confirm('Are you sure you want to stop the bot?')) {
-                return;
-            }
-            
-            setLoading(true);
-            
-            try {
-                const response = await fetch(`${API_BASE}/api/bot/stop`, {
-                    method: 'POST'
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showToast('Bot stopped', 'success');
-                    updateDashboard();
-                } else {
-                    showToast(result.message || 'Failed to stop bot', 'error');
-                }
-            } catch (error) {
-                showToast('Connection error', 'error');
-            } finally {
-                setLoading(false);
-            }
-        }
-        
-        // Switch mode
-        async function switchMode(newMode) {
-            if (isLoading) return;
-            
-            setLoading(true);
-            
-            try {
-                const response = await fetch(`${API_BASE}/api/bot/switch-mode`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({mode: newMode})
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showToast(`Switched to ${newMode} mode`, 'success');
-                    updateDashboard();
-                } else {
-                    showToast(result.message || 'Failed to switch mode', 'error');
-                }
-            } catch (error) {
-                showToast('Connection error', 'error');
-            } finally {
-                setLoading(false);
-            }
-        }
-        
-        // Emergency stop
-        async function emergencyStop() {
-            if (!confirm('EMERGENCY STOP will immediately halt all trading! Continue?')) {
-                return;
-            }
-            
-            setLoading(true);
-            
-            try {
-                const response = await fetch(`${API_BASE}/api/emergency-stop`, {
-                    method: 'POST'
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showToast('Emergency stop executed!', 'success');
-                    updateDashboard();
-                } else {
-                    showToast('Emergency stop failed!', 'error');
-                }
-            } catch (error) {
-                showToast('Connection error during emergency stop!', 'error');
-            } finally {
-                setLoading(false);
-            }
-        }
-        
-        // Update dashboard
-        async function updateDashboard() {
-            try {
-                // Get bot status
-                const statusResponse = await fetch(`${API_BASE}/api/bot/status`);
-                const status = await statusResponse.json();
-                
-                // Update status indicator
-                const statusEl = document.getElementById('botStatus');
-                const isRunning = status.running;
-                statusEl.innerHTML = `
-                    <span class="status-indicator ${isRunning ? 'status-running' : 'status-stopped'}"></span>
-                    <span>Status: ${isRunning ? 'Running' : 'Stopped'} ${status.mode ? `(${status.mode})` : ''}</span>
-                `;
-                
-                // Get portfolio data
-                const portfolioResponse = await fetch(`${API_BASE}/api/portfolio`);
-                const portfolio = await portfolioResponse.json();
-                
-                // Update portfolio values
-                document.getElementById('portfolioValue').textContent = 
-                    `$${(portfolio.total_value || 0).toFixed(2)}`;
-                
-                const dailyPnL = portfolio.daily_pnl || 0;
-                const dailyPnLEl = document.getElementById('dailyPnL');
-                dailyPnLEl.textContent = `$${dailyPnL.toFixed(2)}`;
-                dailyPnLEl.className = `metric-value ${dailyPnL >= 0 ? 'positive' : 'negative'}`;
-                
-                document.getElementById('winRate').textContent = 
-                    `${(portfolio.win_rate || 0).toFixed(1)}%`;
-                document.getElementById('activeTrades').textContent = 
-                    portfolio.active_trades || 0;
-                document.getElementById('totalTrades').textContent = 
-                    portfolio.total_trades || 0;
-                
-                // Get active trades
-                const tradesResponse = await fetch(`${API_BASE}/api/trades/active`);
-                const trades = await tradesResponse.json();
-                
-                // Update trades list
-                const tradesList = document.getElementById('tradesList');
-                if (trades.length === 0) {
-                    tradesList.innerHTML = `
-                        <div style="text-align: center; opacity: 0.5; padding: 20px;">
-                            No active trades
-                        </div>
-                    `;
-                } else {
-                    tradesList.innerHTML = trades.map(trade => {
-                        const pnl = trade.pnl || 0;
-                        return `
-                            <div class="trade-item">
-                                <div class="trade-info">
-                                    <div class="trade-symbol">${trade.symbol}</div>
-                                    <div class="trade-strategy">${trade.strategy}</div>
-                                </div>
-                                <div class="trade-pnl ${pnl >= 0 ? 'positive' : 'negative'}">
-                                    $${pnl.toFixed(2)}
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                }
-                
-            } catch (error) {
-                console.error('Failed to update dashboard:', error);
-            }
-        }
-        
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
             // Initial update
             updateDashboard();
-            
-            // Set up auto-update every 5 seconds
-            updateInterval = setInterval(updateDashboard, 5000);
-        });
-        
-        // Clean up on page unload
-        window.addEventListener('beforeunload', () => {
-            if (updateInterval) {
-                clearInterval(updateInterval);
+        }
+
+        // Load initial data
+        async function loadInitialData() {
+            await Promise.all([
+                updateBotStatus(),
+                updatePortfolio(),
+                updateTradingHistory()
+            ]);
+        }
+
+        // Main dashboard update function
+        async function updateDashboard() {
+            try {
+                await Promise.all([
+                    updateBotStatus(),
+                    updatePortfolio(),
+                    updateActivePositions()
+                ]);
+                
+                // Update connection status
+                setConnectionStatus(true);
+                updateLastUpdateTime();
+                
+            } catch (error) {
+                console.error('❌ Dashboard update failed:', error);
+                setConnectionStatus(false);
             }
+        }
+
+        // Update bot status
+        async function updateBotStatus() {
+            try {
+                const response = await fetch('/api/bot/status');
+                const data = await response.json();
+                
+                isRunning = data.running || false;
+                currentMode = data.mode || 'paper';
+                
+                // Update status display
+                document.getElementById('activeStrategy').textContent = data.active_strategy || 'None';
+                
+                // Update market analysis
+                const market = data.market_analysis || {};
+                if (market.status === 'analyzing') {
+                    document.getElementById('marketAnalysis').innerHTML = 
+                        `<span class="loading-spinner"></span>Trend: ${market.trend || 'Unknown'} | Volatility: ${market.volatility || 'Medium'}`;
+                } else if (market.status === 'offline') {
+                    document.getElementById('marketAnalysis').textContent = 'Offline';
+                } else {
+                    document.getElementById('marketAnalysis').textContent = 
+                        `Trend: ${market.trend || 'Unknown'} | Vol: ${market.volatility || 'Medium'}`;
+                }
+                
+                // Update uptime
+                if (data.uptime_seconds) {
+                    const uptime = formatUptime(data.uptime_seconds);
+                    document.getElementById('botUptime').textContent = uptime;
+                } else {
+                    document.getElementById('botUptime').textContent = '00:00:00';
+                }
+                
+                // Update status text
+                statusText.textContent = isRunning ? 
+                    `Running (${currentMode})` : 
+                    `Stopped (${currentMode})`;
+                
+                // Update button states
+                updateButtonStates();
+                
+            } catch (error) {
+                console.error('❌ Status update failed:', error);
+            }
+        }
+
+        // Update portfolio data
+        async function updatePortfolio() {
+            try {
+                const response = await fetch('/api/portfolio');
+                const data = await response.json();
+                
+                // Portfolio value
+                document.getElementById('portfolioValue').textContent = 
+                    `$${(data.total_value || 0).toFixed(2)}`;
+                
+                // Daily P&L
+                const dailyPnL = data.daily_pnl || 0;
+                const dailyElement = document.getElementById('dailyPnL');
+                dailyElement.textContent = `$${dailyPnL.toFixed(2)}`;
+                dailyElement.className = `portfolio-value ${dailyPnL >= 0 ? 'positive' : 'negative'}`;
+                
+                const dailyPercent = data.daily_pnl_percent || 0;
+                const dailyPercentElement = document.getElementById('dailyPnLPercent');
+                dailyPercentElement.textContent = `${dailyPercent >= 0 ? '+' : ''}${dailyPercent.toFixed(2)}%`;
+                dailyPercentElement.className = `portfolio-change ${dailyPercent >= 0 ? 'trade-positive' : 'trade-negative'}`;
+                
+                // Total P&L
+                const totalPnL = data.total_pnl || 0;
+                const totalElement = document.getElementById('totalPnL');
+                totalElement.textContent = `$${totalPnL.toFixed(2)}`;
+                totalElement.className = `portfolio-value ${totalPnL >= 0 ? 'positive' : 'negative'}`;
+                
+                const totalPercent = data.total_pnl_percent || 0;
+                const totalPercentElement = document.getElementById('totalPnLPercent');
+                totalPercentElement.textContent = `${totalPercent >= 0 ? '+' : ''}${totalPercent.toFixed(2)}%`;
+                totalPercentElement.className = `portfolio-change ${totalPercent >= 0 ? 'trade-positive' : 'trade-negative'}`;
+                
+                // Win rate
+                document.getElementById('winRate').textContent = `${(data.win_rate || 0).toFixed(1)}%`;
+                
+                // Total trades
+                document.getElementById('totalTrades').textContent = data.total_trades || 0;
+                
+            } catch (error) {
+                console.error('❌ Portfolio update failed:', error);
+            }
+        }
+
+        // Update active positions
+        async function updateActivePositions() {
+            try {
+                const response = await fetch('/api/trades/active');
+                const data = await response.json();
+                
+                document.getElementById('activePositions').textContent = 
+                    Array.isArray(data) ? data.length : 0;
+                    
+            } catch (error) {
+                console.error('❌ Active positions update failed:', error);
+            }
+        }
+
+        // Update trading history
+        async function updateTradingHistory() {
+            try {
+                const response = await fetch('/api/trades/history?limit=10');
+                const data = await response.json();
+                
+                const container = document.getElementById('historyContainer');
+                
+                if (data.trades && data.trades.length > 0) {
+                    let tableHTML = `
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Symbol</th>
+                                    <th>Side</th>
+                                    <th>P&L</th>
+                                    <th>Strategy</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    data.trades.slice(0, 10).forEach(trade => {
+                        const time = new Date(trade.timestamp).toLocaleTimeString();
+                        const pnlClass = trade.pnl >= 0 ? 'trade-positive' : 'trade-negative';
+                        
+                        tableHTML += `
+                            <tr>
+                                <td>${time}</td>
+                                <td>${trade.symbol}</td>
+                                <td>${trade.side}</td>
+                                <td class="${pnlClass}">$${trade.pnl.toFixed(2)}</td>
+                                <td>${trade.strategy}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    tableHTML += '</tbody></table>';
+                    container.innerHTML = tableHTML;
+                } else {
+                    container.innerHTML = '<div class="loading-text">No trades yet</div>';
+                }
+                
+            } catch (error) {
+                console.error('❌ Trading history update failed:', error);
+                document.getElementById('historyContainer').innerHTML = 
+                    '<div class="loading-text">Failed to load history</div>';
+            }
+        }
+
+        // Button functions
+        async function startBot() {
+            setButtonLoading(startBtn, true);
+            
+            try {
+                const response = await fetch('/api/bot/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        mode: currentMode, 
+                        strategy: 'adaptive_auto_strategy' 
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('✅ Bot started successfully!', 'success');
+                    updateDashboard();
+                } else {
+                    showNotification(`❌ Failed to start bot: ${result.message}`, 'error');
+                }
+                
+            } catch (error) {
+                showNotification('❌ Connection error', 'error');
+                console.error('Start bot error:', error);
+            } finally {
+                setButtonLoading(startBtn, false);
+            }
+        }
+
+        async function stopBot() {
+            setButtonLoading(stopBtn, true);
+            
+            try {
+                const response = await fetch('/api/bot/stop', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('⏹️ Bot stopped successfully!', 'success');
+                    updateDashboard();
+                } else {
+                    showNotification(`❌ Failed to stop bot: ${result.message}`, 'error');
+                }
+                
+            } catch (error) {
+                showNotification('❌ Connection error', 'error');
+                console.error('Stop bot error:', error);
+            } finally {
+                setButtonLoading(stopBtn, false);
+            }
+        }
+
+        async function switchMode() {
+            const newMode = currentMode === 'paper' ? 'live' : 'paper';
+            setButtonLoading(switchModeBtn, true);
+            
+            try {
+                const response = await fetch('/api/bot/switch-mode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: newMode })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentMode = newMode;
+                    showNotification(`🔄 Switched to ${newMode} mode!`, 'success');
+                    updateDashboard();
+                } else {
+                    showNotification(`❌ Failed to switch mode: ${result.message}`, 'error');
+                }
+                
+            } catch (error) {
+                showNotification('❌ Connection error', 'error');
+                console.error('Switch mode error:', error);
+            } finally {
+                setButtonLoading(switchModeBtn, false);
+            }
+        }
+
+        async function emergencyStop() {
+            if (!confirm('⚠️ Are you sure you want to emergency stop the bot?')) return;
+            
+            try {
+                const response = await fetch('/api/emergency-stop', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('🚨 Emergency stop executed!', 'info');
+                    updateDashboard();
+                } else {
+                    showNotification('❌ Emergency stop failed', 'error');
+                }
+                
+            } catch (error) {
+                showNotification('❌ Connection error', 'error');
+                console.error('Emergency stop error:', error);
+            }
+        }
+
+        // Utility functions
+        function updateButtonStates() {
+            startBtn.disabled = isRunning;
+            stopBtn.disabled = !isRunning;
+            switchModeBtn.textContent = `Switch to ${currentMode === 'paper' ? 'Live' : 'Paper'}`;
+        }
+
+        function setButtonLoading(button, loading) {
+            if (loading) {
+                button.classList.add('loading');
+                button.disabled = true;
+            } else {
+                button.classList.remove('loading');
+                updateButtonStates();
+            }
+        }
+
+        function setConnectionStatus(connected) {
+            isConnected = connected;
+            statusIndicator.className = `status-indicator ${connected ? 'online' : 'offline'}`;
+        }
+
+        function updateLastUpdateTime() {
+            const now = new Date();
+            lastUpdate.textContent = `Last update: ${now.toLocaleTimeString()}`;
+        }
+
+        function formatUptime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function showNotification(message, type = 'info') {
+            // Remove existing notifications
+            const existing = document.querySelector('.notification');
+            if (existing) existing.remove();
+            
+            // Create new notification
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Show notification
+            setTimeout(() => notification.classList.add('show'), 100);
+            
+            // Auto-hide after 4 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 4000);
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (updateInterval) clearInterval(updateInterval);
         });
     </script>
 </body>

@@ -341,6 +341,15 @@ class PositionManager:
             Liste von Position-Objekten
         """
         return list(self.positions.values())
+    
+    def get_positions(self) -> List[Position]:
+        """
+        Alias für get_all_positions() - für Kompatibilität mit TradingBot
+        
+        Returns:
+            Liste aller offenen Positionen
+        """
+        return self.get_all_positions()
 
     def get_total_position_value(self) -> float:
         """

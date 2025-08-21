@@ -431,3 +431,26 @@ class PaperTradingEngine:
             json.dump(history_data, f, indent=2, default=str)
         
         logger.info(f"📁 Trade history exported to {filepath}")
+    
+    @property
+    def daily_pnl(self) -> float:
+        """Get current daily P&L"""
+        portfolio_status = self.get_virtual_portfolio_status()
+        return portfolio_status['daily_pnl']
+    
+    @property
+    def total_portfolio_value(self) -> float:
+        """Get total portfolio value including unrealized P&L"""
+        portfolio_status = self.get_virtual_portfolio_status()
+        return portfolio_status['total_portfolio_value']
+    
+    @property
+    def unrealized_pnl(self) -> float:
+        """Get unrealized P&L from open positions"""
+        portfolio_status = self.get_virtual_portfolio_status()
+        return portfolio_status['unrealized_pnl']
+    
+    @property
+    def total_pnl(self) -> float:
+        """Get total P&L since start"""
+        return self.performance_metrics['total_pnl']

@@ -67,7 +67,8 @@ class TradingBot:
         
         # Core-Konfiguration
         self.mode = mode
-        self.paper_trading = paper_trading
+        # Auto-enable paper trading if mode is 'paper'
+        self.paper_trading = paper_trading or (mode == 'paper')
         self.strategy_name = strategy_name
         self.settings = settings
         self.data_manager = data_manager
@@ -226,6 +227,9 @@ class TradingBot:
     
     def _find_strategy_class(self, module, strategy_name: str) -> Optional[Type[IStrategy]]:
         """Findet die Strategie-Klasse in einem Modul"""
+        # Import here to avoid circular dependency
+        from abc import ABC
+        
         # Versuche verschiedene Namenskonventionen
         possible_names = [
             ''.join(word.capitalize() for word in strategy_name.split('_')) + 'Strategy',
@@ -236,12 +240,16 @@ class TradingBot:
         for name in possible_names:
             if hasattr(module, name):
                 cls = getattr(module, name)
-                if isinstance(cls, type) and issubclass(cls, IStrategy):
+                # Check if it's a class that inherits from ABC (our Strategy base)
+                if isinstance(cls, type) and issubclass(cls, ABC) and hasattr(cls, 'calculate_signal'):
                     return cls
         
-        # Fallback: Erste IStrategy-Subklasse finden
+        # Fallback: Erste Strategy-ähnliche Klasse finden
         for name, obj in vars(module).items():
-            if isinstance(obj, type) and issubclass(obj, IStrategy) and obj != IStrategy:
+            if (isinstance(obj, type) and 
+                issubclass(obj, ABC) and 
+                hasattr(obj, 'calculate_signal') and
+                name != 'Strategy'):  # Exclude base Strategy class
                 return obj
         
         return None

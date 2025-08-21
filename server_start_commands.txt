@@ -1,0 +1,50 @@
+🚀 WINDOWS SERVER DEPLOYMENT COMMANDS
+=====================================
+
+## 1. Upload auf Windows Server:
+Run PowerShell auf dem Windows Server (85.215.183.30):
+
+```powershell
+# Navigate to deployment directory
+cd C:\Users\Administrator\Ml_altcoin_trading_bot\server
+
+# Start Dashboard API Server
+python dashboard_api.py
+```
+
+## 2. Server wird verfügbar unter:
+- Local: http://localhost:5000
+- External: http://85.215.183.30:5000
+
+## 3. Dashboard Features sind funktional:
+✅ Portfolio Value: $10,000.00 (Paper Trading)
+✅ Strategy: adaptive_auto_strategy
+✅ Market Analysis: Ready status
+✅ Real-time Updates: Every 3 seconds
+✅ Trading Controls: Start/Stop/Emergency buttons
+✅ Trading History: Ready for trade records
+
+## 4. Test Commands für Server:
+```powershell
+# Test API endpoints
+curl http://localhost:5000/api/health
+curl http://localhost:5000/api/portfolio  
+curl http://localhost:5000/api/bot/status
+
+# Test Dashboard
+# Open browser: http://85.215.183.30:5000
+```
+
+## 5. Firewall Configuration (if needed):
+```powershell
+# Allow port 5000 through Windows Firewall
+New-NetFirewallRule -DisplayName "Trading Bot Dashboard" -Direction Inbound -Port 5000 -Protocol TCP -Action Allow
+```
+
+## 6. Production Server Commands:
+```powershell
+# For production deployment
+python -m gunicorn --bind 0.0.0.0:5000 --workers 1 server.dashboard_api:app
+```
+
+READY TO MAKE MONEY! 💰

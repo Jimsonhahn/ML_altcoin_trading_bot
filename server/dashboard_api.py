@@ -25,6 +25,15 @@ logger = logging.getLogger(__name__)
 try:
     from server.bot_wrapper import ServerBotWrapper
     server_bot = ServerBotWrapper()  # Erstelle Instanz hier statt beim Import
+    
+    # Auto-initialize with paper trading if not already initialized
+    if server_bot and not server_bot.trading_bot:
+        logger.info("Auto-initializing ServerBotWrapper with paper trading...")
+        success = server_bot.initialize(mode='paper', strategy='adaptive_auto_strategy')
+        if success:
+            logger.info("✅ ServerBotWrapper successfully auto-initialized with $10,000 virtual balance")
+        else:
+            logger.error("❌ Failed to auto-initialize ServerBotWrapper")
 except Exception as e:
     logger.warning(f"Bot wrapper could not be imported: {e}")
     server_bot = None
@@ -91,22 +100,31 @@ def get_status():
         status = server_bot.get_status()
         
         # Add additional info for dashboard
-        if server_bot.is_running and server_bot.trading_bot:
-            # Get current strategy info
+        if server_bot.trading_bot:
+            # Get current strategy info even if bot is not running
             current_strategy = getattr(server_bot.trading_bot, 'strategy_name', 'Unknown')
             
-            # Add strategy and market info
-            status.update({
-                'active_strategy': current_strategy,
-                'market_analysis': {
-                    'status': 'analyzing',
-                    'trend': 'sideways',
-                    'volatility': 'medium',
-                    'confidence': 0.75
-                },
-                'last_update': datetime.now().isoformat(),
-                'uptime_seconds': (datetime.now() - server_bot.start_time).total_seconds() if server_bot.start_time else 0
-            })
+            if server_bot.is_running:
+                # Running state - show analyzing
+                status.update({
+                    'active_strategy': current_strategy,
+                    'market_analysis': {
+                        'status': 'analyzing',
+                        'trend': 'sideways',
+                        'volatility': 'medium',
+                        'confidence': 0.75
+                    },
+                    'last_update': datetime.now().isoformat(),
+                    'uptime_seconds': (datetime.now() - server_bot.start_time).total_seconds() if server_bot.start_time else 0
+                })
+            else:
+                # Bot initialized but not running
+                status.update({
+                    'active_strategy': current_strategy,
+                    'market_analysis': {'status': 'ready'},
+                    'last_update': datetime.now().isoformat(),
+                    'uptime_seconds': 0
+                })
         else:
             status.update({
                 'active_strategy': None,

@@ -10,9 +10,10 @@ Zentrale Module für den Trading Bot:
 - SafetyManager: Notfall- und Drawdown-Schutz
 """
 
-# Hauptkomponenten
+# Hauptkomponenten - importing selectively to avoid circular dependencies
 from .trading_bot import TradingBot
-from .strategy_router import StrategyRouter
+# Strategy router import moved to avoid circular dependency with strategies
+# from .strategy_router import StrategyRouter
 from .market_analyzer import MarketAnalyzer
 from .risk_manager import RiskManager
 from .safety_manager import SafetyManager
@@ -29,7 +30,7 @@ from .backtest_engine import BacktestEngine
 __version__ = "1.0.0"
 __all__ = [
     'TradingBot',
-    'StrategyRouter', 
+    # 'StrategyRouter',  # Commented to avoid circular dependency
     'MarketAnalyzer',
     'RiskManager',
     'SafetyManager',

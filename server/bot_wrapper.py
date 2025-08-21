@@ -154,23 +154,51 @@ class ServerBotWrapper:
             if not self.trading_bot:
                 return {'error': 'Bot not initialized'}
             
-            # Hole Daten vom bestehenden Bot
-            positions = self.trading_bot.get_positions() if hasattr(self.trading_bot, 'get_positions') else []
-            balance = self.trading_bot.get_balance() if hasattr(self.trading_bot, 'get_balance') else {}
-            
-            # Berechne Portfolio-Wert
-            total_value = sum(balance.get('total', {}).values()) if isinstance(balance, dict) else 0
-            
-            return {
-                'total_value': total_value,
-                'total_balance': total_value,  # Alias für Kompatibilität
-                'positions': len(positions),
-                'daily_pnl': self._calculate_daily_pnl(),
-                'win_rate': self._calculate_win_rate(),
-                'active_trades': len([p for p in positions if p.get('status') == 'open']),
-                'total_trades': len(self.trade_history)
-            }
-            
+            # Paper Trading Mode - use comprehensive portfolio status
+            if self.trading_bot.paper_trading and self.trading_bot.paper_engine:
+                portfolio_status = self.trading_bot.paper_engine.get_virtual_portfolio_status()
+                
+                return {
+                    'total_value': portfolio_status['total_portfolio_value'],
+                    'total_balance': portfolio_status['virtual_balance'],
+                    'daily_pnl': portfolio_status['daily_pnl'],
+                    'daily_pnl_percent': portfolio_status['daily_pnl_percentage'],
+                    'total_pnl': portfolio_status['realized_pnl'],
+                    'total_pnl_percent': (portfolio_status['realized_pnl'] / portfolio_status['initial_balance']) * 100,
+                    'unrealized_pnl': portfolio_status['unrealized_pnl'],
+                    'win_rate': portfolio_status['win_rate'],
+                    'total_trades': portfolio_status['total_trades'],
+                    'winning_trades': portfolio_status['winning_trades'],
+                    'losing_trades': portfolio_status['losing_trades'],
+                    'active_trades': portfolio_status['open_positions'],
+                    'positions': portfolio_status['open_positions']
+                }
+            else:
+                # Live Trading Mode - fallback to original logic
+                positions = self.trading_bot.get_positions() if hasattr(self.trading_bot, 'get_positions') else []
+                balance = self.trading_bot.get_balance() if hasattr(self.trading_bot, 'get_balance') else {}
+                
+                # Fix balance calculation
+                total_value = 0
+                if isinstance(balance, dict) and 'total' in balance:
+                    if isinstance(balance['total'], dict):
+                        total_value = sum(balance['total'].values())
+                    else:
+                        total_value = balance.get('total', 0)
+                
+                return {
+                    'total_value': total_value,
+                    'total_balance': total_value,
+                    'positions': len(positions),
+                    'daily_pnl': self._calculate_daily_pnl(),
+                    'daily_pnl_percent': 0.0,
+                    'total_pnl': self._calculate_total_pnl(),
+                    'total_pnl_percent': 0.0,
+                    'win_rate': self._calculate_win_rate(),
+                    'active_trades': len([p for p in positions if p.get('status') == 'open']),
+                    'total_trades': len(self.trade_history)
+                }
+                
         except Exception as e:
             logger.error(f"Failed to get portfolio summary: {str(e)}")
             return {'error': str(e)}

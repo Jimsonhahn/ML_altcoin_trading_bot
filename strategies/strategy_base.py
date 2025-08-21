@@ -6,7 +6,8 @@ from enum import Enum
 from typing import Dict, Tuple, Any, Optional
 import pandas as pd
 import logging
-from core.interfaces import IStrategy
+# Import moved to avoid circular dependency
+# from core.interfaces import IStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,7 @@ class Signal(Enum):
     SELL = "SELL"
     HOLD = "HOLD"
 
-class Strategy(IStrategy):
+class Strategy(ABC):
     """Abstract base class for all trading strategies"""
 
     def __init__(self, params: Dict = None, ml_components: Optional[Any] = None):
