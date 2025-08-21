@@ -1,7 +1,7 @@
 """
 Base Strategy Class
 """
-from abc import ABC, abstractmethod
+from abc import ABC
 from enum import Enum
 from typing import Dict, Tuple, Any, Optional
 import pandas as pd
@@ -262,10 +262,10 @@ class Strategy(IStrategy):
         """Get the parameters of this strategy"""
         return self.params.copy()
     
-    @abstractmethod
     def calculate_signal(self, symbol: str, data: pd.DataFrame, current_price: float) -> Tuple[str, Dict[str, Any]]:
         """
-        Abstract method that must be implemented by concrete strategy classes
+        Calculate trading signal - can be overridden by concrete strategy classes
         Returns (signal, metadata) where signal is 'BUY', 'SELL', or 'HOLD'
         """
-        pass
+        # Default implementation - no trade
+        return 'HOLD', {'confidence': 0.0, 'reason': 'Base strategy - no implementation'}
