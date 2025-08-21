@@ -242,8 +242,19 @@ class ServerBotWrapper:
     # Helper methods for calculations
     def _calculate_daily_pnl(self) -> float:
         """Berechnet täglichen P&L"""
-        # Implementierung würde auf echten Trade-Daten basieren
-        return 0.0
+        try:
+            if self.trading_bot and self.trading_bot.paper_trading and self.trading_bot.paper_engine:
+                # Get daily P&L from paper trading engine
+                return getattr(self.trading_bot.paper_engine, 'daily_pnl', 0.0)
+            
+            # Fallback: calculate from trade history
+            today = datetime.now().date()
+            daily_trades = [t for t in self.trade_history if 
+                           datetime.fromisoformat(t.get('timestamp', '2023-01-01T00:00:00')).date() == today]
+            return sum(t.get('pnl', 0) for t in daily_trades)
+        except Exception as e:
+            logger.error(f"Error calculating daily PnL: {e}")
+            return 0.0
     
     def _calculate_weekly_pnl(self) -> float:
         """Berechnet wöchentlichen P&L"""

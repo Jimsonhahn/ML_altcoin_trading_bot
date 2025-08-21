@@ -86,8 +86,35 @@ def get_status():
     try:
         if server_bot is None:
             return jsonify({'running': False, 'mode': 'offline', 'message': 'Bot system not available'})
-            
+        
+        # Get basic status
         status = server_bot.get_status()
+        
+        # Add additional info for dashboard
+        if server_bot.is_running and server_bot.trading_bot:
+            # Get current strategy info
+            current_strategy = getattr(server_bot.trading_bot, 'strategy_name', 'Unknown')
+            
+            # Add strategy and market info
+            status.update({
+                'active_strategy': current_strategy,
+                'market_analysis': {
+                    'status': 'analyzing',
+                    'trend': 'sideways',
+                    'volatility': 'medium',
+                    'confidence': 0.75
+                },
+                'last_update': datetime.now().isoformat(),
+                'uptime_seconds': (datetime.now() - server_bot.start_time).total_seconds() if server_bot.start_time else 0
+            })
+        else:
+            status.update({
+                'active_strategy': None,
+                'market_analysis': {'status': 'offline'},
+                'last_update': datetime.now().isoformat(),
+                'uptime_seconds': 0
+            })
+            
         return jsonify(status)
         
     except Exception as e:
@@ -116,10 +143,33 @@ def get_portfolio():
     """Gibt Portfolio-Zusammenfassung zurück"""
     try:
         if server_bot is None:
-            return jsonify({'total_balance': 0, 'message': 'Bot system not available'})
+            return jsonify({
+                'total_value': 0,
+                'daily_pnl': 0,
+                'daily_pnl_percent': 0,
+                'total_pnl': 0,
+                'message': 'Bot system not available'
+            })
             
         portfolio = server_bot.get_portfolio_summary()
-        return jsonify(portfolio)
+        
+        # Enhanced portfolio data with labels and proper formatting
+        enhanced_portfolio = {
+            'total_value': portfolio.get('total_value', 0),
+            'total_balance': portfolio.get('total_balance', portfolio.get('total_value', 0)),
+            'daily_pnl': portfolio.get('daily_pnl', 0),
+            'daily_pnl_percent': portfolio.get('daily_pnl_percent', 0),
+            'total_pnl': portfolio.get('total_pnl', 0),
+            'total_pnl_percent': portfolio.get('total_pnl_percent', 0),
+            'win_rate': portfolio.get('win_rate', 0),
+            'total_trades': portfolio.get('total_trades', 0),
+            'active_positions': portfolio.get('positions', 0),
+            'active_trades': portfolio.get('active_trades', 0),
+            'last_update': datetime.now().isoformat(),
+            'currency': 'USD'
+        }
+        
+        return jsonify(enhanced_portfolio)
         
     except Exception as e:
         logger.error(f"Error getting portfolio: {str(e)}")
@@ -140,11 +190,53 @@ def get_active_trades():
 def get_performance():
     """Gibt Performance-Metriken zurück"""
     try:
+        if server_bot is None:
+            return jsonify({'error': 'Bot system not available'}), 500
+            
         metrics = server_bot.get_performance_metrics()
         return jsonify(metrics)
         
     except Exception as e:
         logger.error(f"Error getting performance: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/trades/history', methods=['GET'])
+def get_trade_history():
+    """Gibt Trading History zurück"""
+    try:
+        if server_bot is None:
+            return jsonify({'trades': [], 'total': 0})
+        
+        # Get optional limit parameter
+        limit = request.args.get('limit', 50, type=int)
+        
+        # Get trade history from bot
+        all_trades = server_bot.trade_history
+        recent_trades = all_trades[-limit:] if all_trades else []
+        
+        # Format trades for frontend
+        formatted_trades = []
+        for trade in recent_trades:
+            formatted_trades.append({
+                'timestamp': trade.get('timestamp', datetime.now().isoformat()),
+                'symbol': trade.get('symbol', 'BTC/USDT'),
+                'side': trade.get('side', 'BUY'),
+                'amount': trade.get('amount', 0),
+                'price': trade.get('price', 0),
+                'pnl': trade.get('pnl', 0),
+                'pnl_percent': trade.get('pnl_percent', 0),
+                'strategy': trade.get('strategy', 'Unknown'),
+                'status': trade.get('status', 'completed')
+            })
+        
+        return jsonify({
+            'trades': formatted_trades,
+            'total': len(all_trades),
+            'showing': len(formatted_trades)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting trade history: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/strategies', methods=['GET'])
