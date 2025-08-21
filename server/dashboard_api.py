@@ -15,6 +15,13 @@ from datetime import datetime
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
 
+# Configure logging BEFORE using logger
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 try:
     from server.bot_wrapper import ServerBotWrapper
     server_bot = ServerBotWrapper()  # Erstelle Instanz hier statt beim Import
@@ -28,12 +35,7 @@ except Exception as e:
     logger.warning(f"Strategy orchestrator could not be imported: {e}")
     StrategyOrchestrator = None
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Logger is already configured above
 
 # Create Flask app
 app = Flask(__name__)

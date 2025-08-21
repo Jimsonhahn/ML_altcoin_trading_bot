@@ -1,7 +1,7 @@
 """
 Base Strategy Class
 """
-from abc import ABC
+from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Dict, Tuple, Any, Optional
 import pandas as pd
@@ -37,7 +37,6 @@ class Strategy(IStrategy):
         if self.ml_enhanced:
             logger.info(f"{self.name} initialized with ML enhancement")
 
-    @abstractmethod
     def calculate_signal(self, symbol: str, data: pd.DataFrame, 
                         current_price: float) -> Tuple[str, Dict[str, Any]]:
         """
@@ -47,7 +46,8 @@ class Strategy(IStrategy):
             Tuple of (signal_string, signal_data_dict)
             Example: ('BUY', {'confidence': 0.8, 'reason': 'momentum'})
         """
-        pass
+        # Default implementation - must be overridden by subclasses
+        return 'HOLD', {'confidence': 0.0, 'reason': 'Base implementation'}
     
     def calculate_ml_enhanced_signal(self, symbol: str, data: pd.DataFrame,
                                    current_price: float) -> Tuple[str, Dict[str, Any]]:
