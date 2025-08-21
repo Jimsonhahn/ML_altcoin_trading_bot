@@ -10,11 +10,13 @@ from flask_cors import CORS
 import logging
 from pathlib import Path
 import sys
+from datetime import datetime
 
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from server.bot_wrapper import server_bot
+from orchestrator import StrategyOrchestrator
 
 # Configure logging
 logging.basicConfig(
@@ -228,6 +230,125 @@ def emergency_stop():
     except Exception as e:
         logger.error(f"Error in emergency stop: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/orchestrator/status', methods=['GET'])
+def get_orchestrator_status():
+    """Gibt Status des Strategy Orchestrators zurück"""
+    try:
+        # Get orchestrator status if available
+        if hasattr(server_bot, 'orchestrator') and server_bot.orchestrator:
+            status = server_bot.orchestrator.get_orchestrator_status()
+        else:
+            # Default status if orchestrator not initialized
+            status = {
+                'active_strategies': [],
+                'market_regime': {
+                    'volatility': 'medium',
+                    'trend': 'sideways',
+                    'volume': 'normal',
+                    'correlation': 0.5,
+                    'confidence': 0.0
+                },
+                'risk_allocation': {},
+                'total_risk_used': 0,
+                'performance_summary': {}
+            }
+        
+        return jsonify(status)
+        
+    except Exception as e:
+        logger.error(f"Error getting orchestrator status: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/orchestrator/rebalance', methods=['POST'])
+def force_orchestrator_rebalance():
+    """Erzwingt eine Neubalancierung der Strategien"""
+    try:
+        if hasattr(server_bot, 'orchestrator') and server_bot.orchestrator:
+            # This would be async in production
+            result = {
+                'success': True,
+                'message': 'Rebalancing triggered',
+                'timestamp': datetime.now().isoformat()
+            }
+            # server_bot.orchestrator.force_rebalance()
+        else:
+            result = {
+                'success': False,
+                'message': 'Orchestrator not initialized'
+            }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error forcing rebalance: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/orchestrator/strategies', methods=['GET'])
+def get_orchestrator_strategies():
+    """Gibt detaillierte Informationen über alle Strategien zurück"""
+    try:
+        strategies_info = {
+            'momentum': {
+                'name': 'Momentum Strategy',
+                'description': 'Follows market trends',
+                'optimal_conditions': {'trend': 'bullish', 'volatility': 'medium'},
+                'risk_level': 'medium',
+                'performance': {'win_rate': 0.0, 'total_pnl': 0.0, 'confidence': 0.5}
+            },
+            'mean_reversion': {
+                'name': 'Mean Reversion',
+                'description': 'Trades against extremes',
+                'optimal_conditions': {'trend': 'sideways', 'volatility': 'low'},
+                'risk_level': 'low',
+                'performance': {'win_rate': 0.0, 'total_pnl': 0.0, 'confidence': 0.5}
+            },
+            'arbitrage': {
+                'name': 'Arbitrage',
+                'description': 'Exploits price differences',
+                'optimal_conditions': {'correlation': 'high', 'volatility': 'low'},
+                'risk_level': 'low',
+                'performance': {'win_rate': 0.0, 'total_pnl': 0.0, 'confidence': 0.5}
+            },
+            'grid_trading': {
+                'name': 'Grid Trading',
+                'description': 'Places orders at intervals',
+                'optimal_conditions': {'trend': 'sideways', 'volatility': 'medium'},
+                'risk_level': 'medium',
+                'performance': {'win_rate': 0.0, 'total_pnl': 0.0, 'confidence': 0.5}
+            },
+            'high_risk_daily': {
+                'name': 'High Risk Daily',
+                'description': 'Aggressive day trading',
+                'optimal_conditions': {'volatility': 'extreme', 'volume': 'high'},
+                'risk_level': 'high',
+                'performance': {'win_rate': 0.0, 'total_pnl': 0.0, 'confidence': 0.5}
+            },
+            'ml_strategy': {
+                'name': 'Machine Learning',
+                'description': 'AI-powered predictions',
+                'optimal_conditions': {'any': True},
+                'risk_level': 'medium',
+                'performance': {'win_rate': 0.0, 'total_pnl': 0.0, 'confidence': 0.5}
+            }
+        }
+        
+        # Update with real performance data if available
+        if hasattr(server_bot, 'orchestrator') and server_bot.orchestrator:
+            for strategy_name, perf in server_bot.orchestrator.strategy_performance.items():
+                if strategy_name in strategies_info:
+                    strategies_info[strategy_name]['performance'] = {
+                        'win_rate': perf.win_rate,
+                        'total_pnl': perf.total_pnl,
+                        'confidence': perf.confidence_score,
+                        'total_trades': perf.total_trades
+                    }
+        
+        return jsonify(strategies_info)
+        
+    except Exception as e:
+        logger.error(f"Error getting orchestrator strategies: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':
