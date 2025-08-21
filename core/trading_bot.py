@@ -621,3 +621,61 @@ class TradingBot:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context Manager Austritt"""
         self.stop()
+    
+    def get_balance(self) -> Dict[str, Any]:
+        """Get current balance"""
+        try:
+            if self.paper_trading and self.paper_engine:
+                # Get balance from paper trading engine
+                return {
+                    'total': {
+                        'USDT': self.paper_engine.virtual_balance
+                    },
+                    'free': {
+                        'USDT': self.paper_engine.virtual_balance
+                    }
+                }
+            elif hasattr(self.data_manager, 'exchange') and self.data_manager.exchange:
+                # Get balance from exchange
+                balance_usdt = self.data_manager.exchange.get_balance('USDT')
+                return {
+                    'total': {
+                        'USDT': balance_usdt
+                    },
+                    'free': {
+                        'USDT': balance_usdt
+                    }
+                }
+            else:
+                return {'total': {}, 'free': {}}
+        except Exception as e:
+            logger.error(f"Error getting balance: {e}")
+            return {'total': {}, 'free': {}}
+    
+    def get_positions(self) -> List[Dict[str, Any]]:
+        """Get current positions"""
+        try:
+            if self.paper_trading and self.paper_engine:
+                # Get positions from paper trading engine
+                positions = []
+                for pos_id, pos in self.paper_engine.positions.items():
+                    if pos.status == 'open':
+                        positions.append({
+                            'symbol': pos.symbol,
+                            'side': pos.side,
+                            'amount': pos.size,
+                            'entry_price': pos.entry_price,
+                            'current_price': pos.current_price,
+                            'pnl': pos.unrealized_pnl,
+                            'pnl_percent': pos.unrealized_pnl_percent,
+                            'status': pos.status
+                        })
+                return positions
+            elif hasattr(self, 'position_manager') and self.position_manager:
+                # Get positions from position manager
+                return self.position_manager.get_positions()
+            else:
+                return []
+        except Exception as e:
+            logger.error(f"Error getting positions: {e}")
+            return []

@@ -163,6 +163,7 @@ class ServerBotWrapper:
             
             return {
                 'total_value': total_value,
+                'total_balance': total_value,  # Alias für Kompatibilität
                 'positions': len(positions),
                 'daily_pnl': self._calculate_daily_pnl(),
                 'win_rate': self._calculate_win_rate(),
