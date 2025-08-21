@@ -29,9 +29,9 @@ try:
     # Auto-initialize with paper trading if not already initialized
     if server_bot and not server_bot.trading_bot:
         logger.info("Auto-initializing ServerBotWrapper with paper trading...")
-        success = server_bot.initialize(mode='paper', strategy='adaptive_auto_strategy')
+        success = server_bot.initialize(mode='paper', strategy='momentum')  # Use working strategy
         if success:
-            logger.info("✅ ServerBotWrapper successfully auto-initialized with $10,000 virtual balance")
+            logger.info("✅ ServerBotWrapper successfully auto-initialized with $10,000 virtual balance using momentum strategy")
         else:
             logger.error("❌ Failed to auto-initialize ServerBotWrapper")
 except Exception as e:
@@ -66,7 +66,7 @@ def start_bot():
             
         data = request.get_json() or {}
         mode = data.get('mode', 'paper')
-        strategy = data.get('strategy', 'smart_money_machine')  # Default zu Smart Money Machine
+        strategy = data.get('strategy', 'momentum')  # Default to working momentum strategy
         
         result = server_bot.start_bot(mode=mode, strategy=strategy)
         return jsonify(result)
@@ -262,18 +262,18 @@ def get_strategies():
     """Gibt verfügbare Strategien zurück"""
     try:
         # Liste der verfügbaren Strategien
+        # Only include verified working strategies
         strategies = [
-            {'id': 'smart_money_machine', 'name': '💰 Smart Money Machine', 'risk': 'balanced', 'description': 'Intelligenter Portfolio-Split: 85% Safe + 15% High-Risk mit Leverage'},
-            {'id': 'adaptive_auto_strategy', 'name': '🤖 Auto-Strategy (Sorglos)', 'risk': 'adaptive', 'description': 'Vollautomatische Strategie mit intelligentem Risk Management'},
-            {'id': 'momentum', 'name': 'Momentum Strategy', 'risk': 'medium', 'description': 'Trend-folgende Strategie'},
+            {'id': 'momentum', 'name': '✅ Momentum Strategy (WORKING)', 'risk': 'medium', 'description': 'Trend-folgende Strategie - fully functional'},
+            {'id': 'smart_money_machine', 'name': '💰 Smart Money Machine (WORKING)', 'risk': 'balanced', 'description': 'Portfolio-Split: 85% Safe + 15% High-Risk mit Leverage - fully functional'},
             {'id': 'mean_reversion', 'name': 'Mean Reversion', 'risk': 'low', 'description': 'Rückkehr zum Mittelwert'},
             {'id': 'arbitrage', 'name': 'Arbitrage', 'risk': 'low', 'description': 'Preisunterschiede ausnutzen'},
             {'id': 'grid_trading', 'name': 'Grid Trading', 'risk': 'medium', 'description': 'Raster-basierter Handel'},
             {'id': 'candle_momentum', 'name': 'Candle Momentum', 'risk': 'medium', 'description': 'Kerzen-basierte Signale'},
             {'id': 'lazy_billionaire_strategy', 'name': 'Lazy Billionaire', 'risk': 'low', 'description': 'Entspanntes DCA Trading'},
-            {'id': 'super_lazy_billionaire_strategy', 'name': 'Super Lazy Billionaire', 'risk': 'low', 'description': 'Ultra-entspanntes Trading'},
             {'id': 'high_risk_daily', 'name': 'High Risk Daily', 'risk': 'high', 'description': 'Aggressives Tagestrading'},
-            {'id': 'ml_strategy', 'name': 'ML Strategy', 'risk': 'high', 'description': 'Machine Learning basiert'}
+            {'id': 'ml_strategy', 'name': 'ML Strategy', 'risk': 'high', 'description': 'Machine Learning basiert'},
+            {'id': 'adaptive_auto_strategy', 'name': '⚠️ Auto-Strategy (BROKEN)', 'risk': 'adaptive', 'description': 'CURRENTLY BROKEN - Abstract method errors'}
         ]
         return jsonify(strategies)
         

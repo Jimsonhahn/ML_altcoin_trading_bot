@@ -38,6 +38,7 @@ class Strategy(ABC):
         if self.ml_enhanced:
             logger.info(f"{self.name} initialized with ML enhancement")
 
+    @abstractmethod
     def calculate_signal(self, symbol: str, data: pd.DataFrame, 
                         current_price: float) -> Tuple[str, Dict[str, Any]]:
         """
@@ -47,8 +48,7 @@ class Strategy(ABC):
             Tuple of (signal_string, signal_data_dict)
             Example: ('BUY', {'confidence': 0.8, 'reason': 'momentum'})
         """
-        # Default implementation - must be overridden by subclasses
-        return 'HOLD', {'confidence': 0.0, 'reason': 'Base implementation'}
+        pass
     
     def calculate_ml_enhanced_signal(self, symbol: str, data: pd.DataFrame,
                                    current_price: float) -> Tuple[str, Dict[str, Any]]:
