@@ -15,7 +15,7 @@ class MomentumStrategy(Strategy):
         self.rsi_oversold = params.get('rsi_oversold', 30) if params else 30
         self.rsi_overbought = params.get('rsi_overbought', 70) if params else 70
 
-    def calculate_signal(self, symbol: str, data: pd.DataFrame,
+    async def calculate_signal(self, symbol: str, data: pd.DataFrame,
                         current_price: float) -> Tuple[str, Dict[str, Any]]:
         """Calculate momentum-based trading signal"""
         if data is None or len(data) < 50:

@@ -50,14 +50,14 @@ class Strategy(ABC):
         """
         pass
     
-    def calculate_ml_enhanced_signal(self, symbol: str, data: pd.DataFrame,
+    async def calculate_ml_enhanced_signal(self, symbol: str, data: pd.DataFrame,
                                    current_price: float) -> Tuple[str, Dict[str, Any]]:
         """
         Calculate ML-enhanced trading signal
         Combines base strategy signal with ML predictions
         """
         # Get base strategy signal
-        base_signal, base_data = self.calculate_signal(symbol, data, current_price)
+        base_signal, base_data = await self.calculate_signal(symbol, data, current_price)
         
         # If ML not enabled or not available, return base signal
         if not self.ml_enhanced or not self.ml_config['use_ml_predictions']:

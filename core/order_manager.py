@@ -675,5 +675,49 @@ SUPPORTED ORDER TYPES:
                 report += f"... and {len(active_orders) - 5} more\n"
 
         return report
+    
+    async def simulate_order(self, order: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Simulate order execution for paper trading mode
+        
+        Args:
+            order: Order dictionary with symbol, side, amount, etc.
+            
+        Returns:
+            Simulated order result
+        """
+        try:
+            # For paper trading, we just return a successful simulation
+            simulated_result = {
+                'id': f"SIM_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{order.get('symbol', 'XXX')}",
+                'symbol': order.get('symbol'),
+                'side': order.get('side'),
+                'amount': order.get('amount'),
+                'price': order.get('price'),
+                'type': order.get('type', 'market'),
+                'status': 'filled',
+                'timestamp': datetime.now().isoformat(),
+                'filled': order.get('amount', 0),
+                'remaining': 0,
+                'cost': order.get('amount', 0) * order.get('price', 0),
+                'fee': {
+                    'currency': 'USDT',
+                    'cost': order.get('amount', 0) * order.get('price', 0) * 0.001  # 0.1% fee
+                },
+                'trades': [],
+                'info': {'simulated': True}
+            }
+            
+            logger.info(f"📊 Simulated {order.get('side')} order: {order.get('amount')} {order.get('symbol')} @ ${order.get('price')}")
+            return simulated_result
+            
+        except Exception as e:
+            logger.error(f"Error simulating order: {e}")
+            return {
+                'id': None,
+                'status': 'failed',
+                'error': str(e),
+                'info': {'simulated': True}
+            }
 
 

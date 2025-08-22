@@ -513,5 +513,99 @@ RISK LIMITS:
             })
         
         return enhanced_metrics
+    
+    def can_open_position(self, symbol: str, signal_type: str, current_price: float) -> bool:
+        """
+        Check if a new position can be opened based on risk management rules
+        
+        Args:
+            symbol: Trading symbol (e.g., 'BTC/USDT')
+            signal_type: 'BUY' or 'SELL'
+            current_price: Current market price
+            
+        Returns:
+            True if position can be opened, False otherwise
+        """
+        try:
+            # Check if we already have too many open positions
+            if len(self.current_positions) >= self.max_positions:
+                logger.warning(f"Cannot open {signal_type} position for {symbol}: Max positions ({self.max_positions}) reached")
+                return False
+            
+            # Check if we already have a position in this symbol
+            if symbol in self.current_positions:
+                logger.warning(f"Cannot open {signal_type} position for {symbol}: Position already exists")
+                return False
+            
+            # Calculate position size for this trade
+            max_size = self.calculate_max_position_size(symbol, current_price, self.portfolio_value)
+            if max_size <= 0:
+                logger.warning(f"Cannot open {signal_type} position for {symbol}: Max position size is 0")
+                return False
+            
+            # Check current drawdown
+            current_drawdown = self._calculate_current_drawdown()
+            if current_drawdown >= self.max_drawdown:
+                logger.warning(f"Cannot open {signal_type} position for {symbol}: Max drawdown exceeded ({current_drawdown:.2%} >= {self.max_drawdown:.2%})")
+                return False
+            
+            # Check portfolio risk
+            risk_metrics = self.get_portfolio_risk_metrics()
+            risk_score = risk_metrics.get('risk_score', 0)
+            if risk_score > 80:  # High risk threshold
+                logger.warning(f"Cannot open {signal_type} position for {symbol}: Portfolio risk too high (score: {risk_score})")
+                return False
+            
+            logger.info(f"✓ Risk check passed for {signal_type} {symbol} at ${current_price:.2f}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error in risk check for {symbol}: {e}")
+            return False  # Fail-safe: reject if error
+    
+    def calculate_position_size(self, symbol: str, signal_type: str, current_price: float, 
+                              confidence: float = 1.0, account_balance: float = None) -> float:
+        """
+        Calculate the actual position size for a trade
+        
+        Args:
+            symbol: Trading symbol
+            signal_type: 'BUY' or 'SELL'
+            current_price: Current market price
+            confidence: Signal confidence (0-1)
+            account_balance: Available balance (optional)
+            
+        Returns:
+            Position size in base currency units
+        """
+        try:
+            # Use provided balance or default to portfolio value
+            balance = account_balance or self.portfolio_value
+            
+            # Calculate base position size (percentage of balance)
+            risk_percentage = self.risk_per_trade * confidence  # Adjust by confidence
+            position_value = balance * risk_percentage
+            
+            # Convert to position size in base currency units
+            base_position_size = position_value / current_price
+            
+            # Apply maximum position size limits
+            max_size = self.calculate_max_position_size(symbol, current_price, balance)
+            position_size = min(base_position_size, max_size)
+            
+            # Apply minimum size (avoid dust trades)
+            min_trade_value = 10.0  # $10 minimum trade
+            min_size = min_trade_value / current_price
+            
+            if position_size < min_size:
+                logger.info(f"Position size too small for {symbol}: ${position_size * current_price:.2f} < ${min_trade_value}")
+                return 0.0
+            
+            logger.info(f"Calculated position size for {signal_type} {symbol}: {position_size:.6f} (${position_size * current_price:.2f})")
+            return position_size
+            
+        except Exception as e:
+            logger.error(f"Error calculating position size for {symbol}: {e}")
+            return 0.0
 
 

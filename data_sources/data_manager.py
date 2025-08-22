@@ -94,3 +94,9 @@ class DataManager:
             return df
         except Exception as e:
             handle_data_error(e, symbol=symbol, timeframe=timeframe)
+    
+    async def fetch_data(self, symbol: str, timeframe: str, limit: int = 100) -> pd.DataFrame:
+        """
+        Async wrapper for get_latest_data to match TradingBot interface expectations.
+        """
+        return self.get_latest_data(symbol, timeframe, limit)

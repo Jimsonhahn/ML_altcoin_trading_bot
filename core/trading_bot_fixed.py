@@ -15,7 +15,7 @@ from data_sources.data_manager import DataManager
 from core.position import PositionManager
 from core.order_manager import OrderManager
 from core.risk_manager import RiskManager
-from Analysis.performance_tracker import PerformanceTracker
+from analysis.performance_tracker import PerformanceTracker
 from core.safety_manager import SafetyManager
 from strategies.strategy_base import Strategy
 from utils.exceptions import (

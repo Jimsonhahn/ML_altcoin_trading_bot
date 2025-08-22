@@ -54,7 +54,7 @@ def run_corrected_comprehensive_backtest():
         from data_sources.data_manager import DataManager
         from core.trading_bot import TradingBot
         from strategies import STRATEGIES
-        from Analysis.performance_tracker import PerformanceTracker
+        from analysis.performance_tracker import PerformanceTracker
         
         print(f"✅ All imports successful - no more circular dependency errors!")
         print(f"📊 Found {len(STRATEGIES)} strategies to test")

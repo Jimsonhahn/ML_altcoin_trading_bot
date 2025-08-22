@@ -24,7 +24,7 @@ import asyncpg
 from pydantic import BaseModel, Field
 
 # Import unserer Learning Components
-from Analysis.learning_pipeline import LearningPipeline
+from analysis.learning_pipeline import LearningPipeline
 from analysis.pattern_detector import PatternDetector
 from analysis.backtest_improvements import BacktestImprovements
 from core.decision_logger import DecisionLogger
