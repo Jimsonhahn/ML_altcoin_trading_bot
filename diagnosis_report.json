@@ -1,0 +1,9 @@
+{
+  "timestamp": "100436.351947025",
+  "issues": [
+    "Paper balance error: 'float' object is not callable",
+    "Data manager not initialized"
+  ],
+  "fixes": [],
+  "status": "ISSUES_FOUND"
+}
