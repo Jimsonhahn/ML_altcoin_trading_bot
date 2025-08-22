@@ -5,7 +5,7 @@ Flask REST API for Altcoin Trading Bot
 Main Flask application with CORS, JWT authentication, and WebSocket support.
 """
 
-from flask import Flask, jsonify, request, make_response
+from flask import Flask, jsonify, request, make_response, render_template, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_socketio import SocketIO
@@ -187,22 +187,65 @@ def create_app(config_name='development'):
         from api.schemas.openapi import get_openapi_spec
         return jsonify(get_openapi_spec()), 200
     
-    # Root endpoint
+    # Dashboard route - serve HTML
     @app.route('/', methods=['GET'])
-    def root():
-        """Root endpoint with API information"""
-        return jsonify({
-            'service': 'Altcoin Trading Bot API',
-            'version': '1.0.0',
-            'endpoints': {
-                'health': '/health',
-                'docs': '/api/docs',
-                'trading': '/api/v1/trading',
-                'monitoring': '/api/v1/monitoring',
-                'strategies': '/api/v1/strategies',
-                'dashboard': '/api/v1/dashboard'
-            }
-        }), 200
+    def dashboard_html():
+        """Serve the dashboard HTML"""
+        # Check if request wants JSON (API call)
+        if request.headers.get('Accept', '').startswith('application/json'):
+            return jsonify({
+                'service': 'Altcoin Trading Bot API',
+                'version': '1.0.0',
+                'endpoints': {
+                    'health': '/health',
+                    'docs': '/api/docs',
+                    'trading': '/api/v1/trading',
+                    'monitoring': '/api/v1/monitoring',
+                    'strategies': '/api/v1/strategies',
+                    'dashboard': '/api/v1/dashboard'
+                }
+            }), 200
+        
+        # Otherwise serve the dashboard HTML
+        try:
+            dashboard_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dashboard')
+            return send_from_directory(dashboard_path, 'index.html')
+        except:
+            # Fallback HTML if dashboard directory not found
+            return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Trading Bot Dashboard</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 40px; }
+                    .status { padding: 20px; background: #f0f0f0; border-radius: 5px; }
+                </style>
+            </head>
+            <body>
+                <h1>Trading Bot Dashboard</h1>
+                <div class="status">
+                    <h2>Bot Status</h2>
+                    <p id="status">Loading...</p>
+                </div>
+                <script>
+                    fetch('/api/bot/status')
+                        .then(r => r.json())
+                        .then(data => {
+                            document.getElementById('status').innerHTML = 
+                                `Status: ${data.status}<br>Mode: ${data.mode}<br>Strategy: ${data.strategy}`;
+                        });
+                </script>
+            </body>
+            </html>
+            """
+    
+    # Serve static files from dashboard directory
+    @app.route('/<path:path>')
+    def serve_static(path):
+        """Serve static files from dashboard directory"""
+        dashboard_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dashboard')
+        return send_from_directory(dashboard_path, path)
     
     logger.info(f"Flask app created with config: {config_name}")
     
